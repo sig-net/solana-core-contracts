@@ -32,10 +32,7 @@ describe("solana-core-contracts", () => {
 
     await confirmTransaction(program.provider.connection, result);
 
-    const returnData = await getTransactionReturnValue<Uint8Array>(
-      program.provider.connection,
-      result
-    );
+    const returnData = await getTransactionReturnValue<Uint8Array>(result);
 
     if (returnData) {
       const uint8Array = Array.from(returnData);

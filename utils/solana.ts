@@ -9,7 +9,6 @@ import * as anchor from "@coral-xyz/anchor";
  * @template T The type of the return value
  */
 export async function getTransactionReturnValue<T>(
-  connection: Connection,
   txSignature: string
 ): Promise<T | null> {
   const txInfo = await getTxInfo({ txSignature });

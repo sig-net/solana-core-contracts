@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-solana_core_contracts = "8yavd91U7kY5bZQNYgYf1jj42GSYTLnDsRq8ZH2aaRY1"
+solana_core_contracts = "aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS"
 
 [registry]
 url = "https://api.apr.dev"
@@ -14,6 +14,10 @@ url = "https://api.apr.dev"
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
+
+# [provider]
+# cluster = "devnet"
+# wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

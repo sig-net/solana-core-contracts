@@ -1,7 +1,8 @@
 use anchor_lang::prelude::*;
 use omni_transaction::{TransactionBuilder, EVM};
+use sha3::{Digest, Keccak256};
 
-declare_id!("8yavd91U7kY5bZQNYgYf1jj42GSYTLnDsRq8ZH2aaRY1");
+declare_id!("aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS");
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct EthereumTransaction {
@@ -24,7 +25,7 @@ pub mod solana_core_contracts {
     pub fn process_ethereum_transaction(
         ctx: Context<ProcessEthereumTransaction>,
         ethereum_tx: EthereumTransaction,
-    ) -> Result<()> {
+    ) -> Result<[u8; 32]> {
         msg!(
             "Processing Ethereum transaction on Solana program: {:?}",
             ctx.program_id
@@ -41,11 +42,11 @@ pub mod solana_core_contracts {
             .chain_id(ethereum_tx.chain_id)
             .build();
 
-        let hash_to_sign = evm_tx.build_for_signing();
+        let mut hasher = Keccak256::new();
+        hasher.update(&evm_tx.build_for_signing());
+        let hash_to_sign = hasher.finalize();
 
-        msg!("Ethereum transaction hash to be signed: {:?}", hash_to_sign);
-
-        Err(ErrorCode::NotImplemented.into())
+        Ok(hash_to_sign.into())
     }
 }
 

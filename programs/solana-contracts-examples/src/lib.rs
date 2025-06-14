@@ -1,112 +1,49 @@
-use alloy_primitives::{Address, U256};
-use alloy_sol_types::{sol, SolCall};
 use anchor_lang::prelude::*;
-use omni_transaction::{TransactionBuilder, TxBuilder, EVM};
-use sha3::{Digest, Keccak256};
+
+pub mod constants;
+pub mod cpi;
+pub mod error;
+pub mod instructions;
+pub mod state;
+
+pub use constants::*;
+pub use cpi::*;
+pub use error::ErrorCode;
+pub use state::*;
 
 declare_id!("aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS");
-
-sol! {
-    interface IVault {
-        function deposit(address to, uint256 amount) external;
-        function withdraw(address to, uint256 amount) external;
-    }
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct VaultTransaction {
-    pub to_address: [u8; 20],
-    pub value: u128,
-    pub gas_limit: u128,
-    pub max_fee_per_gas: u128,
-    pub max_priority_fee_per_gas: u128,
-    pub nonce: u64,
-    pub chain_id: u64,
-    pub recipient_address: [u8; 20],
-    pub amount: u128,
-}
-
-trait VaultOperation {
-    type Call: SolCall;
-    fn create_call(recipient: Address, amount: U256) -> Self::Call;
-}
-
-struct DepositOp;
-struct WithdrawOp;
-
-impl VaultOperation for DepositOp {
-    type Call = IVault::depositCall;
-
-    fn create_call(recipient: Address, amount: U256) -> Self::Call {
-        IVault::depositCall {
-            to: recipient,
-            amount,
-        }
-    }
-}
-
-impl VaultOperation for WithdrawOp {
-    type Call = IVault::withdrawCall;
-
-    fn create_call(recipient: Address, amount: U256) -> Self::Call {
-        IVault::withdrawCall {
-            to: recipient,
-            amount,
-        }
-    }
-}
-
-impl From<VaultTransaction> for (Address, U256) {
-    fn from(tx: VaultTransaction) -> Self {
-        (Address::from(tx.recipient_address), U256::from(tx.amount))
-    }
-}
 
 #[program]
 pub mod solana_core_contracts {
     use super::*;
 
-    pub fn process_deposit(_ctx: Context<ProcessVault>, tx: VaultTransaction) -> Result<[u8; 32]> {
-        process_vault_transaction::<DepositOp>(tx)
+    /// Process a vault deposit transaction and return the hash to be signed
+    /// This method is kept for debugging purposes
+    pub fn process_deposit(ctx: Context<ProcessVault>, tx: VaultTransaction) -> Result<[u8; 32]> {
+        instructions::process_vault::process_deposit(ctx, tx)
     }
 
-    pub fn process_withdraw(_ctx: Context<ProcessVault>, tx: VaultTransaction) -> Result<[u8; 32]> {
-        process_vault_transaction::<WithdrawOp>(tx)
+    /// Process a vault withdrawal transaction and return the hash to be signed
+    /// This method is kept for debugging purposes
+    pub fn process_withdraw(ctx: Context<ProcessVault>, tx: VaultTransaction) -> Result<[u8; 32]> {
+        instructions::process_vault::process_withdraw(ctx, tx)
     }
-}
 
-fn process_vault_transaction<Op: VaultOperation>(tx: VaultTransaction) -> Result<[u8; 32]> {
-    let (recipient, amount) = tx.clone().into();
-    let call = Op::create_call(recipient, amount);
-    build_and_sign_transaction(tx, call)
-}
+    /// Process a vault deposit transaction and request signature via chain signatures
+    pub fn sign_deposit_transaction(
+        ctx: Context<SignVaultTransaction>,
+        tx: VaultTransaction,
+        signing_params: SigningParams,
+    ) -> Result<()> {
+        instructions::sign_vault::sign_deposit_transaction(ctx, tx, signing_params)
+    }
 
-fn build_and_sign_transaction<T: SolCall>(tx: VaultTransaction, call: T) -> Result<[u8; 32]> {
-    let encoded_data = call.abi_encode();
-
-    let evm_tx = TransactionBuilder::new::<EVM>()
-        .nonce(tx.nonce)
-        .to(tx.to_address)
-        .value(tx.value)
-        .input(encoded_data)
-        .max_priority_fee_per_gas(tx.max_priority_fee_per_gas)
-        .max_fee_per_gas(tx.max_fee_per_gas)
-        .gas_limit(tx.gas_limit)
-        .chain_id(tx.chain_id)
-        .build();
-
-    let hash_to_sign = Keccak256::new()
-        .chain_update(&evm_tx.build_for_signing())
-        .finalize();
-
-    Ok(hash_to_sign.into())
-}
-
-#[derive(Accounts)]
-pub struct ProcessVault {}
-
-#[error_code]
-pub enum ErrorCode {
-    #[msg("Not implemented")]
-    NotImplemented,
+    /// Process a vault withdrawal transaction and request signature via chain signatures
+    pub fn sign_withdraw_transaction(
+        ctx: Context<SignVaultTransaction>,
+        tx: VaultTransaction,
+        signing_params: SigningParams,
+    ) -> Result<()> {
+        instructions::sign_vault::sign_withdraw_transaction(ctx, tx, signing_params)
+    }
 }

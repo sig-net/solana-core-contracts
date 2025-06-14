@@ -13,7 +13,6 @@ sol! {
     }
 }
 
-// Single transaction struct - no duplication
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct VaultTransaction {
     pub to_address: [u8; 20],
@@ -23,17 +22,15 @@ pub struct VaultTransaction {
     pub max_priority_fee_per_gas: u128,
     pub nonce: u64,
     pub chain_id: u64,
-    pub recipient_address: [u8; 20], // 'to' parameter
-    pub amount: u128,                // 'amount' parameter
+    pub recipient_address: [u8; 20],
+    pub amount: u128,
 }
 
-// Trait for vault operations - more idiomatic approach
 trait VaultOperation {
     type Call: SolCall;
     fn create_call(recipient: Address, amount: U256) -> Self::Call;
 }
 
-// Zero-sized types for compile-time dispatch
 struct DepositOp;
 struct WithdrawOp;
 
@@ -59,7 +56,6 @@ impl VaultOperation for WithdrawOp {
     }
 }
 
-// Implement From trait for idiomatic conversions
 impl From<VaultTransaction> for (Address, U256) {
     fn from(tx: VaultTransaction) -> Self {
         (Address::from(tx.recipient_address), U256::from(tx.amount))
@@ -79,14 +75,12 @@ pub mod solana_core_contracts {
     }
 }
 
-// Generic function to eliminate code duplication
 fn process_vault_transaction<Op: VaultOperation>(tx: VaultTransaction) -> Result<[u8; 32]> {
     let (recipient, amount) = tx.clone().into();
     let call = Op::create_call(recipient, amount);
     build_and_sign_transaction(tx, call)
 }
 
-// More idiomatic function name and implementation
 fn build_and_sign_transaction<T: SolCall>(tx: VaultTransaction, call: T) -> Result<[u8; 32]> {
     let encoded_data = call.abi_encode();
 
@@ -101,7 +95,6 @@ fn build_and_sign_transaction<T: SolCall>(tx: VaultTransaction, call: T) -> Resu
         .chain_id(tx.chain_id)
         .build();
 
-    // More functional approach for hashing
     let hash_to_sign = Keccak256::new()
         .chain_update(&evm_tx.build_for_signing())
         .finalize();
@@ -109,7 +102,6 @@ fn build_and_sign_transaction<T: SolCall>(tx: VaultTransaction, call: T) -> Resu
     Ok(hash_to_sign.into())
 }
 
-// Single account context - no duplication
 #[derive(Accounts)]
 pub struct ProcessVault {}
 

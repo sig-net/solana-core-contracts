@@ -5,24 +5,20 @@ use sha3::{Digest, Keccak256};
 
 use crate::state::vault::*;
 
-/// Process a deposit transaction for debugging - returns transaction hash
 pub fn process_deposit(_ctx: Context<ProcessVault>, tx: VaultTransaction) -> Result<[u8; 32]> {
     process_vault_transaction::<DepositOp>(tx)
 }
 
-/// Process a withdrawal transaction for debugging - returns transaction hash
 pub fn process_withdraw(_ctx: Context<ProcessVault>, tx: VaultTransaction) -> Result<[u8; 32]> {
     process_vault_transaction::<WithdrawOp>(tx)
 }
 
-/// Internal function to process vault transactions generically
 pub fn process_vault_transaction<Op: VaultOperation>(tx: VaultTransaction) -> Result<[u8; 32]> {
     let (recipient, amount) = tx.clone().into();
     let call = Op::create_call(recipient, amount);
     build_and_sign_transaction(tx, call)
 }
 
-/// Build an EVM transaction and compute its signing hash
 fn build_and_sign_transaction<T: SolCall>(tx: VaultTransaction, call: T) -> Result<[u8; 32]> {
     let encoded_data = call.abi_encode();
 

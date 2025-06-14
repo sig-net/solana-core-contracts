@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 
-// External program interface for chain signatures
 #[derive(Clone)]
 pub struct ChainSignatures;
 
@@ -13,7 +12,6 @@ impl anchor_lang::Id for ChainSignatures {
     }
 }
 
-// CPI module for chain signatures
 pub mod cpi {
 
     use super::*;
@@ -40,21 +38,6 @@ pub mod cpi {
         }
     }
 
-    /// Request a signature from the chain signatures program (optimized - direct accounts)
-    ///
-    /// # Arguments
-    /// * `program_id` - The chain signatures program ID
-    /// * `program_state` - The chain signatures program state account
-    /// * `requester` - The account requesting the signature
-    /// * `fee_payer` - Optional fee payer account
-    /// * `system_program` - System program account
-    /// * `payload` - The 32-byte hash to be signed
-    /// * `key_version` - Version of the key to use for signing
-    /// * `path` - Derivation path for the key
-    /// * `algo` - Signing algorithm to use
-    /// * `dest` - Destination chain/address
-    /// * `params` - Additional parameters as JSON string
-    /// * `signer_seeds` - Optional signer seeds for PDA signing
     pub fn sign_direct<'info>(
         program_id: AccountInfo<'info>,
         program_state: AccountInfo<'info>,
@@ -126,18 +109,16 @@ pub mod cpi {
     ) -> Result<anchor_lang::solana_program::instruction::Instruction> {
         use anchor_lang::solana_program::instruction::{AccountMeta, Instruction};
 
-        // Use Anchor's instruction builder to ensure consistent serialization
         let mut accounts = vec![
             AccountMeta::new(*program_state, false),
             AccountMeta::new(*requester, true),
         ];
 
-        // Add fee_payer if provided - it must be a signer when present
         if let Some(fee_payer_key) = fee_payer {
-            accounts.push(AccountMeta::new(*fee_payer_key, true)); // fee_payer: Option<Signer<'info>>
+            accounts.push(AccountMeta::new(*fee_payer_key, true));
         }
 
-        accounts.push(AccountMeta::new_readonly(*system_program, false)); // system_program: Program<'info, System>
+        accounts.push(AccountMeta::new_readonly(*system_program, false));
 
         let discriminator = hash(b"global:sign").to_bytes();
 
@@ -145,7 +126,6 @@ pub mod cpi {
 
         data.extend_from_slice(&discriminator[0..8]);
 
-        // Serialize parameters in the same order as the destination program expects
         payload
             .serialize(&mut data)
             .map_err(|_| ErrorCode::SerializationError)?;

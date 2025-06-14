@@ -1573,7 +1573,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-core-contracts"
+name = "solana-contracts-examples"
 version = "0.1.0"
 dependencies = [
  "alloy-primitives",

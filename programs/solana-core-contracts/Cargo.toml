@@ -21,3 +21,5 @@ idl-build = ["anchor-lang/idl-build"]
 anchor-lang = "0.31.1"
 omni-transaction = { git = "https://github.com/Pessina/omni-transaction-rs", features = ["evm"]}
 sha3 = "0.10.8"
+alloy-sol-types = {version = "0.8.25", default-features = false}
+alloy-primitives = {version = "0.8.25", default-features = false}

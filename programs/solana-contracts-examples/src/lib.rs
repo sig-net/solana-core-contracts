@@ -7,7 +7,6 @@ pub mod instructions;
 pub mod state;
 
 pub use constants::*;
-pub use cpi::*;
 pub use error::ErrorCode;
 pub use state::*;
 

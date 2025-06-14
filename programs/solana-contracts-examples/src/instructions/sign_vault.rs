@@ -4,35 +4,24 @@ use crate::cpi::chain_signatures;
 use crate::instructions::process_vault::process_vault_transaction;
 use crate::state::vault::*;
 
-/// Process a deposit transaction and request signature from chain signatures program
 pub fn sign_deposit_transaction(
     ctx: Context<SignVaultTransaction>,
     tx: VaultTransaction,
     signing_params: SigningParams,
 ) -> Result<()> {
-    // Validate inputs
-    tx.validate()?;
-    signing_params.validate()?;
-
     let tx_hash = process_vault_transaction::<DepositOp>(tx)?;
     request_signature(ctx, tx_hash, signing_params)
 }
 
-/// Process a withdrawal transaction and request signature from chain signatures program
 pub fn sign_withdraw_transaction(
     ctx: Context<SignVaultTransaction>,
     tx: VaultTransaction,
     signing_params: SigningParams,
 ) -> Result<()> {
-    // Validate inputs
-    tx.validate()?;
-    signing_params.validate()?;
-
     let tx_hash = process_vault_transaction::<WithdrawOp>(tx)?;
     request_signature(ctx, tx_hash, signing_params)
 }
 
-/// Internal helper to request signature from chain signatures program
 fn request_signature(
     ctx: Context<SignVaultTransaction>,
     payload: [u8; 32],

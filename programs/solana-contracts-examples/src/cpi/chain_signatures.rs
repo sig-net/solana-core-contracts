@@ -59,21 +59,6 @@ pub mod cpi {
         dest: String,
         params: String,
     ) -> Result<()> {
-        // Validate string parameters
-        require!(
-            !path.is_empty() && path.len() <= 256,
-            ErrorCode::InvalidInputLength
-        );
-        require!(
-            !algo.is_empty() && algo.len() <= 64,
-            ErrorCode::InvalidInputLength
-        );
-        require!(
-            !dest.is_empty() && dest.len() <= 256,
-            ErrorCode::InvalidInputLength
-        );
-        require!(params.len() <= 1024, ErrorCode::InvalidInputLength);
-
         let instruction = build_sign_instruction(
             &ctx.program.key(),
             &ctx.accounts.program_state.key(),

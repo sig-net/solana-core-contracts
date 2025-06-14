@@ -32,26 +32,6 @@ pub struct VaultTransaction {
     pub amount: u128,
 }
 
-impl VaultTransaction {
-    /// Validates the transaction parameters
-    pub fn validate(&self) -> Result<()> {
-        require!(self.amount > 0, crate::error::ErrorCode::InvalidInputLength);
-        require!(
-            self.gas_limit > 21000,
-            crate::error::ErrorCode::InvalidInputLength
-        ); // Minimum gas for transfer
-        require!(
-            self.max_fee_per_gas > 0,
-            crate::error::ErrorCode::InvalidInputLength
-        );
-        require!(
-            self.chain_id > 0,
-            crate::error::ErrorCode::InvalidInputLength
-        );
-        Ok(())
-    }
-}
-
 /// Parameters for requesting a signature from the chain signatures program
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct SigningParams {
@@ -65,41 +45,6 @@ pub struct SigningParams {
     pub dest: String,
     /// Additional parameters as JSON string
     pub params: String,
-}
-
-impl SigningParams {
-    /// Validates the signing parameters
-    pub fn validate(&self) -> Result<()> {
-        require!(
-            !self.path.is_empty(),
-            crate::error::ErrorCode::InvalidInputLength
-        );
-        require!(
-            !self.algo.is_empty(),
-            crate::error::ErrorCode::InvalidInputLength
-        );
-        require!(
-            !self.dest.is_empty(),
-            crate::error::ErrorCode::InvalidInputLength
-        );
-        require!(
-            self.path.len() <= 256,
-            crate::error::ErrorCode::InvalidInputLength
-        );
-        require!(
-            self.algo.len() <= 64,
-            crate::error::ErrorCode::InvalidInputLength
-        );
-        require!(
-            self.dest.len() <= 256,
-            crate::error::ErrorCode::InvalidInputLength
-        );
-        require!(
-            self.params.len() <= 1024,
-            crate::error::ErrorCode::InvalidInputLength
-        );
-        Ok(())
-    }
 }
 
 /// Trait for vault operations (deposit/withdraw)
@@ -162,13 +107,14 @@ pub struct SignVaultTransaction<'info> {
     pub fee_payer: Option<Signer<'info>>,
 
     /// Chain signatures program state account
+    /// CHECK: This account is owned by the chain signatures program and validated by the CPI call
     #[account(
         mut,
         seeds = [crate::constants::CHAIN_SIGNATURES_STATE_SEED],
         bump,
         seeds::program = chain_signatures_program.key()
     )]
-    pub chain_signatures_state: Account<'info, crate::state::ChainSignaturesProgramState>,
+    pub chain_signatures_state: AccountInfo<'info>,
 
     /// The chain signatures program
     #[account(

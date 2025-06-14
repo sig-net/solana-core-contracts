@@ -1,4 +1,3 @@
-use alloy_primitives::{Address, U256};
 use alloy_sol_types::SolCall;
 use anchor_lang::prelude::*;
 use omni_transaction::{TransactionBuilder, TxBuilder, EVM};
@@ -8,13 +7,11 @@ use crate::state::vault::*;
 
 /// Process a deposit transaction for debugging - returns transaction hash
 pub fn process_deposit(_ctx: Context<ProcessVault>, tx: VaultTransaction) -> Result<[u8; 32]> {
-    tx.validate()?;
     process_vault_transaction::<DepositOp>(tx)
 }
 
 /// Process a withdrawal transaction for debugging - returns transaction hash
 pub fn process_withdraw(_ctx: Context<ProcessVault>, tx: VaultTransaction) -> Result<[u8; 32]> {
-    tx.validate()?;
     process_vault_transaction::<WithdrawOp>(tx)
 }
 

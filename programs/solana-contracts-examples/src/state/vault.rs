@@ -83,9 +83,16 @@ pub struct ProcessVault {}
 /// Accounts for requesting vault transaction signatures
 #[derive(Accounts)]
 pub struct SignVaultTransaction<'info> {
-    /// The account requesting the signature
-    #[account(mut)]
-    pub requester: Signer<'info>,
+    /// The user authority that owns this vault
+    pub authority: Signer<'info>,
+
+    /// User-specific vault authority PDA that acts as the requester
+    #[account(
+        mut,
+        seeds = [b"vault_authority", authority.key().as_ref()],
+        bump
+    )]
+    pub requester: SystemAccount<'info>,
 
     /// Optional separate account to pay signature fees
     #[account(mut)]

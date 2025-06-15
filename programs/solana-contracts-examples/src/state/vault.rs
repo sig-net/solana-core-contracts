@@ -32,21 +32,6 @@ pub struct VaultTransaction {
     pub amount: u128,
 }
 
-/// Parameters for requesting a signature from the chain signatures program
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
-pub struct SigningParams {
-    /// Version of the key to use for signing
-    pub key_version: u32,
-    /// Derivation path for the key (e.g., "ethereum,1")
-    pub path: String,
-    /// Signing algorithm (e.g., "secp256k1")
-    pub algo: String,
-    /// Destination identifier
-    pub dest: String,
-    /// Additional parameters as JSON string
-    pub params: String,
-}
-
 /// Trait for vault operations (deposit/withdraw)
 pub trait VaultOperation {
     type Call: SolCall;

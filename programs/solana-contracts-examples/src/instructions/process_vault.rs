@@ -16,10 +16,10 @@ pub fn process_withdraw(_ctx: Context<ProcessVault>, tx: VaultTransaction) -> Re
 pub fn process_vault_transaction<Op: VaultOperation>(tx: VaultTransaction) -> Result<[u8; 32]> {
     let (recipient, amount) = tx.clone().into();
     let call = Op::create_call(recipient, amount);
-    build_and_sign_transaction(tx, call)
+    built_to_sign(tx, call)
 }
 
-fn build_and_sign_transaction<T: SolCall>(tx: VaultTransaction, call: T) -> Result<[u8; 32]> {
+fn built_to_sign<T: SolCall>(tx: VaultTransaction, call: T) -> Result<[u8; 32]> {
     let encoded_data = call.abi_encode();
 
     let evm_tx = TransactionBuilder::new::<EVM>()

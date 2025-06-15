@@ -4,7 +4,6 @@ import { SolanaCoreContracts } from "../target/types/solana_core_contracts";
 import { BN } from "@coral-xyz/anchor";
 import { confirmTransaction, getTransactionReturnValue } from "../utils/solana";
 import { assert } from "chai";
-import { PublicKey } from "@solana/web3.js";
 import {
   encodeFunctionData,
   keccak256,

@@ -1,12 +1,68 @@
 use alloy_primitives::{Address, U256};
 use alloy_sol_types::{sol, SolCall};
 use anchor_lang::prelude::*;
+use chain_signatures;
 
 sol! {
     interface IVault {
         function deposit(address to, uint256 amount) external;
         function withdraw(address to, uint256 amount) external;
     }
+}
+
+// Add ERC20 interface
+sol! {
+    #[sol(abi)]
+    interface IERC20 {
+        function transfer(address to, uint256 amount) external returns (bool);
+    }
+}
+
+// PDA for storing pending ERC20 deposits
+#[account]
+pub struct PendingErc20Deposit {
+    pub requester: Pubkey,
+    pub amount: u128,
+    pub erc20_address: [u8; 20],
+    pub path: String,
+    pub request_id: [u8; 32],
+}
+
+impl PendingErc20Deposit {
+    pub const MAX_PATH_LEN: usize = 64;
+
+    pub fn space() -> usize {
+        8 + // discriminator
+        32 + // requester
+        16 + // amount (u128)
+        20 + // erc20_address
+        4 + Self::MAX_PATH_LEN + // path string
+        32 // request_id
+    }
+}
+
+// PDA for storing user ERC20 balances
+#[account]
+pub struct UserErc20Balance {
+    pub amount: u128,
+}
+
+impl UserErc20Balance {
+    pub fn space() -> usize {
+        8 + // discriminator
+        16 // amount (u128)
+    }
+}
+
+// Transaction parameters for EVM
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
+pub struct EvmTransactionParams {
+    pub value: u128,
+    pub gas_limit: u128,
+    pub max_fee_per_gas: u128,
+    pub max_priority_fee_per_gas: u128,
+    pub nonce: u64,
+    pub chain_id: u64,
 }
 
 /// Represents a vault transaction to be processed
@@ -113,8 +169,7 @@ pub struct SignVaultTransaction<'info> {
         constraint = chain_signatures_program.key().to_string() == crate::constants::CHAIN_SIGNATURES_PROGRAM_ID
             @ crate::error::ErrorCode::InvalidChainSignaturesProgram
     )]
-    pub chain_signatures_program: Program<'info, crate::cpi::ChainSignatures>,
-
-    /// System program for account operations
+    pub chain_signatures_program: Program<'info, chain_signatures::program::ChainSignaturesProject>,
     pub system_program: Program<'info, System>,
+    pub instructions: Option<AccountInfo<'info>>,
 }

@@ -1,3 +1,4 @@
+#![recursion_limit = "512"]
 use anchor_lang::prelude::*;
 
 pub mod constants;
@@ -7,10 +8,11 @@ pub mod instructions;
 pub mod state;
 
 pub use constants::*;
-pub use error::ErrorCode;
 pub use state::*;
+pub mod schema_helper;
+use ::chain_signatures::Signature;
 
-declare_id!("aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS");
+declare_id!("GDMMWC3YiZEffb2u5dw6FTLRY5wV5vAcXP72LRAJaVhK");
 
 #[program]
 pub mod solana_core_contracts {
@@ -32,6 +34,25 @@ pub mod solana_core_contracts {
         instructions::sign_vault::sign_deposit_transaction(ctx, tx, signing_params)
     }
 
+    pub fn deposit_erc20(
+        ctx: Context<DepositErc20>,
+        request_id: [u8; 32],
+        erc20_address: [u8; 20],
+        amount: u128,
+        tx_params: EvmTransactionParams,
+    ) -> Result<()> {
+        instructions::erc20_vault::deposit_erc20(ctx, request_id, erc20_address, amount, tx_params)
+    }
+
+    pub fn claim_erc20(
+        ctx: Context<ClaimErc20>,
+        request_id: [u8; 32],
+        serialized_output: Vec<u8>,
+        signature: Signature,
+    ) -> Result<()> {
+        instructions::erc20_vault::claim_erc20(ctx, request_id, serialized_output, signature)
+    }
+
     pub fn sign_withdraw_transaction(
         ctx: Context<SignVaultTransaction>,
         tx: VaultTransaction,
@@ -39,4 +60,83 @@ pub mod solana_core_contracts {
     ) -> Result<()> {
         instructions::sign_vault::sign_withdraw_transaction(ctx, tx, signing_params)
     }
+}
+
+#[derive(Accounts)]
+#[instruction(request_id: [u8; 32], erc20_address: [u8; 20], amount: u128, tx_params: EvmTransactionParams)]
+pub struct DepositErc20<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"vault_authority", authority.key().as_ref()],
+        bump
+    )]
+    pub requester: SystemAccount<'info>,
+
+    #[account(
+        init,
+        payer = authority,
+        space = PendingErc20Deposit::space(),
+        seeds = [
+            b"pending_erc20_deposit",
+            request_id.as_ref()
+        ],
+        bump
+    )]
+    pub pending_deposit: Account<'info, PendingErc20Deposit>,
+
+    #[account(mut)]
+    pub fee_payer: Option<Signer<'info>>,
+
+    /// CHECK: Chain signatures state
+    #[account(
+        mut,
+        seeds = [crate::constants::CHAIN_SIGNATURES_STATE_SEED],
+        bump,
+        seeds::program = chain_signatures_program.key()
+    )]
+    pub chain_signatures_state: AccountInfo<'info>,
+
+    pub chain_signatures_program:
+        Program<'info, ::chain_signatures::program::ChainSignaturesProject>,
+    pub system_program: Program<'info, System>,
+    pub instructions: Option<AccountInfo<'info>>,
+}
+
+#[derive(Accounts)]
+#[instruction(request_id: [u8; 32])]
+pub struct ClaimErc20<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [
+            b"pending_erc20_deposit",
+            &request_id
+        ],
+        bump,
+        close = authority,
+        // Remove has_one = requester, as pending_deposit doesn't have a requester field
+        // Instead, add a constraint to check the authority matches
+        constraint = pending_deposit.requester == authority.key()
+    )]
+    pub pending_deposit: Account<'info, PendingErc20Deposit>,
+
+    #[account(
+        init_if_needed,
+        payer = authority,
+        space = UserErc20Balance::space(),
+        seeds = [
+            b"user_erc20_balance",
+            pending_deposit.requester.as_ref(),
+            &pending_deposit.erc20_address
+        ],
+        bump
+    )]
+    pub user_balance: Account<'info, UserErc20Balance>,
+
+    pub system_program: Program<'info, System>,
 }

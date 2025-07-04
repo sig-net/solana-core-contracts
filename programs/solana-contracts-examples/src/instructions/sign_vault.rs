@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::cpi::{chain_signatures, SignAccounts};
+use crate::cpi::SignAccounts;
 use crate::instructions::process_vault::process_vault_transaction;
 use crate::state::chain_signatures::{SignatureRequest, SigningParams};
 use crate::state::vault::*;
@@ -55,5 +55,5 @@ fn request_signature(
         signer_seeds,
     );
 
-    chain_signatures::cpi::sign(cpi_ctx, request)
+    crate::cpi::chain_signatures::cpi::sign(cpi_ctx, request)
 }

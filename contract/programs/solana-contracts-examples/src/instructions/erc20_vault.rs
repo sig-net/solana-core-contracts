@@ -10,9 +10,11 @@ use chain_signatures::SerializationFormat;
 use omni_transaction::{TransactionBuilder, TxBuilder, EVM};
 
 use crate::state::vault::{EvmTransactionParams, IERC20};
-use crate::{ClaimErc20, DepositErc20};
+use crate::{ClaimErc20, CompleteWithdrawErc20, DepositErc20, WithdrawErc20};
 
-const HARDCODED_RECIPIENT: &str = "0x00A40C2661293d5134E53Da52951A3F7767836Ef";
+const HARDCODED_RECIPIENT: &str = "0x041477de8ecbcf633cb13ea10aa86cdf4d437c29";
+const MPC_ROOT_SIGNER_ADDRESS: &str = "0x00A40C2661293d5134E53Da52951A3F7767836Ef";
+const HARDCODED_ROOT_PATH: &str = "root";
 
 #[derive(BorshSerialize, BorshDeserialize, BorshSchema)]
 pub struct NonFunctionCallResult {
@@ -176,7 +178,7 @@ pub fn claim_erc20(
     let message_hash = hash_message(&request_id, &serialized_output);
 
     // Verify the signature
-    verify_signature_from_address(&message_hash, &signature, HARDCODED_RECIPIENT)?;
+    verify_signature_from_address(&message_hash, &signature, MPC_ROOT_SIGNER_ADDRESS)?;
 
     msg!("Signature verified successfully");
 
@@ -197,6 +199,197 @@ pub fn claim_erc20(
         "ERC20 deposit claimed successfully. New balance: {}",
         balance.amount
     );
+
+    Ok(())
+}
+
+pub fn withdraw_erc20(
+    ctx: Context<WithdrawErc20>,
+    request_id: [u8; 32],
+    erc20_address: [u8; 20],
+    amount: u128,
+    recipient_address: [u8; 20],
+    tx_params: EvmTransactionParams,
+) -> Result<()> {
+    let authority = ctx.accounts.authority.key();
+
+    // Use the hardcoded root path for withdrawals
+    let path = HARDCODED_ROOT_PATH.to_string();
+
+    // Check user has sufficient balance
+    let balance = &mut ctx.accounts.user_balance;
+    require!(
+        balance.amount >= amount,
+        crate::error::ErrorCode::InsufficientBalance
+    );
+
+    // Optimistically decrement the balance
+    balance.amount = balance
+        .amount
+        .checked_sub(amount)
+        .ok_or(crate::error::ErrorCode::Underflow)?;
+
+    msg!("Optimistically decremented balance by {}", amount);
+
+    // Create ERC20 transfer call
+    let recipient = Address::from_slice(&recipient_address);
+    let call = IERC20::transferCall {
+        to: recipient,
+        amount: U256::from(amount),
+    };
+
+    // Build EVM transaction - note: this is FROM the hardcoded recipient address
+    let evm_tx = TransactionBuilder::new::<EVM>()
+        .nonce(tx_params.nonce)
+        .to(erc20_address)
+        .value(tx_params.value)
+        .input(call.abi_encode())
+        .max_priority_fee_per_gas(tx_params.max_priority_fee_per_gas)
+        .max_fee_per_gas(tx_params.max_fee_per_gas)
+        .gas_limit(tx_params.gas_limit)
+        .chain_id(tx_params.chain_id)
+        .build();
+
+    let rlp_encoded_tx = evm_tx.build_for_signing();
+
+    // Generate request ID
+    let computed_request_id = generate_sign_respond_request_id(
+        &ctx.accounts.requester.key(),
+        &rlp_encoded_tx,
+        60, // Ethereum SLIP-44
+        0,  // key_version
+        &path,
+        "ECDSA",
+        "ethereum",
+        "",
+    );
+
+    msg!("Computed request ID: {:?}", computed_request_id);
+    msg!("Provided request ID: {:?}", request_id);
+
+    require!(
+        computed_request_id == request_id,
+        crate::error::ErrorCode::InvalidRequestId
+    );
+
+    // Store pending withdrawal info
+    let pending = &mut ctx.accounts.pending_withdrawal;
+    pending.requester = authority;
+    pending.amount = amount;
+    pending.erc20_address = erc20_address;
+    pending.recipient_address = recipient_address;
+    pending.path = path.clone();
+    pending.request_id = request_id;
+
+    // Create schema for ERC20 transfer return value
+    let functions = IERC20::abi::functions();
+    let transfer_func = functions
+        .get("transfer")
+        .and_then(|funcs| funcs.first())
+        .ok_or(crate::error::ErrorCode::FunctionNotFound)?;
+
+    let explorer_schema = serde_json::to_vec(&transfer_func.outputs)
+        .map_err(|_| crate::error::ErrorCode::SerializationError)?;
+
+    let callback_schema = serde_json::to_vec(&serde_json::json!("bool"))
+        .map_err(|_| crate::error::ErrorCode::SerializationError)?;
+
+    // CPI to sign_respond
+    let requester_bump = ctx.bumps.requester;
+    let signer_seeds: &[&[&[u8]]] = &[&[
+        b"global_vault_authority", // Just this seed
+        &[requester_bump],
+    ]];
+
+    let cpi_ctx = CpiContext::new_with_signer(
+        ctx.accounts.chain_signatures_program.to_account_info(),
+        SignRespond {
+            program_state: ctx.accounts.chain_signatures_state.to_account_info(),
+            requester: ctx.accounts.requester.to_account_info(),
+            fee_payer: ctx
+                .accounts
+                .fee_payer
+                .as_ref()
+                .map(|fp| fp.to_account_info()),
+            system_program: ctx.accounts.system_program.to_account_info(),
+            instructions: ctx
+                .accounts
+                .instructions
+                .as_ref()
+                .map(|i| i.to_account_info()),
+        },
+        signer_seeds,
+    );
+
+    sign_respond(
+        cpi_ctx,
+        rlp_encoded_tx,
+        60, // Ethereum SLIP-44
+        0,  // key_version
+        path,
+        "ECDSA".to_string(),
+        "ethereum".to_string(),
+        "".to_string(),
+        SerializationFormat::AbiJson,
+        explorer_schema,
+        SerializationFormat::Borsh,
+        callback_schema,
+    )?;
+
+    msg!(
+        "ERC20 withdrawal initiated with request_id: {:?}",
+        request_id
+    );
+
+    Ok(())
+}
+
+pub fn complete_withdraw_erc20(
+    ctx: Context<CompleteWithdrawErc20>,
+    request_id: [u8; 32],
+    serialized_output: Vec<u8>,
+    signature: chain_signatures::Signature,
+) -> Result<()> {
+    let pending = &ctx.accounts.pending_withdrawal;
+
+    // Verify signature
+    let message_hash = hash_message(&request_id, &serialized_output);
+    verify_signature_from_address(&message_hash, &signature, MPC_ROOT_SIGNER_ADDRESS)?;
+
+    msg!("Signature verified successfully");
+
+    // Check for error magic prefix
+    const ERROR_PREFIX: [u8; 4] = [0xDE, 0xAD, 0xBE, 0xEF];
+
+    let should_refund = if serialized_output.len() >= 4 && &serialized_output[..4] == ERROR_PREFIX {
+        msg!("Detected error response (magic prefix)");
+        true // Always refund on error
+    } else {
+        // Normal response - deserialize as boolean
+        let success: bool = BorshDeserialize::try_from_slice(&serialized_output)
+            .map_err(|_| crate::error::ErrorCode::InvalidOutput)?;
+
+        if !success {
+            msg!("Transfer returned false");
+            true // Refund if transfer returned false
+        } else {
+            msg!("Transfer returned true");
+            false // Don't refund
+        }
+    };
+
+    if should_refund {
+        // Refund the balance
+        let balance = &mut ctx.accounts.user_balance;
+        balance.amount = balance
+            .amount
+            .checked_add(pending.amount)
+            .ok_or(crate::error::ErrorCode::Overflow)?;
+
+        msg!("Balance refunded: {}", pending.amount);
+    }
+
+    msg!("ERC20 withdrawal process completed");
 
     Ok(())
 }

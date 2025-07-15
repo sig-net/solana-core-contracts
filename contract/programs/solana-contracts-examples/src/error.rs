@@ -22,4 +22,8 @@ pub enum ErrorCode {
     InvalidAddress,
     #[msg("Schema size exceeds maximum allowed")]
     SchemaTooLarge,
+    #[msg("Insufficient balance")]
+    InsufficientBalance,
+    #[msg("Underflow error")]
+    Underflow,
 }

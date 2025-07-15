@@ -1,103 +1,188 @@
-import Image from 'next/image';
+'use client';
+
+import { useMemo } from 'react';
+import { clusterApiUrl } from '@solana/web3.js';
+import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
+import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
+import {
+  ConnectionProvider,
+  WalletProvider,
+  useWallet,
+} from '@solana/wallet-adapter-react';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { ArrowUpCircle, RefreshCw } from 'lucide-react';
+
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { CopyButton } from '@/components/ui/copy-button';
+import { AppHeader } from '@/components/app-header';
+import { WelcomeScreen } from '@/components/welcome-screen';
+import { BalanceTable } from '@/components/balance-table';
+import { formatAddress } from '@/lib/address-utils';
+import { ErrorBoundary } from '@/components/error-boundary';
+import { QueryProvider } from '@/providers/query-provider';
+import { DepositFlow } from '@/components/deposit-flow';
+import {
+  useDepositAddress,
+  useUserBalances,
+  useWithdrawMutation,
+} from '@/hooks/use-solana-queries';
+
+import '@solana/wallet-adapter-react-ui/styles.css';
+
+function DAppContent() {
+  const { publicKey } = useWallet();
+  const { data: depositAddress, isLoading: isLoadingAddress } =
+    useDepositAddress();
+
+  const {
+    data: userBalances = [],
+    isLoading: isLoadingBalances,
+    refetch: refetchBalances,
+  } = useUserBalances();
+
+  const withdrawMutation = useWithdrawMutation();
+
+  const handleWithdraw = (erc20Address: string, amount: string) => {
+    withdrawMutation.mutate({ erc20Address, amount });
+  };
+
+  if (!publicKey) {
+    return <WelcomeScreen />;
+  }
+
+  return (
+    <div className='space-y-6'>
+      {/* Welcome message */}
+      <div className='text-center py-6'>
+        <h2 className='text-xl font-semibold mb-2'>Welcome back!</h2>
+        <p className='text-muted-foreground'>
+          Wallet connected: {formatAddress(publicKey.toString())}
+        </p>
+      </div>
+
+      {/* Deposit Address Card */}
+      <Card className='hover:shadow-md transition-shadow'>
+        <CardHeader>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center space-x-3'>
+              <div className='w-8 h-8 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center'>
+                <ArrowUpCircle className='h-4 w-4 text-green-600 dark:text-green-400' />
+              </div>
+              <div>
+                <CardTitle className='text-base'>
+                  Sepolia Deposit Address
+                </CardTitle>
+                <CardDescription>
+                  Send ERC20 tokens to this address on Sepolia testnet, then
+                  claim them on Solana
+                </CardDescription>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className='flex items-center space-x-3 p-4 bg-muted/30 rounded-lg border border-dashed'>
+            <code className='flex-1 text-sm font-mono break-all select-all'>
+              {isLoadingAddress
+                ? 'Loading address...'
+                : depositAddress || 'Failed to load address'}
+            </code>
+            {depositAddress && !isLoadingAddress && (
+              <CopyButton
+                text={depositAddress}
+                variant='outline'
+                showText
+                size='sm'
+              />
+            )}
+            {isLoadingAddress && <LoadingSpinner size='sm' />}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Balances Card */}
+      <Card className='hover:shadow-md transition-shadow'>
+        <CardHeader>
+          <div className='flex items-center justify-between'>
+            <div className='flex items-center space-x-3'>
+              <div className='w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center'>
+                <RefreshCw className='h-4 w-4 text-blue-600 dark:text-blue-400' />
+              </div>
+              <div>
+                <CardTitle className='text-base'>Token Balances</CardTitle>
+                <CardDescription>
+                  ERC20 tokens available for withdrawal
+                </CardDescription>
+              </div>
+            </div>
+            <Button
+              size='sm'
+              variant='outline'
+              onClick={() => refetchBalances()}
+              disabled={isLoadingBalances}
+              className='gap-2'
+            >
+              {isLoadingBalances ? (
+                <LoadingSpinner size='sm' />
+              ) : (
+                <RefreshCw className='h-4 w-4' />
+              )}
+              {isLoadingBalances ? 'Loading' : 'Refresh'}
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <BalanceTable
+            balances={userBalances}
+            onWithdraw={handleWithdraw}
+            isLoading={isLoadingBalances || withdrawMutation.isPending}
+          />
+          {userBalances.length === 0 && !isLoadingBalances && (
+            <div className='mt-6'>
+              <DepositFlow onRefreshBalances={refetchBalances} />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <div className='min-h-screen bg-background'>
+      <AppHeader />
+      <main className='container mx-auto px-4 py-8 max-w-4xl'>
+        <ErrorBoundary>
+          <DAppContent />
+        </ErrorBoundary>
+      </main>
+    </div>
+  );
+}
 
 export default function Home() {
-  return (
-    <div className='grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]'>
-      <main className='flex flex-col gap-[32px] row-start-2 items-center sm:items-start'>
-        <Image
-          className='dark:invert'
-          src='/next.svg'
-          alt='Next.js logo'
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className='list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]'>
-          <li className='mb-2 tracking-[-.01em]'>
-            Get started by editing{' '}
-            <code className='bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold'>
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className='tracking-[-.01em]'>
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const network = WalletAdapterNetwork.Devnet;
+  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
-        <div className='flex gap-4 items-center flex-col sm:flex-row'>
-          <a
-            className='rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto'
-            href='https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app'
-            target='_blank'
-            rel='noopener noreferrer'
-          >
-            <Image
-              className='dark:invert'
-              src='/vercel.svg'
-              alt='Vercel logomark'
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className='rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]'
-            href='https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app'
-            target='_blank'
-            rel='noopener noreferrer'
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className='row-start-3 flex gap-[24px] flex-wrap items-center justify-center'>
-        <a
-          className='flex items-center gap-2 hover:underline hover:underline-offset-4'
-          href='https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app'
-          target='_blank'
-          rel='noopener noreferrer'
-        >
-          <Image
-            aria-hidden
-            src='/file.svg'
-            alt='File icon'
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className='flex items-center gap-2 hover:underline hover:underline-offset-4'
-          href='https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app'
-          target='_blank'
-          rel='noopener noreferrer'
-        >
-          <Image
-            aria-hidden
-            src='/window.svg'
-            alt='Window icon'
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className='flex items-center gap-2 hover:underline hover:underline-offset-4'
-          href='https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app'
-          target='_blank'
-          rel='noopener noreferrer'
-        >
-          <Image
-            aria-hidden
-            src='/globe.svg'
-            alt='Globe icon'
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+  return (
+    <QueryProvider>
+      <ConnectionProvider endpoint={endpoint}>
+        <WalletProvider wallets={wallets} autoConnect>
+          <WalletModalProvider>
+            <App />
+          </WalletModalProvider>
+        </WalletProvider>
+      </ConnectionProvider>
+    </QueryProvider>
   );
 }

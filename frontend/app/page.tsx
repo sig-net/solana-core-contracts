@@ -25,6 +25,7 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { AppHeader } from '@/components/app-header';
 import { WelcomeScreen } from '@/components/welcome-screen';
 import { BalanceTable } from '@/components/balance-table';
+import { PendingDepositsTable } from '@/components/pending-deposits-table';
 import { formatAddress } from '@/lib/address-utils';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { QueryProvider } from '@/providers/query-provider';
@@ -33,6 +34,8 @@ import {
   useDepositAddress,
   useUserBalances,
   useWithdrawMutation,
+  usePendingDeposits,
+  useClaimErc20Mutation,
 } from '@/hooks/use-solana-queries';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -48,10 +51,21 @@ function DAppContent() {
     refetch: refetchBalances,
   } = useUserBalances();
 
+  const {
+    data: pendingDeposits = [],
+    isLoading: isLoadingPendingDeposits,
+    refetch: refetchPendingDeposits,
+  } = usePendingDeposits();
+
   const withdrawMutation = useWithdrawMutation();
+  const claimMutation = useClaimErc20Mutation();
 
   const handleWithdraw = (erc20Address: string, amount: string) => {
     withdrawMutation.mutate({ erc20Address, amount });
+  };
+
+  const handleClaim = (requestId: string) => {
+    claimMutation.mutate({ requestId });
   };
 
   if (!publicKey) {
@@ -107,6 +121,49 @@ function DAppContent() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Pending Deposits Card */}
+      {pendingDeposits.length > 0 && (
+        <Card className='hover:shadow-md transition-shadow'>
+          <CardHeader>
+            <div className='flex items-center justify-between'>
+              <div className='flex items-center space-x-3'>
+                <div className='w-8 h-8 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center'>
+                  <ArrowUpCircle className='h-4 w-4 text-orange-600 dark:text-orange-400' />
+                </div>
+                <div>
+                  <CardTitle className='text-base'>Pending Deposits</CardTitle>
+                  <CardDescription>
+                    Deposits awaiting chain signature completion
+                  </CardDescription>
+                </div>
+              </div>
+              <Button
+                size='sm'
+                variant='outline'
+                onClick={() => refetchPendingDeposits()}
+                disabled={isLoadingPendingDeposits}
+                className='gap-2'
+              >
+                {isLoadingPendingDeposits ? (
+                  <LoadingSpinner size='sm' />
+                ) : (
+                  <RefreshCw className='h-4 w-4' />
+                )}
+                {isLoadingPendingDeposits ? 'Loading' : 'Refresh'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <PendingDepositsTable
+              pendingDeposits={pendingDeposits}
+              onClaim={handleClaim}
+              isLoading={isLoadingPendingDeposits}
+              isClaimingMap={{}}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Balances Card */}
       <Card className='hover:shadow-md transition-shadow'>
@@ -186,3 +243,6 @@ export default function Home() {
     </QueryProvider>
   );
 }
+
+// Force client-side rendering for this page
+export const dynamic = 'force-dynamic';

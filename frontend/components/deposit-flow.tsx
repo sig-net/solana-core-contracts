@@ -34,21 +34,24 @@ import {
   useDepositErc20Mutation,
   useClaimErc20Mutation,
 } from '@/hooks/use-solana-queries';
+import { deriveUserEthereumAddress } from '@/lib/program/utils';
 
 const SEPOLIA_TOKENS = [
   {
     address: '0xbe72e441bf55620febc26715db68d3494213d8cb',
     symbol: 'TOKEN1',
     name: 'Test Token 1',
+    decimals: 6,
   },
   {
     address: '0x58eb19ef91e8a6327fed391b51ae1887b833cc91',
     symbol: 'TOKEN2',
     name: 'Test Token 2',
+    decimals: 6,
   },
 ];
 
-const DEPOSIT_ADDRESS = '0x041477de8ecbcf633cb13ea10aa86cdf4d437c29';
+const VAULT_ADDRESS = '0x041477de8ecbcf633cb13ea10aa86cdf4d437c29';
 
 type DepositStep = 'select' | 'deposit' | 'initiate' | 'claim' | 'complete';
 
@@ -76,18 +79,18 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
     },
     {
       id: 'deposit',
-      title: 'Send to Sepolia',
-      description: 'Transfer ERC20 tokens to deposit address',
+      title: 'Fund Derived Account',
+      description: 'Send ERC20 tokens to your derived Ethereum address',
     },
     {
       id: 'initiate',
       title: 'Initiate Bridge',
-      description: 'Call deposit_erc20 on Solana',
+      description: 'Transfer tokens from derived account to vault',
     },
     {
       id: 'claim',
       title: 'Claim Tokens',
-      description: 'Call claim_erc20 to credit balance',
+      description: 'Credit bridged tokens to your Solana balance',
     },
     {
       id: 'complete',
@@ -129,17 +132,15 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
     setError('');
 
     try {
-      // Generate a unique request ID
-      const generatedRequestId = crypto.randomUUID();
-      setRequestId(generatedRequestId);
-
       const txSignature = await depositMutation.mutateAsync({
         erc20Address: selectedToken,
         amount: amount,
-        requestId: generatedRequestId,
+        decimals: selectedTokenInfo?.decimals || 6,
       });
 
       console.log('Deposit transaction signature:', txSignature);
+      // Store the transaction signature as our request ID for claiming
+      setRequestId(txSignature);
       setCurrentStep('claim');
     } catch (err) {
       setError(
@@ -296,15 +297,15 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
             </div>
           )}
 
-          {/* Step 2: Deposit on Sepolia */}
+          {/* Step 2: Fund Derived Account */}
           {currentStep === 'deposit' && (
             <div className='space-y-4'>
               <div className='text-center py-4'>
                 <h3 className='text-lg font-semibold mb-2'>
-                  Send Tokens to Sepolia
+                  Fund Your Derived Account
                 </h3>
                 <p className='text-muted-foreground'>
-                  Transfer your ERC20 tokens to the deposit address
+                  Send ERC20 tokens to your derived Ethereum address
                 </p>
               </div>
 
@@ -328,17 +329,30 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                 </div>
               </div>
 
-              <div className='bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4'>
+              <div className='bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4'>
                 <div className='flex items-center gap-2 mb-2'>
-                  <AlertCircle className='w-4 h-4 text-yellow-600' />
-                  <span className='text-sm font-medium'>Deposit Address</span>
+                  <AlertCircle className='w-4 h-4 text-blue-600' />
+                  <span className='text-sm font-medium'>
+                    Your Derived Ethereum Address
+                  </span>
                 </div>
                 <div className='flex items-center gap-2 p-3 bg-white dark:bg-gray-800 rounded border'>
                   <code className='flex-1 text-sm font-mono break-all'>
-                    {DEPOSIT_ADDRESS}
+                    {publicKey
+                      ? deriveUserEthereumAddress(publicKey)
+                      : 'Connect wallet first'}
                   </code>
-                  <CopyButton text={DEPOSIT_ADDRESS} size='sm' />
+                  {publicKey && (
+                    <CopyButton
+                      text={deriveUserEthereumAddress(publicKey)}
+                      size='sm'
+                    />
+                  )}
                 </div>
+                <p className='text-xs text-muted-foreground mt-2'>
+                  This address is derived from your Solana public key and
+                  controlled by the MPC system.
+                </p>
               </div>
 
               <div>
@@ -384,7 +398,7 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
               <div className='text-center py-4'>
                 <h3 className='text-lg font-semibold mb-2'>Initiate Bridge</h3>
                 <p className='text-muted-foreground'>
-                  Call deposit_erc20 on Solana to start the bridge process
+                  Move tokens from your derived account to the vault
                 </p>
               </div>
 
@@ -392,12 +406,12 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                 <div className='flex items-center gap-2 mb-3'>
                   <Clock className='w-4 h-4 text-blue-500' />
                   <span className='text-sm font-medium'>
-                    Transaction Details
+                    Bridge Transaction
                   </span>
                 </div>
                 <div className='space-y-2 text-sm'>
                   <div className='flex justify-between'>
-                    <span>Sepolia TX:</span>
+                    <span>Funding TX:</span>
                     <div className='flex items-center gap-2'>
                       <code className='text-xs bg-muted px-2 py-1 rounded'>
                         {txHash.slice(0, 6)}...{txHash.slice(-4)}
@@ -416,7 +430,35 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                       </Button>
                     </div>
                   </div>
+                  <div className='flex justify-between'>
+                    <span>From:</span>
+                    <code className='text-xs bg-muted px-2 py-1 rounded'>
+                      {publicKey
+                        ? `${deriveUserEthereumAddress(publicKey).slice(0, 6)}...${deriveUserEthereumAddress(publicKey).slice(-4)}`
+                        : 'N/A'}
+                    </code>
+                  </div>
+                  <div className='flex justify-between'>
+                    <span>To:</span>
+                    <code className='text-xs bg-muted px-2 py-1 rounded'>
+                      {VAULT_ADDRESS.slice(0, 6)}...{VAULT_ADDRESS.slice(-4)}
+                    </code>
+                  </div>
                 </div>
+              </div>
+
+              <div className='bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-4'>
+                <div className='flex items-center gap-2 mb-2'>
+                  <AlertCircle className='w-4 h-4 text-yellow-600' />
+                  <span className='text-sm font-medium'>
+                    What happens next?
+                  </span>
+                </div>
+                <p className='text-sm text-muted-foreground'>
+                  The deposit_erc20 function will create an Ethereum transaction
+                  to transfer your tokens from your derived account to the vault
+                  address. This transaction will be signed by the MPC system.
+                </p>
               </div>
 
               {error && (
@@ -464,18 +506,21 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                   Claim Your Tokens
                 </h3>
                 <p className='text-muted-foreground'>
-                  Complete the bridge by calling claim_erc20
+                  Credit the bridged tokens to your Solana balance
                 </p>
               </div>
 
               <div className='bg-green-50 dark:bg-green-900/20 rounded-lg p-4'>
                 <div className='flex items-center gap-2 mb-2'>
                   <Check className='w-4 h-4 text-green-600' />
-                  <span className='text-sm font-medium'>Bridge Initiated</span>
+                  <span className='text-sm font-medium'>
+                    Bridge Transaction Complete
+                  </span>
                 </div>
                 <p className='text-sm text-muted-foreground'>
-                  Your deposit has been initiated on Solana. Now claim your
-                  tokens to complete the bridge.
+                  Your tokens have been moved from your derived account to the
+                  vault on Ethereum. Now claim them to update your Solana
+                  balance.
                 </p>
               </div>
 

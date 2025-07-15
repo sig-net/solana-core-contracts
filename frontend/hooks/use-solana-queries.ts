@@ -9,8 +9,12 @@ import { queryKeys } from '@/lib/query-client';
 
 export function useSolanaService() {
   const { connection } = useConnection();
+  const wallet = useWallet();
 
-  return useMemo(() => new SolanaService(connection), [connection]);
+  return useMemo(() => {
+    const service = new SolanaService(connection, wallet);
+    return service;
+  }, [connection, wallet]);
 }
 
 export function useDepositAddress() {
@@ -45,27 +49,53 @@ export function useUserBalances() {
   });
 }
 
+export function usePendingDeposits() {
+  const { publicKey } = useWallet();
+  const solanaService = useSolanaService();
+
+  return useQuery({
+    queryKey: publicKey
+      ? queryKeys.solana.pendingDeposits(publicKey.toString())
+      : [],
+    queryFn: () => {
+      if (!publicKey) throw new Error('No public key available');
+      return solanaService.fetchPendingDeposits(publicKey);
+    },
+    enabled: !!publicKey,
+    refetchInterval: 5000, // Refetch every 5 seconds to check for updates
+  });
+}
+
 export function useDepositErc20Mutation() {
   const { publicKey } = useWallet();
   const solanaService = useSolanaService();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
       erc20Address,
       amount,
-      requestId,
+      decimals,
     }: {
       erc20Address: string;
       amount: string;
-      requestId: string;
+      decimals: number;
     }) => {
       if (!publicKey) throw new Error('No public key available');
       return solanaService.depositErc20(
         publicKey,
         erc20Address,
         amount,
-        requestId,
+        decimals,
       );
+    },
+    onSuccess: () => {
+      // Invalidate and refetch pending deposits after successful deposit
+      if (publicKey) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.solana.pendingDeposits(publicKey.toString()),
+        });
+      }
     },
   });
 }
@@ -81,10 +111,13 @@ export function useClaimErc20Mutation() {
       return solanaService.claimErc20(publicKey, requestId);
     },
     onSuccess: () => {
-      // Invalidate and refetch user balances after successful claim
+      // Invalidate and refetch user balances and pending deposits after successful claim
       if (publicKey) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.solana.userBalances(publicKey.toString()),
+        });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.solana.pendingDeposits(publicKey.toString()),
         });
       }
     },

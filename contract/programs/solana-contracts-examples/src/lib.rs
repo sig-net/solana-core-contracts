@@ -53,6 +53,38 @@ pub mod solana_core_contracts {
         instructions::erc20_vault::claim_erc20(ctx, request_id, serialized_output, signature)
     }
 
+    pub fn withdraw_erc20(
+        ctx: Context<WithdrawErc20>,
+        request_id: [u8; 32],
+        erc20_address: [u8; 20],
+        amount: u128,
+        recipient_address: [u8; 20],
+        tx_params: EvmTransactionParams,
+    ) -> Result<()> {
+        instructions::erc20_vault::withdraw_erc20(
+            ctx,
+            request_id,
+            erc20_address,
+            amount,
+            recipient_address,
+            tx_params,
+        )
+    }
+
+    pub fn complete_withdraw_erc20(
+        ctx: Context<CompleteWithdrawErc20>,
+        request_id: [u8; 32],
+        serialized_output: Vec<u8>,
+        signature: Signature,
+    ) -> Result<()> {
+        instructions::erc20_vault::complete_withdraw_erc20(
+            ctx,
+            request_id,
+            serialized_output,
+            signature,
+        )
+    }
+
     pub fn sign_withdraw_transaction(
         ctx: Context<SignVaultTransaction>,
         tx: VaultTransaction,
@@ -133,6 +165,95 @@ pub struct ClaimErc20<'info> {
             b"user_erc20_balance",
             pending_deposit.requester.as_ref(),
             &pending_deposit.erc20_address
+        ],
+        bump
+    )]
+    pub user_balance: Account<'info, UserErc20Balance>,
+
+    pub system_program: Program<'info, System>,
+}
+
+// Add the contexts:
+#[derive(Accounts)]
+#[instruction(request_id: [u8; 32], erc20_address: [u8; 20], amount: u128, recipient_address: [u8; 20], tx_params: EvmTransactionParams)]
+pub struct WithdrawErc20<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"global_vault_authority"],
+        bump
+    )]
+    /// CHECK: This is a PDA that will be used as a signer
+    pub requester: AccountInfo<'info>,
+
+    #[account(
+        init,
+        payer = authority,
+        space = PendingErc20Withdrawal::space(),
+        seeds = [
+            b"pending_erc20_withdrawal",
+            request_id.as_ref()
+        ],
+        bump
+    )]
+    pub pending_withdrawal: Account<'info, PendingErc20Withdrawal>,
+
+    #[account(
+        mut,
+        seeds = [
+            b"user_erc20_balance",
+            authority.key().as_ref(),
+            &erc20_address
+        ],
+        bump,
+        constraint = user_balance.amount >= amount
+    )]
+    pub user_balance: Account<'info, UserErc20Balance>,
+
+    #[account(mut)]
+    pub fee_payer: Option<Signer<'info>>,
+
+    /// CHECK: Chain signatures state
+    #[account(
+        mut,
+        seeds = [crate::constants::CHAIN_SIGNATURES_STATE_SEED],
+        bump,
+        seeds::program = chain_signatures_program.key()
+    )]
+    pub chain_signatures_state: AccountInfo<'info>,
+
+    pub chain_signatures_program:
+        Program<'info, ::chain_signatures::program::ChainSignaturesProject>,
+    pub system_program: Program<'info, System>,
+    pub instructions: Option<AccountInfo<'info>>,
+}
+
+#[derive(Accounts)]
+#[instruction(request_id: [u8; 32])]
+pub struct CompleteWithdrawErc20<'info> {
+    #[account(mut)]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [
+            b"pending_erc20_withdrawal",
+            &request_id
+        ],
+        bump,
+        close = authority,
+        constraint = pending_withdrawal.requester == authority.key()
+    )]
+    pub pending_withdrawal: Account<'info, PendingErc20Withdrawal>,
+
+    #[account(
+        mut,
+        seeds = [
+            b"user_erc20_balance",
+            pending_withdrawal.requester.as_ref(),
+            &pending_withdrawal.erc20_address
         ],
         bump
     )]

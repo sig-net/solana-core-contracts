@@ -41,6 +41,28 @@ impl PendingErc20Deposit {
     }
 }
 
+#[account]
+pub struct PendingErc20Withdrawal {
+    pub requester: Pubkey,
+    pub amount: u128,
+    pub erc20_address: [u8; 20],
+    pub recipient_address: [u8; 20],
+    pub path: String,
+    pub request_id: [u8; 32],
+}
+
+impl PendingErc20Withdrawal {
+    pub const fn space() -> usize {
+        8 +  // discriminator
+        32 + // requester
+        16 + // amount (u128)
+        20 + // erc20_address
+        20 + // recipient_address
+        4 + 64 + // path (string with max length)
+        32 // request_id
+    }
+}
+
 // PDA for storing user ERC20 balances
 #[account]
 pub struct UserErc20Balance {

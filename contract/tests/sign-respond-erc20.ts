@@ -13,7 +13,7 @@ const CONFIG = {
 
   // Contract Addresses
   USDC_ADDRESS_SEPOLIA: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238",
-  HARDCODED_RECIPIENT: "0x00A40C2661293d5134E53Da52951A3F7767836Ef",
+  HARDCODED_RECIPIENT: "0x041477de8ecbcf633cb13ea10aa86cdf4d437c29",
 
   // Chain Configuration
   SEPOLIA_CHAIN_ID: 11155111,
@@ -176,6 +176,13 @@ class EthereumUtils {
   }
 
   /**
+   * Get the provider instance
+   */
+  getProvider(): ethers.JsonRpcProvider {
+    return this.provider;
+  }
+
+  /**
    * Build ERC20 transfer transaction
    */
   async buildTransferTransaction(
@@ -291,7 +298,7 @@ class EthereumUtils {
   }
 }
 
-describe("🏦 ERC20 Deposit Flow", () => {
+describe("🏦 ERC20 Deposit, Withdraw and Withdraw with refund Flow", () => {
   // Test context
   let provider: anchor.AnchorProvider;
   let program: Program<SolanaCoreContracts>;
@@ -499,6 +506,567 @@ describe("🏦 ERC20 Deposit Flow", () => {
     await cleanupEventListeners(chainSignaturesProgram, eventPromises);
 
     console.log("\n🎉 ERC20 deposit flow completed successfully!");
+  });
+
+  it("Should complete full ERC20 withdraw flow", async function () {
+    console.log("\n🚀 Starting ERC20 Withdraw Flow Test\n");
+
+    // =====================================================
+    // STEP 1: CHECK BALANCE
+    // =====================================================
+
+    console.log("📍 Step 1: Checking current balance...");
+
+    const erc20AddressBytes = Array.from(
+      Buffer.from(CONFIG.USDC_ADDRESS_SEPOLIA.slice(2), "hex")
+    );
+
+    const [userBalance] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("user_erc20_balance"),
+        provider.wallet.publicKey.toBuffer(),
+        Buffer.from(erc20AddressBytes),
+      ],
+      program.programId
+    );
+
+    const currentBalance = await program.account.userErc20Balance.fetch(
+      userBalance
+    );
+    console.log("  💰 Current balance:", currentBalance.amount.toString());
+
+    // =====================================================
+    // STEP 2: DERIVE RECIPIENT ADDRESS
+    // =====================================================
+
+    console.log("\n📍 Step 2: Deriving recipient address...");
+
+    const [vaultAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("vault_authority"), provider.wallet.publicKey.toBuffer()],
+      program.programId
+    );
+
+    const [globalVaultAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("global_vault_authority")],
+      program.programId
+    );
+
+    // Use the SOLANA address as path, just like in deposit!
+    const path = provider.wallet.publicKey.toString();
+    const derivedPublicKey = CryptoUtils.derivePublicKey(
+      path,
+      vaultAuthority.toString(),
+      CONFIG.BASE_PUBLIC_KEY
+    );
+    const recipientAddress = ethers.computeAddress(derivedPublicKey);
+    const recipientAddressBytes = Array.from(
+      Buffer.from(recipientAddress.slice(2), "hex")
+    );
+
+    console.log("  👛 Solana wallet:", provider.wallet.publicKey.toString());
+    console.log("  📂 Path (Solana address):", path);
+    console.log("  🎯 Recipient address:", recipientAddress);
+
+    // =====================================================
+    // STEP 3: PREPARE WITHDRAWAL TRANSACTION
+    // =====================================================
+
+    console.log("\n📍 Step 3: Preparing withdrawal transaction...");
+
+    // Withdraw the full balance
+    const withdrawAmount = currentBalance.amount.div(new anchor.BN(2));
+    const withdrawAmountBigInt = BigInt(withdrawAmount.toString());
+
+    // Get nonce for HARDCODED_RECIPIENT
+    const ethprovider = ethUtils.getProvider();
+    const nonce = await ethprovider.getTransactionCount(
+      CONFIG.HARDCODED_RECIPIENT
+    );
+    console.log("  📊 Nonce for hardcoded recipient:", nonce);
+
+    // Build withdrawal transaction
+    const transferInterface = new ethers.Interface([
+      "function transfer(address to, uint256 amount) returns (bool)",
+    ]);
+    const callData = transferInterface.encodeFunctionData("transfer", [
+      recipientAddress,
+      withdrawAmountBigInt,
+    ]);
+
+    // Get gas prices
+    const feeData = await ethprovider.getFeeData();
+    const maxFeePerGas =
+      feeData.maxFeePerGas || ethers.parseUnits("30", "gwei");
+    const maxPriorityFeePerGas =
+      feeData.maxPriorityFeePerGas || ethers.parseUnits("2", "gwei");
+
+    // Estimate gas
+    const gasEstimate = await ethprovider.estimateGas({
+      from: CONFIG.HARDCODED_RECIPIENT,
+      to: CONFIG.USDC_ADDRESS_SEPOLIA,
+      data: callData,
+    });
+
+    const gasLimit =
+      (gasEstimate * BigInt(100 + CONFIG.GAS_BUFFER_PERCENT)) / BigInt(100);
+
+    const txParams: TransactionParams = {
+      nonce: new anchor.BN(nonce),
+      value: new anchor.BN(0),
+      maxPriorityFeePerGas: new anchor.BN(maxPriorityFeePerGas.toString()),
+      maxFeePerGas: new anchor.BN(maxFeePerGas.toString()),
+      gasLimit: new anchor.BN(gasLimit.toString()),
+      chainId: new anchor.BN(CONFIG.SEPOLIA_CHAIN_ID),
+    };
+
+    // Build RLP-encoded transaction
+    const tempTx = {
+      type: 2,
+      chainId: CONFIG.SEPOLIA_CHAIN_ID,
+      nonce,
+      maxPriorityFeePerGas,
+      maxFeePerGas,
+      gasLimit,
+      to: CONFIG.USDC_ADDRESS_SEPOLIA,
+      value: BigInt(0),
+      data: callData,
+    };
+
+    const rlpEncodedTx = ethers.Transaction.from(tempTx).unsignedSerialized;
+
+    // Generate request ID - using HARDCODED_ROOT_PATH
+    const requestId = CryptoUtils.generateSignRespondRequestId(
+      globalVaultAuthority.toString(),
+      Array.from(ethers.getBytes(rlpEncodedTx)),
+      CONFIG.ETHEREUM_SLIP44,
+      0,
+      "root", // HARDCODED_ROOT_PATH
+      "ECDSA",
+      "ethereum",
+      ""
+    );
+    const requestIdBytes = Array.from(Buffer.from(requestId.slice(2), "hex"));
+
+    // =====================================================
+    // STEP 4: SETUP EVENT LISTENERS
+    // =====================================================
+
+    console.log("\n📍 Step 4: Setting up event listeners...");
+
+    const eventPromises = setupEventListeners(
+      chainSignaturesProgram,
+      requestId
+    );
+
+    // =====================================================
+    // STEP 5: INITIATE WITHDRAWAL
+    // =====================================================
+
+    console.log("\n📍 Step 5: Initiating withdrawal...");
+
+    const withdrawTx = await program.methods
+      .withdrawErc20(
+        requestIdBytes as any,
+        erc20AddressBytes as any,
+        withdrawAmount,
+        recipientAddressBytes as any,
+        txParams
+      )
+      .accounts({
+        authority: provider.wallet.publicKey,
+        feePayer: provider.wallet.publicKey,
+        instructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+      })
+      .rpc();
+
+    console.log("  ✅ Withdrawal transaction:", withdrawTx);
+
+    // Check balance was decremented
+    const balanceAfterWithdraw = await program.account.userErc20Balance.fetch(
+      userBalance
+    );
+    console.log(
+      "  💰 Balance after withdrawal:",
+      balanceAfterWithdraw.amount.toString()
+    );
+    const expectedBalanceAfterWithdraw =
+      currentBalance.amount.sub(withdrawAmount);
+    expect(balanceAfterWithdraw.amount.toString()).to.equal(
+      expectedBalanceAfterWithdraw.toString()
+    );
+
+    // =====================================================
+    // STEP 6: WAIT FOR SIGNATURE
+    // =====================================================
+
+    console.log("\n📍 Step 6: Waiting for signature...");
+
+    const signatureEvent = (await eventPromises.signature) as any;
+    const signature = extractSignature(signatureEvent);
+
+    // =====================================================
+    // STEP 7: SUBMIT TO ETHEREUM
+    // =====================================================
+
+    console.log("\n📍 Step 7: Submitting to Ethereum...");
+
+    const signedTx = ethers.Transaction.from({
+      type: 2,
+      chainId: CONFIG.SEPOLIA_CHAIN_ID,
+      nonce,
+      maxPriorityFeePerGas: BigInt(txParams.maxPriorityFeePerGas.toString()),
+      maxFeePerGas: BigInt(txParams.maxFeePerGas.toString()),
+      gasLimit: BigInt(txParams.gasLimit.toString()),
+      to: CONFIG.USDC_ADDRESS_SEPOLIA,
+      value: BigInt(0),
+      data: callData,
+      signature,
+    });
+
+    console.log(signedTx.from, "from address");
+
+    const txHash = await ethUtils.submitTransaction(signedTx);
+    const receipt = await ethUtils.waitForConfirmation(txHash);
+
+    console.log("  ✅ Transaction successful!");
+    console.log("  🔗 Transaction hash:", txHash);
+    console.log("  📦 Block number:", receipt.blockNumber);
+    console.log("  ⛽ Gas used:", receipt.gasUsed.toString());
+
+    // =====================================================
+    // STEP 8: COMPLETE WITHDRAWAL
+    // =====================================================
+
+    console.log("\n📍 Step 8: Completing withdrawal...");
+
+    const readEvent = (await eventPromises.readRespond) as any;
+    console.log("  ✅ Got read response!");
+
+    const completeTx = await program.methods
+      .completeWithdrawErc20(
+        requestIdBytes as any,
+        Buffer.from(readEvent.serializedOutput),
+        readEvent.signature
+      )
+      .accounts({
+        authority: provider.wallet.publicKey,
+        userBalance,
+      })
+      .rpc();
+
+    console.log("  ✅ Complete withdrawal transaction:", completeTx);
+
+    // Check if withdrawal was successful by checking balance
+    const finalBalance = await program.account.userErc20Balance.fetch(
+      userBalance
+    );
+
+    if (readEvent.serializedOutput.length === 1) {
+      // Boolean response - check if transfer succeeded
+      const success = readEvent.serializedOutput[0] === 1;
+      if (!success) {
+        console.log("  ⚠️ Transfer returned false, balance was refunded");
+        expect(finalBalance.amount.toString()).to.equal(
+          withdrawAmount.toString()
+        );
+        return;
+      }
+    } else {
+      // Error struct response - balance should be refunded
+      console.log("  ⚠️ Transaction reverted, balance was refunded");
+      expect(finalBalance.amount.toString()).to.equal(
+        withdrawAmount.toString()
+      );
+      return;
+    }
+
+    // If we get here, withdrawal should have succeeded
+    const expectedBalance = currentBalance.amount.sub(withdrawAmount);
+    expect(finalBalance.amount.toString()).to.equal(expectedBalance.toString());
+    console.log("  ✅ Balance is now:", finalBalance.amount.toString());
+
+    // =====================================================
+    // STEP 9: VERIFY RECIPIENT BALANCE
+    // =====================================================
+
+    console.log("\n📍 Step 9: Verifying recipient received funds...");
+
+    // Check USDC balance of recipient
+    const usdcContract = new ethers.Contract(
+      CONFIG.USDC_ADDRESS_SEPOLIA,
+      ["function balanceOf(address) view returns (uint256)"],
+      ethprovider
+    );
+
+    const recipientBalance = await usdcContract.balanceOf(recipientAddress);
+    console.log(
+      "  💰 Recipient USDC balance:",
+      ethers.formatUnits(recipientBalance, CONFIG.DECIMALS)
+    );
+
+    // Cleanup
+    await cleanupEventListeners(chainSignaturesProgram, eventPromises);
+
+    console.log("\n🎉 ERC20 withdrawal flow completed successfully!");
+  });
+
+  it("Should handle failed ERC20 withdrawal and refund balance", async function () {
+    console.log("\n🚀 Starting Failed ERC20 Withdrawal Test\n");
+
+    // =====================================================
+    // STEP 1: CHECK EXISTING BALANCE
+    // =====================================================
+
+    console.log("📍 Step 1: Checking existing balance...");
+
+    const erc20AddressBytes = Array.from(
+      Buffer.from(CONFIG.USDC_ADDRESS_SEPOLIA.slice(2), "hex")
+    );
+
+    const [userBalance] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("user_erc20_balance"),
+        provider.wallet.publicKey.toBuffer(),
+        Buffer.from(erc20AddressBytes),
+      ],
+      program.programId
+    );
+
+    const currentBalance = await program.account.userErc20Balance.fetch(
+      userBalance
+    );
+    console.log("  💰 Current balance:", currentBalance.amount.toString());
+
+    if (currentBalance.amount.eq(new anchor.BN(0))) {
+      console.log("  ⚠️ No balance to test withdrawal failure. Skipping test.");
+      return;
+    }
+
+    // =====================================================
+    // STEP 2: CREATE FAILING WITHDRAWAL
+    // =====================================================
+
+    console.log("\n📍 Step 2: Creating withdrawal that will fail...");
+
+    const recipientAddress = "0x0000000000000000000000000000000000000001";
+    const recipientAddressBytes = Array.from(
+      Buffer.from(recipientAddress.slice(2), "hex")
+    );
+
+    const withdrawAmount = currentBalance.amount;
+
+    // Get current nonce
+    const ethprovider = ethUtils.getProvider();
+    const currentNonce = await ethprovider.getTransactionCount(
+      CONFIG.HARDCODED_RECIPIENT
+    );
+    console.log("  📊 Current nonce:", currentNonce);
+
+    // Use an old nonce to make transaction fail
+    const oldNonce = currentNonce > 0 ? currentNonce - 1 : 0;
+    console.log("  📊 Using already-used nonce:", oldNonce);
+
+    // Build withdrawal transaction with OLD nonce
+    const transferInterface = new ethers.Interface([
+      "function transfer(address to, uint256 amount) returns (bool)",
+    ]);
+    const callData = transferInterface.encodeFunctionData("transfer", [
+      recipientAddress,
+      withdrawAmount.toString(),
+    ]);
+
+    const feeData = await ethprovider.getFeeData();
+    const maxFeePerGas =
+      feeData.maxFeePerGas || ethers.parseUnits("30", "gwei");
+    const maxPriorityFeePerGas =
+      feeData.maxPriorityFeePerGas || ethers.parseUnits("2", "gwei");
+
+    const gasEstimate = 100000;
+
+    const txParams: TransactionParams = {
+      nonce: new anchor.BN(oldNonce), // OLD NONCE
+      value: new anchor.BN(0),
+      maxPriorityFeePerGas: new anchor.BN(maxPriorityFeePerGas.toString()),
+      maxFeePerGas: new anchor.BN(maxFeePerGas.toString()),
+      gasLimit: new anchor.BN(gasEstimate.toString()),
+      chainId: new anchor.BN(CONFIG.SEPOLIA_CHAIN_ID),
+    };
+
+    const tempTx = {
+      type: 2,
+      chainId: CONFIG.SEPOLIA_CHAIN_ID,
+      nonce: oldNonce,
+      maxPriorityFeePerGas,
+      maxFeePerGas,
+      gasLimit: BigInt(gasEstimate),
+      to: CONFIG.USDC_ADDRESS_SEPOLIA,
+      value: BigInt(0),
+      data: callData,
+    };
+
+    const rlpEncodedTx = ethers.Transaction.from(tempTx).unsignedSerialized;
+
+    const [globalVaultAuthority] = anchor.web3.PublicKey.findProgramAddressSync(
+      [Buffer.from("global_vault_authority")],
+      program.programId
+    );
+
+    const requestId = CryptoUtils.generateSignRespondRequestId(
+      globalVaultAuthority.toString(),
+      Array.from(ethers.getBytes(rlpEncodedTx)),
+      CONFIG.ETHEREUM_SLIP44,
+      0,
+      "root", // HARDCODED_ROOT_PATH
+      "ECDSA",
+      "ethereum",
+      ""
+    );
+    const requestIdBytes = Array.from(Buffer.from(requestId.slice(2), "hex"));
+
+    // =====================================================
+    // STEP 3: SETUP EVENT LISTENERS
+    // =====================================================
+
+    console.log("\n📍 Step 3: Setting up event listeners...");
+
+    const eventPromises = setupEventListeners(
+      chainSignaturesProgram,
+      requestId
+    );
+
+    // =====================================================
+    // STEP 4: INITIATE WITHDRAWAL
+    // =====================================================
+
+    console.log("\n📍 Step 4: Initiating withdrawal...");
+
+    const balanceBeforeWithdraw = currentBalance.amount;
+
+    const withdrawTx = await program.methods
+      .withdrawErc20(
+        requestIdBytes as any,
+        erc20AddressBytes as any,
+        withdrawAmount,
+        recipientAddressBytes as any,
+        txParams
+      )
+      .accounts({
+        authority: provider.wallet.publicKey,
+        feePayer: provider.wallet.publicKey,
+        instructions: anchor.web3.SYSVAR_INSTRUCTIONS_PUBKEY,
+      })
+      .rpc();
+
+    console.log("  ✅ Withdrawal transaction:", withdrawTx);
+
+    // Check balance was decremented optimistically
+    const balanceAfterWithdraw = await program.account.userErc20Balance.fetch(
+      userBalance
+    );
+    console.log(
+      "  💰 Balance after withdrawal:",
+      balanceAfterWithdraw.amount.toString()
+    );
+    expect(balanceAfterWithdraw.amount.toString()).to.equal("0");
+
+    // =====================================================
+    // STEP 5: WAIT FOR SIGNATURE
+    // =====================================================
+
+    console.log("\n📍 Step 5: Waiting for signature...");
+
+    const signatureEvent = (await eventPromises.signature) as any;
+    const signature = extractSignature(signatureEvent);
+
+    // =====================================================
+    // STEP 6: TRY TO SUBMIT (WILL FAIL)
+    // =====================================================
+
+    console.log("\n📍 Step 6: Attempting to submit transaction...");
+
+    const signedTx = ethers.Transaction.from({
+      type: 2,
+      chainId: CONFIG.SEPOLIA_CHAIN_ID,
+      nonce: txParams.nonce.toNumber(),
+      maxPriorityFeePerGas: BigInt(txParams.maxPriorityFeePerGas.toString()),
+      maxFeePerGas: BigInt(txParams.maxFeePerGas.toString()),
+      gasLimit: BigInt(txParams.gasLimit.toString()),
+      to: CONFIG.USDC_ADDRESS_SEPOLIA,
+      value: BigInt(0),
+      data: callData,
+      signature,
+    });
+
+    try {
+      const txHash = await ethUtils.submitTransaction(signedTx);
+      console.log("  🔗 Transaction submitted:", txHash);
+
+      // If nonce was already used, this will fail immediately
+      // If we sent a replacement tx, this will fail with "replacement transaction underpriced"
+      // The server will detect the failure and send error response
+      const receipt = await ethUtils.waitForConfirmation(txHash);
+      console.log("  ⚠️ Transaction unexpectedly succeeded!");
+    } catch (error: any) {
+      console.log("  ✅ Transaction failed as expected!");
+      console.log("  📊 Error:", error.message || error.shortMessage || error);
+      // The server monitoring this transaction will send an error response
+    }
+
+    // =====================================================
+    // STEP 7: WAIT FOR ERROR RESPONSE
+    // =====================================================
+
+    console.log("\n📍 Step 7: Waiting for error response...");
+
+    const readEvent = (await eventPromises.readRespond) as any;
+    console.log("  ✅ Got read response!");
+    console.log(
+      "  📊 Response length:",
+      readEvent.serializedOutput.length,
+      "bytes"
+    );
+
+    // =====================================================
+    // STEP 8: COMPLETE WITHDRAWAL (REFUND)
+    // =====================================================
+
+    console.log("\n📍 Step 8: Completing withdrawal (expecting refund)...");
+
+    const completeTx = await program.methods
+      .completeWithdrawErc20(
+        requestIdBytes as any,
+        Buffer.from(readEvent.serializedOutput),
+        readEvent.signature
+      )
+      .accounts({
+        authority: provider.wallet.publicKey,
+        userBalance,
+      })
+      .rpc();
+
+    console.log("  ✅ Complete withdrawal transaction:", completeTx);
+
+    // =====================================================
+    // STEP 9: VERIFY REFUND
+    // =====================================================
+
+    console.log("\n📍 Step 9: Verifying balance was refunded...");
+
+    const finalBalance = await program.account.userErc20Balance.fetch(
+      userBalance
+    );
+
+    console.log("  💰 Initial balance:", balanceBeforeWithdraw.toString());
+    console.log("  💰 Final balance:", finalBalance.amount.toString());
+
+    expect(finalBalance.amount.toString()).to.equal(
+      balanceBeforeWithdraw.toString()
+    );
+
+    // Cleanup
+    await cleanupEventListeners(chainSignaturesProgram, eventPromises);
+
+    console.log("\n🎉 Failed withdrawal handled correctly - balance refunded!");
   });
 });
 

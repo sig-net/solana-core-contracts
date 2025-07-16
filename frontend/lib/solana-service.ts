@@ -666,6 +666,7 @@ export class SolanaService {
 
       return txHash;
     } catch (error) {
+      console.error(error);
       throw new Error(
         `Failed to submit signed transaction: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );

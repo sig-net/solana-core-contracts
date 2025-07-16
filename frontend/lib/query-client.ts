@@ -27,5 +27,7 @@ export const queryKeys = {
       [...queryKeys.solana.all, 'depositAddress', publicKey] as const,
     userBalances: (publicKey: string) =>
       [...queryKeys.solana.all, 'userBalances', publicKey] as const,
+    unclaimedBalances: (publicKey: string) =>
+      [...queryKeys.solana.all, 'unclaimedBalances', publicKey] as const,
   },
 } as const;

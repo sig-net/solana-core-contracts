@@ -17,11 +17,13 @@ import { CopyButton } from '@/components/ui/copy-button';
 import { WelcomeScreen } from '@/components/welcome-screen';
 import { BalanceTable } from '@/components/balance-table';
 import { formatAddress } from '@/lib/address-utils';
+import { formatTokenAmount } from '@/lib/program/utils';
 import { DepositFlow } from '@/components/deposit-flow';
 import {
   useDepositAddress,
   useUserBalances,
   useWithdrawMutation,
+  useUnclaimedBalances,
 } from '@/hooks/use-solana-queries';
 
 function DAppContent() {
@@ -34,6 +36,12 @@ function DAppContent() {
     isLoading: isLoadingBalances,
     refetch: refetchBalances,
   } = useUserBalances();
+
+  const {
+    data: unclaimedBalances = [],
+    isLoading: isLoadingUnclaimed,
+    refetch: refetchUnclaimed,
+  } = useUnclaimedBalances();
 
   const withdrawMutation = useWithdrawMutation();
 
@@ -121,6 +129,41 @@ function DAppContent() {
             )}
             {isLoadingAddress && <LoadingSpinner size='sm' />}
           </div>
+          
+          {/* Unclaimed Balances */}
+          {unclaimedBalances.length > 0 && (
+            <div className='mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/10 rounded-lg border border-yellow-200 dark:border-yellow-800'>
+              <h4 className='text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2'>
+                💰 Unclaimed Deposits
+              </h4>
+              <p className='text-xs text-yellow-700 dark:text-yellow-300 mb-3'>
+                These tokens are available at your deposit address. Use the deposit flow below to claim them.
+              </p>
+              <div className='space-y-2'>
+                {unclaimedBalances.map((balance) => (
+                  <div key={balance.erc20Address} className='flex justify-between items-center text-sm'>
+                    <span className='text-yellow-800 dark:text-yellow-200'>
+                      {formatAddress(balance.erc20Address)}
+                    </span>
+                    <span className='font-mono font-medium text-yellow-800 dark:text-yellow-200'>
+                      {formatTokenAmount(balance.amount, 6)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {isLoadingUnclaimed && (
+            <div className='mt-4 p-4 bg-gray-50 dark:bg-gray-900/10 rounded-lg border border-gray-200 dark:border-gray-800'>
+              <div className='flex items-center justify-center space-x-2'>
+                <LoadingSpinner size='sm' />
+                <span className='text-sm text-gray-600 dark:text-gray-400'>
+                  Checking for unclaimed deposits...
+                </span>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -162,7 +205,12 @@ function DAppContent() {
             isLoading={isLoadingBalances || withdrawMutation.isPending}
           />
           <div className='mt-6'>
-            <DepositFlow onRefreshBalances={refetchBalances} />
+            <DepositFlow 
+              onRefreshBalances={() => {
+                refetchBalances();
+                refetchUnclaimed();
+              }} 
+            />
           </div>
         </CardContent>
       </Card>

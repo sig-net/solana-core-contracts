@@ -63,6 +63,23 @@ export function useUserBalances() {
   });
 }
 
+export function useUnclaimedBalances() {
+  const { publicKey } = useWallet();
+  const solanaService = useSolanaService();
+
+  return useQuery({
+    queryKey: publicKey
+      ? queryKeys.solana.unclaimedBalances(publicKey.toString())
+      : [],
+    queryFn: () => {
+      if (!publicKey) throw new Error('No public key available');
+      return solanaService.fetchUnclaimedBalances(publicKey);
+    },
+    enabled: !!publicKey,
+    refetchInterval: 5000,
+  });
+}
+
 export function useDepositErc20Mutation() {
   const { publicKey } = useWallet();
   const solanaService = useSolanaService();
@@ -119,6 +136,9 @@ export function useClaimErc20Mutation() {
         queryClient.invalidateQueries({
           queryKey: queryKeys.solana.userBalances(publicKey.toString()),
         });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.solana.unclaimedBalances(publicKey.toString()),
+        });
       }
     },
     onError: error => {
@@ -162,6 +182,9 @@ export function useWithdrawMutation() {
       if (publicKey) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.solana.userBalances(publicKey.toString()),
+        });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.solana.unclaimedBalances(publicKey.toString()),
         });
       }
     },

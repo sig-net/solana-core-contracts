@@ -110,6 +110,41 @@ export class SolanaService {
     return derivedAddress;
   }
 
+  async fetchUnclaimedBalances(publicKey: PublicKey): Promise<TokenBalance[]> {
+    try {
+      const derivedAddress = await this.deriveDepositAddress(publicKey);
+      const provider = getAutomatedProvider();
+      const commonErc20Addresses = [...COMMON_ERC20_ADDRESSES] as string[];
+
+      const balancesPromises = commonErc20Addresses.map(async erc20Address => {
+        try {
+          const balance = await provider.readContract({
+            address: erc20Address as `0x${string}`,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [derivedAddress as `0x${string}`],
+          });
+
+          if (balance && balance > BigInt(0)) {
+            return {
+              erc20Address,
+              amount: balance.toString(),
+            };
+          }
+        } catch (error) {
+          console.error(`Error fetching balance for ${erc20Address}:`, error);
+        }
+        return null;
+      });
+
+      const results = await Promise.all(balancesPromises);
+      return results.filter(Boolean) as TokenBalance[];
+    } catch (error) {
+      console.error('Error fetching unclaimed balances:', error);
+      return [];
+    }
+  }
+
   async fetchUserBalances(publicKey: PublicKey): Promise<TokenBalance[]> {
     try {
       const commonErc20Addresses = [...COMMON_ERC20_ADDRESSES] as string[];

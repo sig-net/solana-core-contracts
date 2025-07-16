@@ -56,7 +56,8 @@ export function PendingDepositsTable({
     <div className='space-y-4'>
       <div className='flex items-center justify-between text-sm'>
         <span className='text-muted-foreground'>
-          {pendingDeposits.length} pending deposit{pendingDeposits.length > 1 ? 's' : ''} found
+          {pendingDeposits.length} pending deposit
+          {pendingDeposits.length > 1 ? 's' : ''} found
         </span>
         <div className='flex items-center space-x-2 text-xs text-orange-600'>
           <AlertTriangle className='h-3 w-3' />
@@ -75,10 +76,7 @@ export function PendingDepositsTable({
           </TableHeader>
           <TableBody>
             {pendingDeposits.map(deposit => (
-              <TableRow
-                key={deposit.requestId}
-                className='hover:bg-muted/50'
-              >
+              <TableRow key={deposit.requestId} className='hover:bg-muted/50'>
                 <TableCell>
                   <div className='flex items-center space-x-3'>
                     <Badge variant='outline' className='font-mono text-xs'>
@@ -126,7 +124,9 @@ export function PendingDepositsTable({
                       onClick={() => onClaim(deposit.requestId)}
                       disabled={isLoading || isClaimingMap[deposit.requestId]}
                     >
-                      {isClaimingMap[deposit.requestId] ? 'Claiming...' : 'Claim'}
+                      {isClaimingMap[deposit.requestId]
+                        ? 'Claiming...'
+                        : 'Claim'}
                     </Button>
                   </div>
                 </TableCell>

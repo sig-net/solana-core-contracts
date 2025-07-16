@@ -1,12 +1,12 @@
 import { Connection } from '@solana/web3.js';
 import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
+import type { Hex } from 'viem';
 
 import { CHAIN_SIGNATURES_PROGRAM_IDl } from '../program/idl_chain_sig';
 import {
   CHAIN_SIGNATURES_PROGRAM_ID,
   CHAIN_SIGNATURES_TIMEOUTS,
 } from '../constants/chain-signatures.constants';
-
 import type {
   ChainSignaturesProgram,
   ChainSignaturesSignature,
@@ -122,8 +122,8 @@ export class ChainSignaturesContract {
    * Extract Ethereum signature from chain signatures signature
    */
   extractSignature(signature: ChainSignaturesSignature): EthereumSignature {
-    const r = '0x' + Buffer.from(signature.bigR.x).toString('hex');
-    const s = '0x' + Buffer.from(signature.s).toString('hex');
+    const r = ('0x' + Buffer.from(signature.bigR.x).toString('hex')) as Hex;
+    const s = ('0x' + Buffer.from(signature.s).toString('hex')) as Hex;
     const v = BigInt(signature.recoveryId + 27);
 
     return { r, s, v };

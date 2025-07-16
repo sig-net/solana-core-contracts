@@ -1,6 +1,8 @@
+import type { Hex } from 'viem';
+
 // Ethereum Signature Types
 export interface EthereumSignature {
-  r: string;
-  s: string;
+  r: Hex;
+  s: Hex;
   v: bigint;
 }

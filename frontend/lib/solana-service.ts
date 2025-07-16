@@ -3,16 +3,15 @@ import { BN, Wallet } from '@coral-xyz/anchor';
 import { ethers } from 'ethers';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import * as borsh from 'borsh';
+import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 
 import type { TokenBalance } from '@/components/balance-table';
-import {
+import { 
   generateRequestId,
   createEvmTransactionParams,
   evmParamsToProgram,
 } from '@/lib/program/utils';
-
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
-import { getAutomatedProvider } from '@/lib/ethers-providers';
+import { getAutomatedProvider } from '@/lib/viem/providers';
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { ChainSignaturesContract } from '@/lib/contracts/chain-signatures-contract';
 
@@ -25,15 +24,12 @@ import type {
   DecodedDepositInstruction,
   PendingErc20Deposit,
 } from './types/bridge.types';
-import type { EthereumSignature } from './types/ethereum.types';
-
 import { CHAIN_SIGNATURES_CONFIG } from './constants/chain-signatures.constants';
 import { DEPOSIT_ERC20_BORSH_SCHEMA } from './constants/bridge.constants';
 import {
   COMMON_ERC20_ADDRESSES,
   HARDCODED_RECIPIENT_ADDRESS,
   ETHEREUM_CONFIG,
-  ERC20_TRANSFER_ABI,
 } from './constants/ethereum.constants';
 
 // Using imported constants from constants file
@@ -185,20 +181,24 @@ export class SolanaService {
       const erc20AddressBytes =
         this.bridgeContract.erc20AddressToBytes(erc20Address);
 
-      const transferInterface = new ethers.Interface(ERC20_TRANSFER_ABI);
+      const transferInterface = new ethers.Interface([
+        'function transfer(address to, uint256 amount) returns (bool)',
+      ]);
       const callData = transferInterface.encodeFunctionData('transfer', [
         HARDCODED_RECIPIENT_ADDRESS,
         amountBigInt,
       ]);
 
       const provider = getAutomatedProvider();
-      const currentNonce = await provider.getTransactionCount(derivedAddress);
+      const currentNonce = await provider.getTransactionCount({
+        address: derivedAddress as `0x${string}`,
+      });
 
       const txParams = createEvmTransactionParams(currentNonce);
 
       const tempTx = {
-        type: ETHEREUM_CONFIG.TRANSACTION_TYPE,
-        chainId: ETHEREUM_CONFIG.CHAIN_ID,
+        type: 2,
+        chainId: 11155111,
         nonce: currentNonce,
         maxPriorityFeePerGas: txParams.maxPriorityFeePerGas,
         maxFeePerGas: txParams.maxFeePerGas,
@@ -241,7 +241,7 @@ export class SolanaService {
         this.chainSignaturesContract.setupEventListeners(requestId);
 
       // Step 4: Call depositErc20 on Solana
-      const tx = await this.bridgeContract.depositErc20({
+      await this.bridgeContract.depositErc20({
         authority: publicKey,
         requestIdBytes,
         erc20AddressBytes,
@@ -316,7 +316,7 @@ export class SolanaService {
 
   async getRawTransactionFromPreviousDeposit(
     requestId: string,
-  ): Promise<ethers.TransactionLike | null> {
+  ): Promise<any | null> {
     // Find signature from chain signatures program logs
     const signature =
       await this.chainSignaturesContract.findSignatureEventInLogs(requestId);
@@ -342,10 +342,10 @@ export class SolanaService {
 
   private async processDepositFlow(
     requestId: string,
-    unsignedTx: ethers.TransactionLike,
+    unsignedTx: any,
     callData: string,
     eventPromises: EventPromises,
-    provider: ethers.JsonRpcProvider,
+    provider: any,
     nonce: number,
     txParams: any,
   ): Promise<void> {
@@ -361,10 +361,12 @@ export class SolanaService {
 
       // Step 6: Construct signed Ethereum transaction
       const signedTx = ethers.Transaction.from({
-        type: ETHEREUM_CONFIG.TRANSACTION_TYPE,
+        type: 2,
         chainId: ETHEREUM_CONFIG.CHAIN_ID,
         nonce,
-        maxPriorityFeePerGas: BigInt(txParams.maxPriorityFeePerGas.toString()),
+        maxPriorityFeePerGas: BigInt(
+          txParams.maxPriorityFeePerGas.toString(),
+        ),
         maxFeePerGas: BigInt(txParams.maxFeePerGas.toString()),
         gasLimit: BigInt(txParams.gasLimit.toString()),
         to: unsignedTx.to,
@@ -376,16 +378,20 @@ export class SolanaService {
       // Step 7: Submit to Ethereum network
       console.log(`[${requestId}] Submitting transaction to Ethereum...`);
 
-      const txHash = await provider.send('eth_sendRawTransaction', [
-        signedTx.serialized,
-      ]);
+      const txHash = await provider.request({
+        method: 'eth_sendRawTransaction',
+        params: [signedTx.serialized],
+      });
 
       // Step 8: Wait for Ethereum confirmation
       console.log(
         `[${requestId}] Waiting for Ethereum confirmation... TxHash: ${txHash}`,
       );
 
-      const receipt = await provider.waitForTransaction(txHash, 1);
+      const receipt = await provider.waitForTransactionReceipt({
+        hash: txHash as `0x${string}`,
+        confirmations: 1,
+      });
       if (!receipt) {
         throw new Error('Transaction receipt not found');
       }
@@ -471,41 +477,40 @@ export class SolanaService {
   private _constructTransactionFromInstruction(
     decodedInstruction: DecodedDepositInstruction,
     signature?: ChainSignaturesSignature,
-  ): ethers.TransactionLike {
+  ): any {
     const erc20Address = `0x${Buffer.from(decodedInstruction.erc20Address).toString('hex')}`;
 
-    const erc20Interface = new ethers.Interface(ERC20_TRANSFER_ABI);
-
-    const callData = erc20Interface.encodeFunctionData('transfer', [
+    const transferInterface = new ethers.Interface([
+      'function transfer(address to, uint256 amount) returns (bool)',
+    ]);
+    const callData = transferInterface.encodeFunctionData('transfer', [
       HARDCODED_RECIPIENT_ADDRESS,
       decodedInstruction.amount,
     ]);
 
-    const transaction: ethers.TransactionLike = {
-      type: ETHEREUM_CONFIG.TRANSACTION_TYPE,
+    const transaction = {
+      type: 2,
       chainId: Number(decodedInstruction.txParams.chainId),
       nonce: Number(decodedInstruction.txParams.nonce),
-      maxPriorityFeePerGas:
-        decodedInstruction.txParams.maxPriorityFeePerGas.toString(),
-      maxFeePerGas: decodedInstruction.txParams.maxFeePerGas.toString(),
-      gasLimit: decodedInstruction.txParams.gasLimit.toString(),
+      maxPriorityFeePerGas: decodedInstruction.txParams.maxPriorityFeePerGas,
+      maxFeePerGas: decodedInstruction.txParams.maxFeePerGas,
+      gasLimit: decodedInstruction.txParams.gasLimit,
       to: erc20Address,
-      value: decodedInstruction.txParams.value.toString(),
+      value: decodedInstruction.txParams.value,
       data: callData,
     };
 
     if (signature) {
-      const r =
-        '0x' + Buffer.from(signature.bigR.x).toString('hex').padStart(64, '0');
-      const s =
-        '0x' + Buffer.from(signature.s).toString('hex').padStart(64, '0');
-      const v = 27 + signature.recoveryId;
+      const r = '0x' +
+        Buffer.from(signature.bigR.x).toString('hex').padStart(64, '0');
+      const s = '0x' +
+        Buffer.from(signature.s).toString('hex').padStart(64, '0');
+      const v = BigInt(27 + signature.recoveryId);
 
-      transaction.signature = ethers.Signature.from({
-        r,
-        s,
-        v,
-      }).serialized;
+      return {
+        ...transaction,
+        signature: { r, s, v },
+      };
     }
 
     return transaction;

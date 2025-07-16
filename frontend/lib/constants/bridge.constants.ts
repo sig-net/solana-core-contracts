@@ -1,4 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
+
 import type { DepositErc20Schema } from '../types/bridge.types';
 
 // Bridge Program ID

@@ -65,7 +65,6 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
   const [currentStep, setCurrentStep] = useState<DepositStep>('select');
   const [selectedToken, setSelectedToken] = useState<string>('');
   const [amount, setAmount] = useState<string>('');
-  const [txHash, setTxHash] = useState<string>('');
   const [requestId, setRequestId] = useState<string>('');
   const [error, setError] = useState<string>('');
 
@@ -120,10 +119,6 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
   };
 
   const handleDepositComplete = () => {
-    if (!txHash) {
-      setError('Please enter the transaction hash');
-      return;
-    }
     setError('');
     setCurrentStep('initiate');
   };
@@ -173,7 +168,6 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
     setCurrentStep('select');
     setSelectedToken('');
     setAmount('');
-    setTxHash('');
     setRequestId('');
     setError('');
   };
@@ -357,16 +351,6 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                 </p>
               </div>
 
-              <div>
-                <Label htmlFor='txHash'>Transaction Hash (after sending)</Label>
-                <Input
-                  id='txHash'
-                  placeholder='0x...'
-                  value={txHash}
-                  onChange={e => setTxHash(e.target.value)}
-                />
-              </div>
-
               {error && (
                 <div className='flex items-center gap-2 text-red-500 text-sm'>
                   <AlertCircle className='w-4 h-4' />
@@ -382,11 +366,7 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                 >
                   Back
                 </Button>
-                <Button
-                  onClick={handleDepositComplete}
-                  className='flex-1'
-                  disabled={!txHash}
-                >
+                <Button onClick={handleDepositComplete} className='flex-1'>
                   I&apos;ve sent the tokens
                   <ArrowRight className='w-4 h-4 ml-2' />
                 </Button>
@@ -412,26 +392,6 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                   </span>
                 </div>
                 <div className='space-y-2 text-sm'>
-                  <div className='flex justify-between'>
-                    <span>Funding TX:</span>
-                    <div className='flex items-center gap-2'>
-                      <code className='text-xs bg-muted px-2 py-1 rounded'>
-                        {txHash.slice(0, 6)}...{txHash.slice(-4)}
-                      </code>
-                      <Button
-                        variant='ghost'
-                        size='sm'
-                        onClick={() =>
-                          window.open(
-                            `https://sepolia.etherscan.io/tx/${txHash}`,
-                            '_blank',
-                          )
-                        }
-                      >
-                        <ExternalLink className='w-3 h-3' />
-                      </Button>
-                    </div>
-                  </div>
                   <div className='flex justify-between'>
                     <span>From:</span>
                     <code className='text-xs bg-muted px-2 py-1 rounded'>
@@ -520,70 +480,81 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                   </span>
                 </div>
                 <p className='text-sm text-muted-foreground mb-3'>
-                  The MPC system is signing and submitting your transaction to Ethereum.
-                  This typically takes 1-2 minutes.
+                  The MPC system is signing and submitting your transaction to
+                  Ethereum. This typically takes 1-2 minutes.
                 </p>
                 <div className='space-y-2'>
                   <div className='flex items-center gap-2'>
-                    <div className={`w-4 h-4 rounded-full ${
-                      depositStatus.data?.status === 'waiting_signature' || 
+                    <div
+                      className={`w-4 h-4 rounded-full ${
+                        depositStatus.data?.status === 'waiting_signature' ||
+                        depositStatus.data?.status === 'submitting_ethereum' ||
+                        depositStatus.data?.status === 'confirming_ethereum' ||
+                        depositStatus.data?.status ===
+                          'waiting_read_response' ||
+                        depositStatus.data?.status === 'ready_to_claim'
+                          ? 'bg-green-500'
+                          : 'bg-gray-300 animate-pulse'
+                      }`}
+                    ></div>
+                    <span className='text-sm'>
+                      {depositStatus.data?.status === 'waiting_signature' ||
                       depositStatus.data?.status === 'submitting_ethereum' ||
                       depositStatus.data?.status === 'confirming_ethereum' ||
                       depositStatus.data?.status === 'waiting_read_response' ||
                       depositStatus.data?.status === 'ready_to_claim'
-                        ? 'bg-green-500' 
-                        : 'bg-gray-300 animate-pulse'
-                    }`}></div>
-                    <span className='text-sm'>
-                      {depositStatus.data?.status === 'waiting_signature' || 
-                       depositStatus.data?.status === 'submitting_ethereum' ||
-                       depositStatus.data?.status === 'confirming_ethereum' ||
-                       depositStatus.data?.status === 'waiting_read_response' ||
-                       depositStatus.data?.status === 'ready_to_claim'
-                        ? 'Transaction signed by MPC' 
+                        ? 'Transaction signed by MPC'
                         : 'Waiting for MPC signature...'}
                     </span>
                   </div>
                   <div className='flex items-center gap-2'>
-                    <div className={`w-4 h-4 rounded-full ${
-                      depositStatus.data?.status === 'confirming_ethereum' ||
-                      depositStatus.data?.status === 'waiting_read_response' ||
-                      depositStatus.data?.status === 'ready_to_claim'
-                        ? 'bg-green-500' 
-                        : depositStatus.data?.status === 'submitting_ethereum'
-                        ? 'bg-blue-500 animate-pulse'
-                        : 'bg-gray-300'
-                    }`}></div>
+                    <div
+                      className={`w-4 h-4 rounded-full ${
+                        depositStatus.data?.status === 'confirming_ethereum' ||
+                        depositStatus.data?.status ===
+                          'waiting_read_response' ||
+                        depositStatus.data?.status === 'ready_to_claim'
+                          ? 'bg-green-500'
+                          : depositStatus.data?.status === 'submitting_ethereum'
+                            ? 'bg-blue-500 animate-pulse'
+                            : 'bg-gray-300'
+                      }`}
+                    ></div>
                     <span className='text-sm'>
                       {depositStatus.data?.status === 'confirming_ethereum' ||
-                       depositStatus.data?.status === 'waiting_read_response' ||
-                       depositStatus.data?.status === 'ready_to_claim'
-                        ? 'Ethereum transaction confirmed!' 
+                      depositStatus.data?.status === 'waiting_read_response' ||
+                      depositStatus.data?.status === 'ready_to_claim'
+                        ? 'Ethereum transaction confirmed!'
                         : depositStatus.data?.status === 'submitting_ethereum'
-                        ? 'Submitting to Ethereum...'
-                        : 'Waiting for Ethereum submission...'}
+                          ? 'Submitting to Ethereum...'
+                          : 'Waiting for Ethereum submission...'}
                     </span>
                   </div>
                   <div className='flex items-center gap-2'>
-                    <div className={`w-4 h-4 rounded-full ${
-                      depositStatus.data?.status === 'ready_to_claim'
-                        ? 'bg-green-500' 
-                        : depositStatus.data?.status === 'waiting_read_response'
-                        ? 'bg-blue-500 animate-pulse'
-                        : 'bg-gray-300'
-                    }`}></div>
+                    <div
+                      className={`w-4 h-4 rounded-full ${
+                        depositStatus.data?.status === 'ready_to_claim'
+                          ? 'bg-green-500'
+                          : depositStatus.data?.status ===
+                              'waiting_read_response'
+                            ? 'bg-blue-500 animate-pulse'
+                            : 'bg-gray-300'
+                      }`}
+                    ></div>
                     <span className='text-sm'>
                       {depositStatus.data?.status === 'ready_to_claim'
-                        ? 'Ready to claim!' 
+                        ? 'Ready to claim!'
                         : depositStatus.data?.status === 'waiting_read_response'
-                        ? 'Waiting for read response...'
-                        : 'Waiting for transaction result...'}
+                          ? 'Waiting for read response...'
+                          : 'Waiting for transaction result...'}
                     </span>
                   </div>
                   {depositStatus.data?.txHash && (
                     <div className='mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs'>
                       <span className='font-medium'>TX Hash: </span>
-                      <code className='break-all'>{depositStatus.data.txHash}</code>
+                      <code className='break-all'>
+                        {depositStatus.data.txHash}
+                      </code>
                     </div>
                   )}
                 </div>
@@ -599,7 +570,10 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
               <Button
                 onClick={handleClaimTokens}
                 className='w-full'
-                disabled={claimMutation.isPending || depositStatus.data?.status !== 'ready_to_claim'}
+                disabled={
+                  claimMutation.isPending ||
+                  depositStatus.data?.status !== 'ready_to_claim'
+                }
               >
                 {claimMutation.isPending ? (
                   <>

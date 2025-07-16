@@ -1,15 +1,7 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
-import { clusterApiUrl } from '@solana/web3.js';
-import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
-import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
-import {
-  ConnectionProvider,
-  WalletProvider,
-  useWallet,
-} from '@solana/wallet-adapter-react';
-import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
+import { useState, useEffect } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 import { ArrowUpCircle, RefreshCw } from 'lucide-react';
 
 import {
@@ -22,13 +14,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CopyButton } from '@/components/ui/copy-button';
-import { AppHeader } from '@/components/app-header';
 import { WelcomeScreen } from '@/components/welcome-screen';
 import { BalanceTable } from '@/components/balance-table';
 import { PendingDepositsTable } from '@/components/pending-deposits-table';
 import { formatAddress } from '@/lib/address-utils';
-import { ErrorBoundary } from '@/components/error-boundary';
-import { QueryProvider } from '@/providers/query-provider';
 import { DepositFlow } from '@/components/deposit-flow';
 import {
   useDepositAddress,
@@ -38,8 +27,6 @@ import {
   useClaimErc20Mutation,
   useSubmitSignedTransactionMutation,
 } from '@/hooks/use-solana-queries';
-
-import '@solana/wallet-adapter-react-ui/styles.css';
 
 function DAppContent() {
   const { publicKey } = useWallet();
@@ -249,39 +236,8 @@ function DAppContent() {
   );
 }
 
-function App() {
-  return (
-    <div className='min-h-screen bg-background'>
-      <AppHeader />
-      <main className='container mx-auto px-4 py-8 max-w-4xl'>
-        <ErrorBoundary>
-          <DAppContent />
-        </ErrorBoundary>
-      </main>
-    </div>
-  );
-}
-
 export default function Home() {
-  const network = WalletAdapterNetwork.Devnet;
-  const endpoint = useMemo(
-    () => process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl(network),
-    [network],
-  );
-  console.log('🔍 Endpoint:', endpoint);
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
-
-  return (
-    <QueryProvider>
-      <ConnectionProvider endpoint={endpoint}>
-        <WalletProvider wallets={wallets} autoConnect>
-          <WalletModalProvider>
-            <App />
-          </WalletModalProvider>
-        </WalletProvider>
-      </ConnectionProvider>
-    </QueryProvider>
-  );
+  return <DAppContent />;
 }
 
 // Force client-side rendering for this page

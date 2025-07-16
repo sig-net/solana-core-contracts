@@ -62,7 +62,7 @@ export function usePendingDeposits() {
       return solanaService.fetchPendingDeposits(publicKey);
     },
     enabled: !!publicKey,
-    refetchInterval: 5000, // Refetch every 5 seconds to check for updates
+    refetchInterval: 5000,
   });
 }
 
@@ -90,7 +90,6 @@ export function useDepositErc20Mutation() {
       );
     },
     onSuccess: () => {
-      // Invalidate and refetch pending deposits after successful deposit
       if (publicKey) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.solana.pendingDeposits(publicKey.toString()),
@@ -111,7 +110,6 @@ export function useClaimErc20Mutation() {
       return solanaService.claimErc20(publicKey, requestId);
     },
     onSuccess: () => {
-      // Invalidate and refetch user balances and pending deposits after successful claim
       if (publicKey) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.solana.userBalances(publicKey.toString()),
@@ -141,7 +139,6 @@ export function useWithdrawMutation() {
       return solanaService.withdraw(publicKey, erc20Address, amount);
     },
     onSuccess: () => {
-      // Invalidate and refetch user balances after successful withdrawal
       if (publicKey) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.solana.userBalances(publicKey.toString()),

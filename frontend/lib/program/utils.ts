@@ -120,45 +120,10 @@ export function hexToBytes(hex: string): Uint8Array {
 }
 
 /**
- * Convert byte array to hex string
- */
-export function bytesToHex(bytes: Uint8Array): string {
-  return (
-    '0x' +
-    Array.from(bytes)
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('')
-  );
-}
-
-/**
  * Format token amount to human-readable string
  */
 export function formatTokenAmount(amount: string, decimals = 6): string {
   return ethers.formatUnits(amount, decimals);
-}
-
-/**
- * Create a mock signature for testing
- * In production, this would come from the chain signatures program
- */
-export function createMockSignature() {
-  return {
-    bigR: {
-      x: new Array(32).fill(0),
-      y: new Array(32).fill(0),
-    },
-    s: new Array(32).fill(0),
-    recoveryId: 0,
-  };
-}
-
-/**
- * Create mock serialized output for testing
- */
-export function createMockSerializedOutput(): Buffer {
-  // Mock a successful boolean response
-  return Buffer.from([1]); // true
 }
 
 /**

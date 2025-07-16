@@ -57,6 +57,13 @@ function DAppContent() {
     refetch: refetchPendingDeposits,
   } = usePendingDeposits();
 
+  // Debug logging for pending deposits
+  console.log('📊 Pending deposits state:', {
+    count: pendingDeposits.length,
+    isLoading: isLoadingPendingDeposits,
+    deposits: pendingDeposits,
+  });
+
   const withdrawMutation = useWithdrawMutation();
   const claimMutation = useClaimErc20Mutation();
 
@@ -65,6 +72,10 @@ function DAppContent() {
   };
 
   const handleClaim = (requestId: string) => {
+    console.log('🎯 Claim button clicked!');
+    console.log('  🔑 Request ID:', requestId);
+    console.log('  🔄 Mutation pending:', claimMutation.isPending);
+    
     claimMutation.mutate({ requestId });
   };
 

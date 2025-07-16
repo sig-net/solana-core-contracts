@@ -159,12 +159,27 @@ export function useWithdrawMutation() {
     mutationFn: async ({
       erc20Address,
       amount,
+      recipientAddress,
+      onStatusChange,
     }: {
       erc20Address: string;
       amount: string;
+      recipientAddress: string;
+      onStatusChange?: (status: {
+        status: string;
+        txHash?: string;
+        note?: string;
+        error?: string;
+      }) => void;
     }) => {
       if (!publicKey) throw new Error('No public key available');
-      return solanaService.withdraw(publicKey, erc20Address, amount);
+      return solanaService.withdraw(
+        publicKey,
+        erc20Address,
+        amount,
+        recipientAddress,
+        onStatusChange,
+      );
     },
     onSuccess: () => {
       if (publicKey) {

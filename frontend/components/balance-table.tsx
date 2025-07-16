@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/table';
 import { EmptyState } from '@/components/ui/empty-state';
 import { CopyButton } from '@/components/ui/copy-button';
+import { WithdrawDialog } from '@/components/withdraw-dialog';
 import { formatAddress } from '@/lib/address-utils';
 import { formatTokenAmount } from '@/lib/program/utils';
 
@@ -24,7 +25,11 @@ export interface TokenBalance {
 
 interface BalanceTableProps {
   balances: TokenBalance[];
-  onWithdraw: (address: string, amount: string) => void;
+  onWithdraw: (
+    address: string,
+    amount: string,
+    recipientAddress: string,
+  ) => void;
   isLoading?: boolean;
 }
 
@@ -79,16 +84,27 @@ export function BalanceTable({
                   </span>
                 </TableCell>
                 <TableCell className='text-right'>
-                  <Button
-                    size='sm'
-                    variant='destructive'
-                    onClick={() =>
-                      onWithdraw(balance.erc20Address, balance.amount)
+                  <WithdrawDialog
+                    erc20Address={balance.erc20Address}
+                    amount={formatTokenAmount(balance.amount, 6)}
+                    symbol='ERC20'
+                    onConfirm={recipientAddress =>
+                      onWithdraw(
+                        balance.erc20Address,
+                        balance.amount,
+                        recipientAddress,
+                      )
                     }
-                    disabled={isLoading}
+                    isLoading={isLoading}
                   >
-                    Withdraw
-                  </Button>
+                    <Button
+                      size='sm'
+                      variant='destructive'
+                      disabled={isLoading}
+                    >
+                      Withdraw
+                    </Button>
+                  </WithdrawDialog>
                 </TableCell>
               </TableRow>
             ))}

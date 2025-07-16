@@ -74,6 +74,29 @@ export class BridgeContract {
   }
 
   /**
+   * Derive pending withdrawal PDA for a given request ID
+   */
+  derivePendingWithdrawalPda(requestIdBytes: number[]): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [
+        Buffer.from(BRIDGE_PDA_SEEDS.PENDING_ERC20_WITHDRAWAL),
+        Buffer.from(requestIdBytes),
+      ],
+      BRIDGE_PROGRAM_ID,
+    );
+  }
+
+  /**
+   * Derive global vault authority PDA
+   */
+  deriveGlobalVaultAuthorityPda(): [PublicKey, number] {
+    return PublicKey.findProgramAddressSync(
+      [Buffer.from(BRIDGE_PDA_SEEDS.GLOBAL_VAULT_AUTHORITY)],
+      BRIDGE_PROGRAM_ID,
+    );
+  }
+
+  /**
    * Derive user balance PDA for a given user and ERC20 token
    */
   deriveUserBalancePda(
@@ -278,6 +301,114 @@ export class BridgeContract {
         systemProgram: SYSTEM_PROGRAM_ID,
       } as any)
       .rpc();
+  }
+
+  /**
+   * Initiate ERC20 withdrawal
+   */
+  async withdrawErc20({
+    authority,
+    requestIdBytes,
+    erc20AddressBytes,
+    amount,
+    recipientAddressBytes,
+    evmParams,
+  }: {
+    authority: PublicKey;
+    requestIdBytes: number[];
+    erc20AddressBytes: number[];
+    amount: BN;
+    recipientAddressBytes: number[];
+    evmParams: any;
+  }): Promise<string> {
+    const [globalVaultAuthority] = this.deriveGlobalVaultAuthorityPda();
+    const [pendingWithdrawalPda] =
+      this.derivePendingWithdrawalPda(requestIdBytes);
+    const erc20Bytes = Buffer.from(erc20AddressBytes);
+    const [userBalancePda] = this.deriveUserBalancePda(authority, erc20Bytes);
+
+    return await this.getBridgeProgram()
+      .methods.withdrawErc20(
+        Array.from(requestIdBytes),
+        Array.from(erc20AddressBytes),
+        amount,
+        Array.from(recipientAddressBytes),
+        evmParams,
+      )
+      .accounts({
+        authority,
+        requester: globalVaultAuthority,
+        pendingWithdrawal: pendingWithdrawalPda,
+        userBalance: userBalancePda,
+        chainSignaturesState: this.deriveChainSignaturesStatePda()[0],
+        chainSignaturesProgram: CHAIN_SIGNATURES_PROGRAM_ID,
+        systemProgram: SYSTEM_PROGRAM_ID,
+        instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
+      } as any)
+      .rpc();
+  }
+
+  /**
+   * Complete ERC20 withdrawal
+   */
+  async completeWithdrawErc20({
+    authority,
+    requestIdBytes,
+    serializedOutput,
+    signature,
+    erc20AddressBytes,
+  }: {
+    authority: PublicKey;
+    requestIdBytes: number[];
+    serializedOutput: number[];
+    signature: any;
+    erc20AddressBytes: number[];
+  }): Promise<string> {
+    const [globalVaultAuthority] = this.deriveGlobalVaultAuthorityPda();
+    const [pendingWithdrawalPda] =
+      this.derivePendingWithdrawalPda(requestIdBytes);
+    const erc20Bytes = Buffer.from(erc20AddressBytes);
+    const [userBalancePda] = this.deriveUserBalancePda(authority, erc20Bytes);
+
+    return await this.getBridgeProgram()
+      .methods.completeWithdrawErc20(
+        Array.from(requestIdBytes),
+        serializedOutput,
+        signature,
+      )
+      .accounts({
+        authority,
+        requester: globalVaultAuthority,
+        pendingWithdrawal: pendingWithdrawalPda,
+        userBalance: userBalancePda,
+        chainSignaturesState: this.deriveChainSignaturesStatePda()[0],
+        chainSignaturesProgram: CHAIN_SIGNATURES_PROGRAM_ID,
+        systemProgram: SYSTEM_PROGRAM_ID,
+      } as any)
+      .rpc();
+  }
+
+  /**
+   * Fetch pending withdrawal details
+   */
+  async fetchPendingWithdrawal(pendingWithdrawalPda: PublicKey): Promise<any> {
+    return await this.getBridgeProgram().account.pendingErc20Withdrawal.fetch(
+      pendingWithdrawalPda,
+    );
+  }
+
+  /**
+   * Check if pending withdrawal exists
+   */
+  async checkPendingWithdrawalExists(
+    pendingWithdrawalPda: PublicKey,
+  ): Promise<boolean> {
+    try {
+      await this.fetchPendingWithdrawal(pendingWithdrawalPda);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   // ================================

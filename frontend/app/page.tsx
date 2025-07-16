@@ -70,9 +70,25 @@ function DAppContent() {
     }
   }, [submitTransactionMutation.isPending]);
 
-  const handleWithdraw = (erc20Address: string, amount: string) => {
+  const handleWithdraw = (
+    erc20Address: string,
+    amount: string,
+    recipientAddress: string,
+  ) => {
     withdrawMutation.mutate(
-      { erc20Address, amount },
+      {
+        erc20Address,
+        amount,
+        recipientAddress,
+        onStatusChange: status => {
+          // Update UI based on status
+          if (status.status === 'completed') {
+            toast.success('Withdrawal completed successfully!');
+          } else if (status.status === 'failed') {
+            toast.error(status.error || 'Withdrawal failed');
+          }
+        },
+      },
       {
         onSuccess: () => {
           toast.success('Withdrawal initiated successfully!');

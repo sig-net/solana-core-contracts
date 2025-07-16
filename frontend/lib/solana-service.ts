@@ -6,7 +6,7 @@ import * as borsh from 'borsh';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 
 import type { TokenBalance } from '@/components/balance-table';
-import { 
+import {
   generateRequestId,
   createEvmTransactionParams,
   evmParamsToProgram,
@@ -91,6 +91,8 @@ export class SolanaService {
   private bridgeContract: BridgeContract;
   private chainSignaturesContract: ChainSignaturesContract;
 
+  private depositStatusStore: Map<string, any> = new Map();
+
   constructor(
     private connection: Connection,
     private wallet: Wallet,
@@ -163,6 +165,8 @@ export class SolanaService {
     amount: string,
     decimals = 6,
   ): Promise<string> {
+    let eventPromises: EventPromises | null = null;
+
     try {
       const amountBigInt = ethers.parseUnits(amount, decimals);
       const amountBN = new BN(amountBigInt.toString(), 10);
@@ -237,19 +241,30 @@ export class SolanaService {
       const evmParams = evmParamsToProgram(txParams);
 
       // Step 3: Setup event listeners BEFORE calling depositErc20
-      const eventPromises =
+      eventPromises =
         this.chainSignaturesContract.setupEventListeners(requestId);
 
       // Step 4: Call depositErc20 on Solana
-      await this.bridgeContract.depositErc20({
-        authority: publicKey,
-        requestIdBytes,
-        erc20AddressBytes,
-        amount: amountBN,
-        evmParams,
-      });
+      console.log(`[${requestId}] Calling depositErc20 on Solana...`);
+      try {
+        await this.bridgeContract.depositErc20({
+          authority: publicKey,
+          requestIdBytes,
+          erc20AddressBytes,
+          amount: amountBN,
+          evmParams,
+        });
+        console.log(`[${requestId}] depositErc20 successful`);
+      } catch (depositError) {
+        console.error(`[${requestId}] depositErc20 failed:`, depositError);
+        throw depositError;
+      }
 
       // Step 5: Process the flow following the exact pattern from the README
+      this.storeDepositStatus(requestId, { status: 'processing' });
+
+      // Start the async flow but don't wait for it to complete
+      // The user can monitor progress via the status hooks
       this.processDepositFlow(
         requestId,
         tempTx,
@@ -259,15 +274,119 @@ export class SolanaService {
         currentNonce,
         txParams,
       ).catch(error => {
-        console.error('Deposit flow failed:', error);
+        console.error(`[${requestId}] Deposit flow failed:`, error);
+
+        // Check if it's a "already processed" error in the flow
+        if (
+          error instanceof Error &&
+          error.message.includes('already been processed')
+        ) {
+          console.log(
+            `[${requestId}] Flow ended due to already processed transaction - this might be normal`,
+          );
+          this.storeDepositStatus(requestId, {
+            status: 'processing_interrupted',
+            note: 'Flow interrupted due to already processed transaction',
+          });
+        } else {
+          this.storeDepositStatus(requestId, {
+            status: 'failed',
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
       });
 
       return requestId;
     } catch (error) {
+      // Clean up event listeners if deposit fails
+      if (eventPromises) {
+        eventPromises.cleanup();
+      }
+
+      console.error('Deposit ERC20 failed:', error);
+
       throw new Error(
         `Failed to deposit ERC20: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
+  }
+
+  // Status management methods
+  storeDepositStatus(requestId: string, status: any): void {
+    const timestampedStatus = {
+      ...status,
+      timestamp: Date.now(),
+    };
+    console.log(`[${requestId}] Storing status:`, timestampedStatus);
+    this.depositStatusStore.set(requestId, timestampedStatus);
+
+    // Also store in localStorage for persistence across service recreations
+    try {
+      const key = `deposit_status_${requestId}`;
+      localStorage.setItem(key, JSON.stringify(timestampedStatus));
+
+      // Force a storage event to trigger updates in other components
+      window.dispatchEvent(new Event('storage'));
+    } catch (error) {
+      console.warn('Failed to store status in localStorage:', error);
+    }
+  }
+
+  async checkDepositStatus(requestId: string): Promise<any> {
+    // First check in-memory store
+    let storedStatus = this.depositStatusStore.get(requestId);
+    console.log(`[${requestId}] Checking status - in-memory:`, storedStatus);
+
+    // If not in memory, check localStorage
+    if (!storedStatus) {
+      try {
+        const key = `deposit_status_${requestId}`;
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          storedStatus = JSON.parse(stored);
+          console.log(
+            `[${requestId}] Found status in localStorage:`,
+            storedStatus,
+          );
+          // Restore to in-memory store
+          this.depositStatusStore.set(requestId, storedStatus);
+        }
+      } catch (error) {
+        console.warn('Failed to retrieve status from localStorage:', error);
+      }
+    }
+
+    if (storedStatus) {
+      const result = {
+        ...storedStatus,
+        isReady: storedStatus.status === 'completed',
+      };
+      console.log(`[${requestId}] Returning status:`, result);
+      return result;
+    }
+
+    // If no stored status, check if there's a pending deposit
+    try {
+      const requestIdBytes = this.bridgeContract.hexToBytes(requestId);
+      const [pendingDepositPda] =
+        this.bridgeContract.derivePendingDepositPda(requestIdBytes);
+      const exists =
+        await this.bridgeContract.checkPendingDepositExists(pendingDepositPda);
+
+      if (exists) {
+        return {
+          status: 'pending',
+          isReady: false,
+        };
+      }
+    } catch (error) {
+      console.error('Error checking deposit status:', error);
+    }
+
+    return {
+      status: 'unknown',
+      isReady: false,
+    };
   }
 
   async claimErc20(publicKey: PublicKey, requestId: string): Promise<string> {
@@ -352,6 +471,7 @@ export class SolanaService {
     try {
       // Step 5: Wait for signature from MPC network
       console.log(`[${requestId}] Waiting for signature from MPC network...`);
+      this.storeDepositStatus(requestId, { status: 'waiting_signature' });
 
       const signatureEvent = await eventPromises.signature;
 
@@ -364,9 +484,7 @@ export class SolanaService {
         type: 2,
         chainId: ETHEREUM_CONFIG.CHAIN_ID,
         nonce,
-        maxPriorityFeePerGas: BigInt(
-          txParams.maxPriorityFeePerGas.toString(),
-        ),
+        maxPriorityFeePerGas: BigInt(txParams.maxPriorityFeePerGas.toString()),
         maxFeePerGas: BigInt(txParams.maxFeePerGas.toString()),
         gasLimit: BigInt(txParams.gasLimit.toString()),
         to: unsignedTx.to,
@@ -377,6 +495,7 @@ export class SolanaService {
 
       // Step 7: Submit to Ethereum network
       console.log(`[${requestId}] Submitting transaction to Ethereum...`);
+      this.storeDepositStatus(requestId, { status: 'submitting_ethereum' });
 
       const txHash = await provider.request({
         method: 'eth_sendRawTransaction',
@@ -387,6 +506,10 @@ export class SolanaService {
       console.log(
         `[${requestId}] Waiting for Ethereum confirmation... TxHash: ${txHash}`,
       );
+      this.storeDepositStatus(requestId, {
+        status: 'confirming_ethereum',
+        txHash,
+      });
 
       const receipt = await provider.waitForTransactionReceipt({
         hash: txHash as `0x${string}`,
@@ -400,13 +523,64 @@ export class SolanaService {
       console.log(
         `[${requestId}] Waiting for read response from MPC network...`,
       );
+      this.storeDepositStatus(requestId, {
+        status: 'waiting_read_response',
+        txHash,
+      });
 
       const readEvent = await eventPromises.readRespond;
 
-      // Step 10: Process completed
-      console.log(
-        `[${requestId}] Deposit flow completed successfully. Block: ${receipt.blockNumber}`,
-      );
+      // Step 10: Automatically claim the tokens
+      console.log(`[${requestId}] Automatically claiming tokens...`);
+
+      this.storeDepositStatus(requestId, { status: 'ready_to_claim' });
+
+      // Get the authority (user's public key) from the request
+      if (!this.wallet.publicKey) {
+        throw new Error('Wallet not connected');
+      }
+
+      try {
+        const claimTxHash = await this.claimErc20(
+          this.wallet.publicKey,
+          requestId,
+        );
+        console.log(
+          `[${requestId}] Tokens claimed successfully. Tx: ${claimTxHash}`,
+        );
+
+        // Step 11: Process completed
+        console.log(
+          `[${requestId}] Deposit flow completed successfully. Block: ${receipt.blockNumber}`,
+        );
+
+        this.storeDepositStatus(requestId, {
+          status: 'completed',
+          txHash: claimTxHash,
+        });
+      } catch (claimError) {
+        console.error(`[${requestId}] Failed to claim tokens:`, claimError);
+
+        // Check if it's a "already processed" error, which might mean someone else claimed it
+        if (
+          claimError instanceof Error &&
+          claimError.message.includes('already been processed')
+        ) {
+          console.log(`[${requestId}] Tokens may have already been claimed`);
+          this.storeDepositStatus(requestId, {
+            status: 'completed',
+            note: 'Tokens may have already been claimed',
+          });
+          return; // Don't throw error, consider it successful
+        }
+
+        this.storeDepositStatus(requestId, {
+          status: 'claim_failed',
+          error:
+            claimError instanceof Error ? claimError.message : 'Unknown error',
+        });
+        throw claimError;
+      }
     } catch (error) {
       console.error(`[${requestId}] Deposit flow failed:`, error);
       throw error;
@@ -501,10 +675,10 @@ export class SolanaService {
     };
 
     if (signature) {
-      const r = '0x' +
-        Buffer.from(signature.bigR.x).toString('hex').padStart(64, '0');
-      const s = '0x' +
-        Buffer.from(signature.s).toString('hex').padStart(64, '0');
+      const r =
+        '0x' + Buffer.from(signature.bigR.x).toString('hex').padStart(64, '0');
+      const s =
+        '0x' + Buffer.from(signature.s).toString('hex').padStart(64, '0');
       const v = BigInt(27 + signature.recoveryId);
 
       return {

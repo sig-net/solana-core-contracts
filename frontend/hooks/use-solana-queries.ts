@@ -22,7 +22,7 @@ export function useSolanaService() {
 
     const service = new SolanaService(connection, anchorWallet);
     return service;
-  }, [connection, wallet]);
+  }, [connection, wallet.publicKey, wallet.signTransaction, wallet.signAllTransactions]);
 }
 
 export function useDepositAddress() {

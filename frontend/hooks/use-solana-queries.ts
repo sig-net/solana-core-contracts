@@ -62,7 +62,7 @@ export function usePendingDeposits() {
       return solanaService.fetchPendingDeposits(publicKey);
     },
     enabled: !!publicKey,
-    refetchInterval: 5000,
+    refetchInterval: 1000,
   });
 }
 
@@ -142,6 +142,28 @@ export function useWithdrawMutation() {
       if (publicKey) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.solana.userBalances(publicKey.toString()),
+        });
+      }
+    },
+  });
+}
+
+export function useSubmitSignedTransactionMutation() {
+  const { publicKey } = useWallet();
+  const solanaService = useSolanaService();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ requestId }: { requestId: string }) => {
+      if (!solanaService) {
+        throw new Error('Service not available');
+      }
+      return await solanaService.submitSignedTransactionFromPrevious(requestId);
+    },
+    onSuccess: () => {
+      if (publicKey) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.solana.pendingDeposits(publicKey.toString()),
         });
       }
     },

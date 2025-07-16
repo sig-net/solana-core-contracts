@@ -34,17 +34,9 @@ export function generateRequestId(
   dest: string,
   params: string,
 ): string {
-  // Convert transaction data to number array like the test
   const txDataArray = Array.from(transactionData);
   const txDataHex = '0x' + Buffer.from(txDataArray).toString('hex');
 
-  console.log('\n📋 Generating Request ID');
-  console.log('  👤 Sender:', sender.toString());
-  console.log('  📦 TX data length:', txDataArray.length);
-  console.log('  🔢 Chain ID:', slip44ChainId);
-  console.log('  📂 Path:', path);
-
-  // Use ethers.js solidityPacked to match Rust abi_encode_packed
   const encoded = ethers.solidityPacked(
     [
       'string',

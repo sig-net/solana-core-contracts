@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock, AlertTriangle } from 'lucide-react';
+import { Clock, AlertTriangle, Send } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,15 +28,19 @@ export interface PendingDeposit {
 interface PendingDepositsTableProps {
   pendingDeposits: PendingDeposit[];
   onClaim: (requestId: string) => void;
+  onSubmitTransaction: (requestId: string) => void;
   isLoading?: boolean;
   isClaimingMap?: Record<string, boolean>;
+  isSubmittingMap?: Record<string, boolean>;
 }
 
 export function PendingDepositsTable({
   pendingDeposits,
   onClaim,
+  onSubmitTransaction,
   isLoading = false,
   isClaimingMap = {},
+  isSubmittingMap = {},
 }: PendingDepositsTableProps) {
   if (pendingDeposits.length === 0 && !isLoading) {
     return (
@@ -56,7 +60,7 @@ export function PendingDepositsTable({
         </span>
         <div className='flex items-center space-x-2 text-xs text-orange-600'>
           <AlertTriangle className='h-3 w-3' />
-          <span>Awaiting chain signature</span>
+          <span>Processing deposits</span>
         </div>
       </div>
       <div className='border rounded-lg overflow-hidden'>
@@ -97,14 +101,34 @@ export function PendingDepositsTable({
                   </span>
                 </TableCell>
                 <TableCell className='text-right'>
-                  <Button
-                    size='sm'
-                    variant='default'
-                    onClick={() => onClaim(deposit.requestId)}
-                    disabled={isLoading || isClaimingMap[deposit.requestId]}
-                  >
-                    {isClaimingMap[deposit.requestId] ? 'Claiming...' : 'Claim'}
-                  </Button>
+                  <div className='flex gap-2'>
+                    <Button
+                      size='sm'
+                      variant='outline'
+                      onClick={() => onSubmitTransaction(deposit.requestId)}
+                      disabled={isLoading || isSubmittingMap[deposit.requestId]}
+                    >
+                      {isSubmittingMap[deposit.requestId] ? (
+                        <>
+                          <Send className='h-3 w-3 mr-1' />
+                          Submitting...
+                        </>
+                      ) : (
+                        <>
+                          <Send className='h-3 w-3 mr-1' />
+                          Submit
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      size='sm'
+                      variant='default'
+                      onClick={() => onClaim(deposit.requestId)}
+                      disabled={isLoading || isClaimingMap[deposit.requestId]}
+                    >
+                      {isClaimingMap[deposit.requestId] ? 'Claiming...' : 'Claim'}
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { clusterApiUrl } from '@solana/web3.js';
 import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
@@ -36,6 +36,7 @@ import {
   useWithdrawMutation,
   usePendingDeposits,
   useClaimErc20Mutation,
+  useSubmitSignedTransactionMutation,
 } from '@/hooks/use-solana-queries';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -57,15 +58,29 @@ function DAppContent() {
     refetch: refetchPendingDeposits,
   } = usePendingDeposits();
 
-  // Debug logging for pending deposits
-  console.log('📊 Pending deposits state:', {
-    count: pendingDeposits.length,
-    isLoading: isLoadingPendingDeposits,
-    deposits: pendingDeposits,
-  });
-
   const withdrawMutation = useWithdrawMutation();
   const claimMutation = useClaimErc20Mutation();
+  const submitTransactionMutation = useSubmitSignedTransactionMutation();
+
+  // State for tracking individual button loading states
+  const [claimingMap, setClaimingMap] = useState<Record<string, boolean>>({});
+  const [submittingMap, setSubmittingMap] = useState<Record<string, boolean>>(
+    {},
+  );
+
+  // Update claiming state when mutation state changes
+  useEffect(() => {
+    if (!claimMutation.isPending) {
+      setClaimingMap({});
+    }
+  }, [claimMutation.isPending]);
+
+  // Update submitting state when mutation state changes
+  useEffect(() => {
+    if (!submitTransactionMutation.isPending) {
+      setSubmittingMap({});
+    }
+  }, [submitTransactionMutation.isPending]);
 
   const handleWithdraw = (erc20Address: string, amount: string) => {
     withdrawMutation.mutate({ erc20Address, amount });
@@ -75,8 +90,18 @@ function DAppContent() {
     console.log('🎯 Claim button clicked!');
     console.log('  🔑 Request ID:', requestId);
     console.log('  🔄 Mutation pending:', claimMutation.isPending);
-    
+
+    setClaimingMap(prev => ({ ...prev, [requestId]: true }));
     claimMutation.mutate({ requestId });
+  };
+
+  const handleSubmitTransaction = (requestId: string) => {
+    console.log('📡 Submit transaction button clicked!');
+    console.log('  🔑 Request ID:', requestId);
+    console.log('  🔄 Mutation pending:', submitTransactionMutation.isPending);
+
+    setSubmittingMap(prev => ({ ...prev, [requestId]: true }));
+    submitTransactionMutation.mutate({ requestId });
   };
 
   if (!publicKey) {
@@ -145,7 +170,7 @@ function DAppContent() {
                 <div>
                   <CardTitle className='text-base'>Pending Deposits</CardTitle>
                   <CardDescription>
-                    Deposits awaiting chain signature completion
+                    Deposits being processed through the MPC system
                   </CardDescription>
                 </div>
               </div>
@@ -169,8 +194,10 @@ function DAppContent() {
             <PendingDepositsTable
               pendingDeposits={pendingDeposits}
               onClaim={handleClaim}
+              onSubmitTransaction={handleSubmitTransaction}
               isLoading={isLoadingPendingDeposits}
-              isClaimingMap={{}}
+              isClaimingMap={claimingMap}
+              isSubmittingMap={submittingMap}
             />
           </CardContent>
         </Card>
@@ -239,7 +266,11 @@ function App() {
 
 export default function Home() {
   const network = WalletAdapterNetwork.Devnet;
-  const endpoint = useMemo(() => clusterApiUrl(network), [network]);
+  const endpoint = useMemo(
+    () => process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl(network),
+    [network],
+  );
+  console.log('🔍 Endpoint:', endpoint);
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (

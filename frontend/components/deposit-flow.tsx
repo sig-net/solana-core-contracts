@@ -2,14 +2,8 @@
 
 import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import {
-  ArrowRight,
-  ExternalLink,
-  Check,
-  Clock,
-  AlertCircle,
-  Loader2,
-} from 'lucide-react';
+import { ArrowRight, Check, Clock, AlertCircle, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -34,7 +28,6 @@ import {
   useDepositErc20Mutation,
   useClaimErc20Mutation,
 } from '@/hooks/use-solana-queries';
-import { useDepositStatus } from '@/hooks/use-deposit-status';
 import { deriveUserEthereumAddress } from '@/lib/program/utils';
 
 const SEPOLIA_TOKENS = [
@@ -67,10 +60,15 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
   const [amount, setAmount] = useState<string>('');
   const [requestId, setRequestId] = useState<string>('');
   const [error, setError] = useState<string>('');
+  const [depositStatus, setDepositStatus] = useState<{
+    status: string;
+    txHash?: string;
+    note?: string;
+    error?: string;
+  } | null>(null);
 
   const depositMutation = useDepositErc20Mutation();
   const claimMutation = useClaimErc20Mutation();
-  const depositStatus = useDepositStatus(requestId);
 
   const steps = [
     {
@@ -133,16 +131,17 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
         erc20Address: selectedToken,
         amount: amount,
         decimals: selectedTokenInfo?.decimals || 6,
+        onStatusChange: setDepositStatus,
       });
 
-      console.log('Deposit request ID:', requestIdResult);
-      // Store the request ID for claiming
       setRequestId(requestIdResult);
       setCurrentStep('claim');
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Failed to initiate bridge',
-      );
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to initiate bridge';
+      console.error('Failed to initiate bridge:', err);
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -152,15 +151,19 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
     setError('');
 
     try {
-      const txSignature = await claimMutation.mutateAsync({
+      await claimMutation.mutateAsync({
         requestId: requestId,
       });
 
-      console.log('Claim transaction signature:', txSignature);
       setCurrentStep('complete');
       onRefreshBalances();
+      toast.success('Tokens claimed successfully!');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to claim tokens');
+      const errorMessage =
+        err instanceof Error ? err.message : 'Failed to claim tokens';
+      console.error('Failed to claim tokens:', err);
+      setError(errorMessage);
+      toast.error(errorMessage);
     }
   };
 
@@ -170,6 +173,7 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
     setAmount('');
     setRequestId('');
     setError('');
+    setDepositStatus(null);
   };
 
   const selectedTokenInfo = SEPOLIA_TOKENS.find(
@@ -487,24 +491,23 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                   <div className='flex items-center gap-2'>
                     <div
                       className={`w-4 h-4 rounded-full ${
-                        depositStatus.data?.status === 'waiting_signature' ||
-                        depositStatus.data?.status === 'submitting_ethereum' ||
-                        depositStatus.data?.status === 'confirming_ethereum' ||
-                        depositStatus.data?.status ===
-                          'waiting_read_response' ||
-                        depositStatus.data?.status === 'ready_to_claim' ||
-                        depositStatus.data?.status === 'completed'
+                        depositStatus?.status === 'waiting_signature' ||
+                        depositStatus?.status === 'submitting_ethereum' ||
+                        depositStatus?.status === 'confirming_ethereum' ||
+                        depositStatus?.status === 'waiting_read_response' ||
+                        depositStatus?.status === 'ready_to_claim' ||
+                        depositStatus?.status === 'completed'
                           ? 'bg-green-500'
                           : 'bg-gray-300 animate-pulse'
                       }`}
                     ></div>
                     <span className='text-sm'>
-                      {depositStatus.data?.status === 'waiting_signature' ||
-                      depositStatus.data?.status === 'submitting_ethereum' ||
-                      depositStatus.data?.status === 'confirming_ethereum' ||
-                      depositStatus.data?.status === 'waiting_read_response' ||
-                      depositStatus.data?.status === 'ready_to_claim' ||
-                      depositStatus.data?.status === 'completed'
+                      {depositStatus?.status === 'waiting_signature' ||
+                      depositStatus?.status === 'submitting_ethereum' ||
+                      depositStatus?.status === 'confirming_ethereum' ||
+                      depositStatus?.status === 'waiting_read_response' ||
+                      depositStatus?.status === 'ready_to_claim' ||
+                      depositStatus?.status === 'completed'
                         ? 'Transaction signed by MPC'
                         : 'Waiting for MPC signature...'}
                     </span>
@@ -512,24 +515,23 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                   <div className='flex items-center gap-2'>
                     <div
                       className={`w-4 h-4 rounded-full ${
-                        depositStatus.data?.status === 'confirming_ethereum' ||
-                        depositStatus.data?.status ===
-                          'waiting_read_response' ||
-                        depositStatus.data?.status === 'ready_to_claim' ||
-                        depositStatus.data?.status === 'completed'
+                        depositStatus?.status === 'confirming_ethereum' ||
+                        depositStatus?.status === 'waiting_read_response' ||
+                        depositStatus?.status === 'ready_to_claim' ||
+                        depositStatus?.status === 'completed'
                           ? 'bg-green-500'
-                          : depositStatus.data?.status === 'submitting_ethereum'
+                          : depositStatus?.status === 'submitting_ethereum'
                             ? 'bg-blue-500 animate-pulse'
                             : 'bg-gray-300'
                       }`}
                     ></div>
                     <span className='text-sm'>
-                      {depositStatus.data?.status === 'confirming_ethereum' ||
-                      depositStatus.data?.status === 'waiting_read_response' ||
-                      depositStatus.data?.status === 'ready_to_claim' ||
-                      depositStatus.data?.status === 'completed'
+                      {depositStatus?.status === 'confirming_ethereum' ||
+                      depositStatus?.status === 'waiting_read_response' ||
+                      depositStatus?.status === 'ready_to_claim' ||
+                      depositStatus?.status === 'completed'
                         ? 'Ethereum transaction confirmed!'
-                        : depositStatus.data?.status === 'submitting_ethereum'
+                        : depositStatus?.status === 'submitting_ethereum'
                           ? 'Submitting to Ethereum...'
                           : 'Waiting for Ethereum submission...'}
                     </span>
@@ -537,31 +539,28 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                   <div className='flex items-center gap-2'>
                     <div
                       className={`w-4 h-4 rounded-full ${
-                        depositStatus.data?.status === 'ready_to_claim' ||
-                        depositStatus.data?.status === 'completed'
+                        depositStatus?.status === 'ready_to_claim' ||
+                        depositStatus?.status === 'completed'
                           ? 'bg-green-500'
-                          : depositStatus.data?.status ===
-                              'waiting_read_response'
+                          : depositStatus?.status === 'waiting_read_response'
                             ? 'bg-blue-500 animate-pulse'
                             : 'bg-gray-300'
                       }`}
                     ></div>
                     <span className='text-sm'>
-                      {depositStatus.data?.status === 'completed'
+                      {depositStatus?.status === 'completed'
                         ? 'Tokens claimed successfully!'
-                        : depositStatus.data?.status === 'ready_to_claim'
-                        ? 'Ready to claim!'
-                        : depositStatus.data?.status === 'waiting_read_response'
-                          ? 'Waiting for read response...'
-                          : 'Waiting for transaction result...'}
+                        : depositStatus?.status === 'ready_to_claim'
+                          ? 'Ready to claim!'
+                          : depositStatus?.status === 'waiting_read_response'
+                            ? 'Waiting for read response...'
+                            : 'Waiting for transaction result...'}
                     </span>
                   </div>
-                  {depositStatus.data?.txHash && (
+                  {depositStatus?.txHash && (
                     <div className='mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded text-xs'>
                       <span className='font-medium'>TX Hash: </span>
-                      <code className='break-all'>
-                        {depositStatus.data.txHash}
-                      </code>
+                      <code className='break-all'>{depositStatus.txHash}</code>
                     </div>
                   )}
                 </div>
@@ -579,21 +578,24 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                 className='w-full'
                 disabled={
                   claimMutation.isPending ||
-                  (depositStatus.data?.status !== 'ready_to_claim' && depositStatus.data?.status !== 'completed')
+                  (depositStatus?.status !== 'ready_to_claim' &&
+                    depositStatus?.status !== 'completed')
                 }
-                variant={depositStatus.data?.status === 'completed' ? 'outline' : 'default'}
+                variant={
+                  depositStatus?.status === 'completed' ? 'outline' : 'default'
+                }
               >
                 {claimMutation.isPending ? (
                   <>
                     <Loader2 className='w-4 h-4 mr-2 animate-spin' />
                     Claiming...
                   </>
-                ) : depositStatus.data?.status === 'completed' ? (
+                ) : depositStatus?.status === 'completed' ? (
                   <>
                     <Check className='w-4 h-4 mr-2' />
                     Completed!
                   </>
-                ) : depositStatus.data?.status !== 'ready_to_claim' ? (
+                ) : depositStatus?.status !== 'ready_to_claim' ? (
                   <>
                     <Loader2 className='w-4 h-4 mr-2 animate-spin' />
                     Waiting for confirmation...

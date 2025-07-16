@@ -22,7 +22,12 @@ export function useSolanaService() {
 
     const service = new SolanaService(connection, anchorWallet);
     return service;
-  }, [connection, wallet.publicKey, wallet.signTransaction, wallet.signAllTransactions]);
+  }, [
+    connection,
+    wallet.publicKey,
+    wallet.signTransaction,
+    wallet.signAllTransactions,
+  ]);
 }
 
 export function useDepositAddress() {
@@ -54,6 +59,7 @@ export function useUserBalances() {
       return solanaService.fetchUserBalances(publicKey);
     },
     enabled: !!publicKey,
+    refetchInterval: 5000,
   });
 }
 
@@ -70,7 +76,7 @@ export function usePendingDeposits() {
       return solanaService.fetchPendingDeposits(publicKey);
     },
     enabled: !!publicKey,
-    refetchInterval: 1000,
+    refetchInterval: 5000,
   });
 }
 
@@ -84,10 +90,17 @@ export function useDepositErc20Mutation() {
       erc20Address,
       amount,
       decimals,
+      onStatusChange,
     }: {
       erc20Address: string;
       amount: string;
       decimals: number;
+      onStatusChange?: (status: {
+        status: string;
+        txHash?: string;
+        note?: string;
+        error?: string;
+      }) => void;
     }) => {
       if (!publicKey) throw new Error('No public key available');
       return solanaService.depositErc20(
@@ -95,6 +108,7 @@ export function useDepositErc20Mutation() {
         erc20Address,
         amount,
         decimals,
+        onStatusChange,
       );
     },
     onSuccess: () => {
@@ -103,6 +117,9 @@ export function useDepositErc20Mutation() {
           queryKey: queryKeys.solana.pendingDeposits(publicKey.toString()),
         });
       }
+    },
+    onError: error => {
+      console.error('Deposit ERC20 mutation failed:', error);
     },
   });
 }
@@ -126,6 +143,9 @@ export function useClaimErc20Mutation() {
           queryKey: queryKeys.solana.pendingDeposits(publicKey.toString()),
         });
       }
+    },
+    onError: error => {
+      console.error('Claim ERC20 mutation failed:', error);
     },
   });
 }
@@ -153,6 +173,9 @@ export function useWithdrawMutation() {
         });
       }
     },
+    onError: error => {
+      console.error('Withdraw mutation failed:', error);
+    },
   });
 }
 
@@ -174,6 +197,9 @@ export function useSubmitSignedTransactionMutation() {
           queryKey: queryKeys.solana.pendingDeposits(publicKey.toString()),
         });
       }
+    },
+    onError: error => {
+      console.error('Submit signed transaction mutation failed:', error);
     },
   });
 }

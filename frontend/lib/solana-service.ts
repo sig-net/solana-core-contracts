@@ -83,6 +83,7 @@ function derivePublicKey(
 
     return derivedPublicKey;
   } catch (error) {
+    console.error('Error deriving public key:', error);
     throw error;
   }
 }
@@ -90,8 +91,6 @@ function derivePublicKey(
 export class SolanaService {
   private bridgeContract: BridgeContract;
   private chainSignaturesContract: ChainSignaturesContract;
-
-  private depositStatusStore: Map<string, any> = new Map();
 
   constructor(
     private connection: Connection,
@@ -146,6 +145,7 @@ export class SolanaService {
         (result): result is TokenBalance => result !== null,
       );
     } catch (error) {
+      console.error('Failed to fetch user balances:', error);
       throw new Error(
         `Failed to fetch user balances: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
@@ -164,6 +164,12 @@ export class SolanaService {
     erc20Address: string,
     amount: string,
     decimals = 6,
+    onStatusChange?: (status: {
+      status: string;
+      txHash?: string;
+      note?: string;
+      error?: string;
+    }) => void,
   ): Promise<string> {
     let eventPromises: EventPromises | null = null;
 
@@ -244,27 +250,16 @@ export class SolanaService {
       eventPromises =
         this.chainSignaturesContract.setupEventListeners(requestId);
 
-      // Step 4: Call depositErc20 on Solana
-      console.log(`[${requestId}] Calling depositErc20 on Solana...`);
-      try {
-        await this.bridgeContract.depositErc20({
-          authority: publicKey,
-          requestIdBytes,
-          erc20AddressBytes,
-          amount: amountBN,
-          evmParams,
-        });
-        console.log(`[${requestId}] depositErc20 successful`);
-      } catch (depositError) {
-        console.error(`[${requestId}] depositErc20 failed:`, depositError);
-        throw depositError;
-      }
+      await this.bridgeContract.depositErc20({
+        authority: publicKey,
+        requestIdBytes,
+        erc20AddressBytes,
+        amount: amountBN,
+        evmParams,
+      });
 
-      // Step 5: Process the flow following the exact pattern from the README
-      this.storeDepositStatus(requestId, { status: 'processing' });
+      onStatusChange?.({ status: 'processing' });
 
-      // Start the async flow but don't wait for it to complete
-      // The user can monitor progress via the status hooks
       this.processDepositFlow(
         requestId,
         tempTx,
@@ -273,23 +268,19 @@ export class SolanaService {
         provider,
         currentNonce,
         txParams,
+        onStatusChange,
       ).catch(error => {
-        console.error(`[${requestId}] Deposit flow failed:`, error);
-
-        // Check if it's a "already processed" error in the flow
+        console.error('Deposit flow failed:', error);
         if (
           error instanceof Error &&
           error.message.includes('already been processed')
         ) {
-          console.log(
-            `[${requestId}] Flow ended due to already processed transaction - this might be normal`,
-          );
-          this.storeDepositStatus(requestId, {
+          onStatusChange?.({
             status: 'processing_interrupted',
             note: 'Flow interrupted due to already processed transaction',
           });
         } else {
-          this.storeDepositStatus(requestId, {
+          onStatusChange?.({
             status: 'failed',
             error: error instanceof Error ? error.message : 'Unknown error',
           });
@@ -298,95 +289,23 @@ export class SolanaService {
 
       return requestId;
     } catch (error) {
-      // Clean up event listeners if deposit fails
       if (eventPromises) {
         eventPromises.cleanup();
       }
 
       console.error('Deposit ERC20 failed:', error);
-
       throw new Error(
         `Failed to deposit ERC20: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
 
-  // Status management methods
-  storeDepositStatus(requestId: string, status: any): void {
-    const timestampedStatus = {
-      ...status,
-      timestamp: Date.now(),
-    };
-    console.log(`[${requestId}] Storing status:`, timestampedStatus);
-    this.depositStatusStore.set(requestId, timestampedStatus);
-
-    // Also store in localStorage for persistence across service recreations
-    try {
-      const key = `deposit_status_${requestId}`;
-      localStorage.setItem(key, JSON.stringify(timestampedStatus));
-
-      // Force a storage event to trigger updates in other components
-      window.dispatchEvent(new Event('storage'));
-    } catch (error) {
-      console.warn('Failed to store status in localStorage:', error);
-    }
-  }
-
-  async checkDepositStatus(requestId: string): Promise<any> {
-    // First check in-memory store
-    let storedStatus = this.depositStatusStore.get(requestId);
-    console.log(`[${requestId}] Checking status - in-memory:`, storedStatus);
-
-    // If not in memory, check localStorage
-    if (!storedStatus) {
-      try {
-        const key = `deposit_status_${requestId}`;
-        const stored = localStorage.getItem(key);
-        if (stored) {
-          storedStatus = JSON.parse(stored);
-          console.log(
-            `[${requestId}] Found status in localStorage:`,
-            storedStatus,
-          );
-          // Restore to in-memory store
-          this.depositStatusStore.set(requestId, storedStatus);
-        }
-      } catch (error) {
-        console.warn('Failed to retrieve status from localStorage:', error);
-      }
-    }
-
-    if (storedStatus) {
-      const result = {
-        ...storedStatus,
-        isReady: storedStatus.status === 'completed',
-      };
-      console.log(`[${requestId}] Returning status:`, result);
-      return result;
-    }
-
-    // If no stored status, check if there's a pending deposit
-    try {
-      const requestIdBytes = this.bridgeContract.hexToBytes(requestId);
-      const [pendingDepositPda] =
-        this.bridgeContract.derivePendingDepositPda(requestIdBytes);
-      const exists =
-        await this.bridgeContract.checkPendingDepositExists(pendingDepositPda);
-
-      if (exists) {
-        return {
-          status: 'pending',
-          isReady: false,
-        };
-      }
-    } catch (error) {
-      console.error('Error checking deposit status:', error);
-    }
-
-    return {
-      status: 'unknown',
-      isReady: false,
-    };
+  async withdraw(
+    _publicKey: PublicKey,
+    _erc20Address: string,
+    _amount: string,
+  ): Promise<string> {
+    throw new Error('Withdraw functionality not implemented yet');
   }
 
   async claimErc20(publicKey: PublicKey, requestId: string): Promise<string> {
@@ -395,20 +314,17 @@ export class SolanaService {
       const [pendingDepositPda] =
         this.bridgeContract.derivePendingDepositPda(requestIdBytes);
 
-      // Note: Without status tracking, we'll attempt to claim directly
-      // The user should ensure the deposit is ready before calling this method
-
       let pendingDeposit;
       try {
         pendingDeposit =
           await this.bridgeContract.fetchPendingDeposit(pendingDepositPda);
       } catch (error) {
+        console.error('Failed to fetch pending deposit:', error);
         throw new Error(
           `No pending deposit found for request ID ${requestId}. Make sure you have successfully deposited ERC20 tokens first.`,
         );
       }
 
-      // Note: Without status tracking, we need to get the signature and output from logs
       const readEvent =
         await this.chainSignaturesContract.findReadResponseEventInLogs(
           requestId,
@@ -417,16 +333,27 @@ export class SolanaService {
         throw new Error('Read response event not found for this request ID');
       }
 
+      // Convert the signature to the format expected by the Solana program
+      const convertedSignature = {
+        bigR: {
+          x: Array.from(readEvent.signature.bigR.x),
+          y: Array.from(readEvent.signature.bigR.y),
+        },
+        s: Array.from(readEvent.signature.s),
+        recoveryId: readEvent.signature.recoveryId,
+      };
+
       const tx = await this.bridgeContract.claimErc20({
         authority: publicKey,
         requestIdBytes,
         serializedOutput: readEvent.serializedOutput,
-        signature: readEvent.signature,
+        signature: convertedSignature,
         erc20AddressBytes: pendingDeposit.erc20Address,
       });
 
       return tx;
     } catch (error) {
+      console.error('Failed to claim ERC20:', error);
       throw new Error(
         `Failed to claim ERC20: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
@@ -467,11 +394,15 @@ export class SolanaService {
     provider: any,
     nonce: number,
     txParams: any,
+    onStatusChange?: (status: {
+      status: string;
+      txHash?: string;
+      note?: string;
+      error?: string;
+    }) => void,
   ): Promise<void> {
     try {
-      // Step 5: Wait for signature from MPC network
-      console.log(`[${requestId}] Waiting for signature from MPC network...`);
-      this.storeDepositStatus(requestId, { status: 'waiting_signature' });
+      onStatusChange?.({ status: 'waiting_signature' });
 
       const signatureEvent = await eventPromises.signature;
 
@@ -479,7 +410,6 @@ export class SolanaService {
         signatureEvent.signature,
       );
 
-      // Step 6: Construct signed Ethereum transaction
       const signedTx = ethers.Transaction.from({
         type: 2,
         chainId: ETHEREUM_CONFIG.CHAIN_ID,
@@ -493,20 +423,14 @@ export class SolanaService {
         signature,
       });
 
-      // Step 7: Submit to Ethereum network
-      console.log(`[${requestId}] Submitting transaction to Ethereum...`);
-      this.storeDepositStatus(requestId, { status: 'submitting_ethereum' });
+      onStatusChange?.({ status: 'submitting_ethereum' });
 
       const txHash = await provider.request({
         method: 'eth_sendRawTransaction',
         params: [signedTx.serialized],
       });
 
-      // Step 8: Wait for Ethereum confirmation
-      console.log(
-        `[${requestId}] Waiting for Ethereum confirmation... TxHash: ${txHash}`,
-      );
-      this.storeDepositStatus(requestId, {
+      onStatusChange?.({
         status: 'confirming_ethereum',
         txHash,
       });
@@ -519,23 +443,15 @@ export class SolanaService {
         throw new Error('Transaction receipt not found');
       }
 
-      // Step 9: Wait for read response from MPC network
-      console.log(
-        `[${requestId}] Waiting for read response from MPC network...`,
-      );
-      this.storeDepositStatus(requestId, {
+      onStatusChange?.({
         status: 'waiting_read_response',
         txHash,
       });
 
-      const readEvent = await eventPromises.readRespond;
+      await eventPromises.readRespond;
 
-      // Step 10: Automatically claim the tokens
-      console.log(`[${requestId}] Automatically claiming tokens...`);
+      onStatusChange?.({ status: 'ready_to_claim' });
 
-      this.storeDepositStatus(requestId, { status: 'ready_to_claim' });
-
-      // Get the authority (user's public key) from the request
       if (!this.wallet.publicKey) {
         throw new Error('Wallet not connected');
       }
@@ -545,36 +461,25 @@ export class SolanaService {
           this.wallet.publicKey,
           requestId,
         );
-        console.log(
-          `[${requestId}] Tokens claimed successfully. Tx: ${claimTxHash}`,
-        );
 
-        // Step 11: Process completed
-        console.log(
-          `[${requestId}] Deposit flow completed successfully. Block: ${receipt.blockNumber}`,
-        );
-
-        this.storeDepositStatus(requestId, {
+        onStatusChange?.({
           status: 'completed',
           txHash: claimTxHash,
         });
       } catch (claimError) {
-        console.error(`[${requestId}] Failed to claim tokens:`, claimError);
-
-        // Check if it's a "already processed" error, which might mean someone else claimed it
+        console.error('Failed to claim tokens:', claimError);
         if (
           claimError instanceof Error &&
           claimError.message.includes('already been processed')
         ) {
-          console.log(`[${requestId}] Tokens may have already been claimed`);
-          this.storeDepositStatus(requestId, {
+          onStatusChange?.({
             status: 'completed',
             note: 'Tokens may have already been claimed',
           });
-          return; // Don't throw error, consider it successful
+          return;
         }
 
-        this.storeDepositStatus(requestId, {
+        onStatusChange?.({
           status: 'claim_failed',
           error:
             claimError instanceof Error ? claimError.message : 'Unknown error',
@@ -582,15 +487,12 @@ export class SolanaService {
         throw claimError;
       }
     } catch (error) {
-      console.error(`[${requestId}] Deposit flow failed:`, error);
+      console.error('Process deposit flow failed:', error);
       throw error;
     } finally {
-      // Always cleanup event listeners
       eventPromises.cleanup();
     }
   }
-
-  // Private helper functions for looking into previous logs and transactions
 
   private _decodeDepositInstruction(
     instructionData: string,

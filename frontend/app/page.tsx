@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { ArrowUpCircle, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 import {
   Card,
@@ -70,25 +71,56 @@ function DAppContent() {
   }, [submitTransactionMutation.isPending]);
 
   const handleWithdraw = (erc20Address: string, amount: string) => {
-    withdrawMutation.mutate({ erc20Address, amount });
+    withdrawMutation.mutate(
+      { erc20Address, amount },
+      {
+        onSuccess: () => {
+          toast.success('Withdrawal initiated successfully!');
+        },
+        onError: error => {
+          console.error('Withdrawal failed:', error);
+          toast.error(
+            error instanceof Error ? error.message : 'Withdrawal failed',
+          );
+        },
+      },
+    );
   };
 
   const handleClaim = (requestId: string) => {
-    console.log('🎯 Claim button clicked!');
-    console.log('  🔑 Request ID:', requestId);
-    console.log('  🔄 Mutation pending:', claimMutation.isPending);
-
     setClaimingMap(prev => ({ ...prev, [requestId]: true }));
-    claimMutation.mutate({ requestId });
+    claimMutation.mutate(
+      { requestId },
+      {
+        onSuccess: () => {
+          toast.success('Tokens claimed successfully!');
+        },
+        onError: error => {
+          console.error('Claim failed:', error);
+          toast.error(error instanceof Error ? error.message : 'Claim failed');
+        },
+      },
+    );
   };
 
   const handleSubmitTransaction = (requestId: string) => {
-    console.log('📡 Submit transaction button clicked!');
-    console.log('  🔑 Request ID:', requestId);
-    console.log('  🔄 Mutation pending:', submitTransactionMutation.isPending);
-
     setSubmittingMap(prev => ({ ...prev, [requestId]: true }));
-    submitTransactionMutation.mutate({ requestId });
+    submitTransactionMutation.mutate(
+      { requestId },
+      {
+        onSuccess: () => {
+          toast.success('Transaction submitted successfully!');
+        },
+        onError: error => {
+          console.error('Submit transaction failed:', error);
+          toast.error(
+            error instanceof Error
+              ? error.message
+              : 'Submit transaction failed',
+          );
+        },
+      },
+    );
   };
 
   if (!publicKey) {

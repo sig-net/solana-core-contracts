@@ -61,7 +61,6 @@ export function generateRequestId(
   );
 
   const hash = ethers.keccak256(encoded);
-  console.log('  🔑 Request ID:', hash);
 
   return hash;
 }
@@ -123,7 +122,6 @@ export function formatTokenAmount(amount: string, decimals = 6): string {
  */
 function deriveEpsilon(requester: string, path: string): bigint {
   const derivationPath = `${CONFIG.EPSILON_DERIVATION_PREFIX},${CONFIG.SOLANA_CHAIN_ID},${requester},${path}`;
-  console.log('📝 Derivation path:', derivationPath);
   const hash = ethers.keccak256(ethers.toUtf8Bytes(derivationPath));
   return BigInt(hash);
 }
@@ -181,10 +179,8 @@ function derivePublicKey(
       y: resultAffine.y,
     });
 
-    console.log('🔑 Derived public key:', derivedPublicKey);
     return derivedPublicKey;
   } catch (error) {
-    console.error('❌ Error deriving public key:', error);
     throw error;
   }
 }
@@ -212,10 +208,6 @@ export function deriveUserEthereumAddress(publicKey: PublicKey): string {
 
   // Convert secp256k1 public key to Ethereum address
   const derivedAddress = ethers.computeAddress(derivedPublicKey);
-
-  console.log('👛 Solana wallet:', publicKey.toString());
-  console.log('📂 Path:', path);
-  console.log('🔑 Derived Ethereum address:', derivedAddress);
 
   return derivedAddress;
 }

@@ -124,7 +124,6 @@ export function generateRequestId(
   );
 
   const hash = keccak256(encoded);
-  console.log('  🔑 Request ID:', hash);
 
   return hash;
 }

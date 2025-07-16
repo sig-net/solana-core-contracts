@@ -240,11 +240,9 @@ function DAppContent() {
             onWithdraw={handleWithdraw}
             isLoading={isLoadingBalances || withdrawMutation.isPending}
           />
-          {userBalances.length === 0 && !isLoadingBalances && (
-            <div className='mt-6'>
-              <DepositFlow onRefreshBalances={refetchBalances} />
-            </div>
-          )}
+          <div className='mt-6'>
+            <DepositFlow onRefreshBalances={refetchBalances} />
+          </div>
         </CardContent>
       </Card>
     </div>

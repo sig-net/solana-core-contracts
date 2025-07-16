@@ -115,7 +115,7 @@ export function useClaimErc20Mutation() {
   return useMutation({
     mutationFn: async ({ requestId }: { requestId: string }) => {
       if (!publicKey) throw new Error('No public key available');
-      return solanaService.claimFromReadResponse(requestId);
+      return solanaService.claimErc20(publicKey, requestId);
     },
     onSuccess: () => {
       if (publicKey) {
@@ -163,10 +163,10 @@ export function useSubmitSignedTransactionMutation() {
 
   return useMutation({
     mutationFn: async ({ requestId }: { requestId: string }) => {
-      if (!solanaService) {
+      if (!solanaService || !publicKey) {
         throw new Error('Service not available');
       }
-      return await solanaService.submitSignedTransactionFromPrevious(requestId);
+      return await solanaService.claimErc20(publicKey, requestId);
     },
     onSuccess: () => {
       if (publicKey) {

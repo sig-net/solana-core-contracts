@@ -15,6 +15,7 @@ import {
   createEvmTransactionParams,
   evmParamsToProgram,
   hexToBytes,
+  deriveUserEthereumAddress,
 } from '@/lib/program/utils';
 import { CHAIN_SIGNATURES_PROGRAM_IDl } from './program/idl_chain_sig';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
@@ -483,31 +484,24 @@ export class SolanaService {
     throw new Error('Withdraw functionality not yet implemented');
   }
 
-  async getRawTransactionFromPreviousDeposit(requestId: string): Promise<{
-    unsignedTx: any;
-    callData: string;
-    nonce: number;
-    txParams: any;
-    signature?: any;
-  } | null> {
-    // Get recent transactions for the Chain Signatures Program
+  async getRawTransactionFromPreviousDeposit(
+    requestId: string,
+  ): Promise<ethers.TransactionLike | null> {
     const chainSigProgram = this.getChainSigProgram();
     const signaturesChainSig = await this.connection.getSignaturesForAddress(
       chainSigProgram.programId,
       {
-        limit: 50, // Look at last 50 transactions
+        limit: 10,
       },
     );
 
-    // Search through transactions to find the one with our request ID
+    let signature = null;
+
     for (const signatureInfo of signaturesChainSig) {
-      console.log('🔍 Processing signature:', signatureInfo.signature);
       const tx = await this.connection.getTransaction(signatureInfo.signature, {
         commitment: 'confirmed',
         maxSupportedTransactionVersion: 0,
       });
-
-      let signature = null;
       for (const log of tx?.meta?.logMessages || []) {
         try {
           const logMessage = log.split(':')[1].trim();
@@ -587,8 +581,6 @@ export class SolanaService {
           },
         };
 
-        console.log('instruction', instruction);
-
         try {
           if (!('data' in instruction)) {
             continue;
@@ -617,8 +609,6 @@ export class SolanaService {
             continue;
           }
 
-          console.log('decodedInstruction', decodedInstruction);
-
           const requestIdBytes = Buffer.from(
             requestId.replace('0x', ''),
             'hex',
@@ -629,32 +619,60 @@ export class SolanaService {
           if (eventRequestIdBytes.equals(requestIdBytes)) {
             originalTx = decodedInstruction.txParams;
             console.log('originalTx', originalTx);
-            break;
-            // // Return the decoded instruction data
-            // return {
-            //   requestId: requestIdHex,
-            //   erc20Address: erc20AddressHex,
-            //   amount: decodedInstruction.amount,
-            //   txParams: decodedInstruction.txParams,
-            //   signature: null, // Will be populated if signature is found
-            //   unsignedTx: {
-            //     to: erc20AddressHex,
-            //     value: decodedInstruction.txParams.value,
-            //     gasLimit: decodedInstruction.txParams.gasLimit,
-            //     maxFeePerGas: decodedInstruction.txParams.maxFeePerGas,
-            //     maxPriorityFeePerGas:
-            //       decodedInstruction.txParams.maxPriorityFeePerGas,
-            //     nonce: decodedInstruction.txParams.nonce,
-            //     chainId: decodedInstruction.txParams.chainId,
-            //   },
-            // };
+
+            const erc20Address = `0x${Buffer.from(decodedInstruction.erc20Address).toString('hex')}`;
+
+            if (!this.wallet.publicKey) {
+              throw new Error('No wallet public key');
+            }
+
+            const recipientAddress = deriveUserEthereumAddress(
+              this.wallet.publicKey,
+            );
+
+            const erc20Interface = new ethers.Interface([
+              'function transfer(address to, uint256 amount) returns (bool)',
+            ]);
+            const callData = erc20Interface.encodeFunctionData('transfer', [
+              recipientAddress,
+              decodedInstruction.amount,
+            ]);
+
+            const transaction: ethers.TransactionLike = {
+              type: 2,
+              chainId: Number(decodedInstruction.txParams.chainId),
+              nonce: Number(decodedInstruction.txParams.nonce),
+              maxPriorityFeePerGas:
+                decodedInstruction.txParams.maxPriorityFeePerGas.toString(),
+              maxFeePerGas: decodedInstruction.txParams.maxFeePerGas.toString(),
+              gasLimit: decodedInstruction.txParams.gasLimit.toString(),
+              to: erc20Address,
+              value: decodedInstruction.txParams.value.toString(),
+              data: callData,
+            };
+
+            if (signature) {
+              const r =
+                '0x' +
+                Buffer.from(signature.bigR.x).toString('hex').padStart(64, '0');
+              const s =
+                '0x' +
+                Buffer.from(signature.s).toString('hex').padStart(64, '0');
+              const v = 27 + signature.recoveryId;
+
+              transaction.signature = ethers.Signature.from({
+                r,
+                s,
+                v,
+              }).serialized;
+            }
+
+            return transaction;
           }
-        } catch (decodeError) {
+        } catch (error) {
+          console.error('Error on decoding instruction:', error);
           continue;
         }
-      }
-      if (originalTx) {
-        break;
       }
     }
 
@@ -671,61 +689,30 @@ export class SolanaService {
       );
 
       // Get the raw transaction data from previous deposit
-      const txData = await this.getRawTransactionFromPreviousDeposit(requestId);
-      if (!txData) {
+      const transaction =
+        await this.getRawTransactionFromPreviousDeposit(requestId);
+      if (!transaction) {
         throw new Error(
           'Could not find previous transaction data for this request',
         );
       }
 
-      let signatureEvent;
-      let eventPromises: any = null;
-
-      // Check if we already have the signature from the previous transaction
-      if (txData.signature) {
-        console.log('✅ Using signature from previous transaction');
-        signatureEvent = { signature: txData.signature };
-      } else {
-        // Wait for signature event from Chain Signatures Program
-        eventPromises = this.setupEventListeners(requestId);
-
-        console.log('⏳ Waiting for signature event...');
-        signatureEvent = await eventPromises.signature;
-        console.log('✅ Signature received!');
-      }
-
-      const signature = this.extractSignature(signatureEvent.signature);
-
-      // Create signed transaction using the retrieved data
-      const signedTx = ethers.Transaction.from({
-        ...txData.unsignedTx,
-        signature,
-      });
+      const eventPromises = this.setupEventListeners(requestId);
 
       // Submit to Ethereum
       const provider = new ethers.JsonRpcProvider(
         `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
       );
 
-      console.log('📡 Submitting transaction to Ethereum...');
       const txHash = await provider.send('eth_sendRawTransaction', [
-        signedTx.serialized,
+        ethers.Transaction.from(transaction).serialized,
       ]);
-      console.log('✅ Transaction submitted with hash:', txHash);
 
-      // Wait for confirmation
-      console.log('⏳ Waiting for Ethereum confirmation...');
       const receipt = await provider.waitForTransaction(txHash, 1);
       if (!receipt) {
         throw new Error('Transaction receipt not found');
       }
 
-      console.log(
-        '✅ Ethereum transaction confirmed in block:',
-        receipt.blockNumber,
-      );
-
-      // Store the transaction info for status checking
       this.storeDepositStatus(requestId, {
         status: 'confirming_ethereum',
         txHash,
@@ -815,29 +802,7 @@ export class SolanaService {
 
     // Import the chain signatures IDL
     const chainSignaturesProgram = new Program(
-      // We need to use a minimal IDL for chain signatures events
-      {
-        version: '0.1.0',
-        name: 'chain_signatures',
-        instructions: [],
-        events: [
-          {
-            name: 'signatureRespondedEvent',
-            fields: [
-              { name: 'requestId', type: 'bytes' },
-              { name: 'signature', type: 'bytes' },
-            ],
-          },
-          {
-            name: 'readRespondedEvent',
-            fields: [
-              { name: 'requestId', type: 'bytes' },
-              { name: 'signature', type: 'bytes' },
-              { name: 'serializedOutput', type: 'bytes' },
-            ],
-          },
-        ],
-      } as any,
+      CHAIN_SIGNATURES_PROGRAM_IDl,
       chainSignaturesProvider,
     );
 

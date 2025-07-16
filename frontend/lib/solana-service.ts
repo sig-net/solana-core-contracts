@@ -19,6 +19,7 @@ import {
 } from '@/lib/program/utils';
 import { CHAIN_SIGNATURES_PROGRAM_IDl } from './program/idl_chain_sig';
 import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
+import { getAutomatedProvider } from '@/lib/ethers-providers';
 
 const CONFIG = {
   BASE_PUBLIC_KEY:
@@ -34,10 +35,6 @@ const PROGRAM_ID = new PublicKey(
 const CHAIN_SIGNATURES_PROGRAM_ID = new PublicKey(
   '4uvZW8K4g4jBg7dzPNbb9XDxJLFBK7V6iC76uofmYvEU',
 );
-
-const INFURA_API_KEY =
-  process.env.NEXT_PUBLIC_INFURA_API_KEY || '6df51ccaa17f4e078325b5050da5a2dd';
-const ETHEREUM_PRIVATE_KEY = process.env.ETHEREUM_PRIVATE_KEY || '';
 
 function deriveEpsilon(requester: string, path: string): bigint {
   const derivationPath = `${CONFIG.EPSILON_DERIVATION_PREFIX},${CONFIG.SOLANA_CHAIN_ID},${requester},${path}`;
@@ -304,9 +301,7 @@ export class SolanaService {
         amountBigInt,
       ]);
 
-      const provider = new ethers.JsonRpcProvider(
-        `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
-      );
+      const provider = getAutomatedProvider();
       const currentNonce = await provider.getTransactionCount(derivedAddress);
 
       const txParams = createEvmTransactionParams(currentNonce);
@@ -626,15 +621,11 @@ export class SolanaService {
               throw new Error('No wallet public key');
             }
 
-            const recipientAddress = deriveUserEthereumAddress(
-              this.wallet.publicKey,
-            );
-
             const erc20Interface = new ethers.Interface([
               'function transfer(address to, uint256 amount) returns (bool)',
             ]);
             const callData = erc20Interface.encodeFunctionData('transfer', [
-              recipientAddress,
+              '0x041477de8ecbcf633cb13ea10aa86cdf4d437c29', // HARDCODED RECIPIENT, CHECK CONTRACT
               decodedInstruction.amount,
             ]);
 
@@ -699,10 +690,8 @@ export class SolanaService {
 
       const eventPromises = this.setupEventListeners(requestId);
 
-      // Submit to Ethereum
-      const provider = new ethers.JsonRpcProvider(
-        `https://sepolia.infura.io/v3/${INFURA_API_KEY}`,
-      );
+      // Submit to Ethereum using automated provider
+      const provider = getAutomatedProvider();
 
       const txHash = await provider.send('eth_sendRawTransaction', [
         ethers.Transaction.from(transaction).serialized,

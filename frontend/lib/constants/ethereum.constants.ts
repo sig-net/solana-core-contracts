@@ -15,8 +15,3 @@ export const COMMON_ERC20_ADDRESSES = Object.values(ERC20_ADDRESSES);
 // Hardcoded recipient address for transfers
 export const HARDCODED_RECIPIENT_ADDRESS =
   '0x041477de8ecbcf633cb13ea10aa86cdf4d437c29';
-
-// ERC20 Interface ABI
-export const ERC20_TRANSFER_ABI = [
-  'function transfer(address to, uint256 amount) returns (bool)',
-] as const;

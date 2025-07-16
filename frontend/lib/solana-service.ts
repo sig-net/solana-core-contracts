@@ -2,8 +2,6 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { BN, Wallet } from '@coral-xyz/anchor';
 import { ethers } from 'ethers';
 import { secp256k1 } from '@noble/curves/secp256k1';
-import * as borsh from 'borsh';
-import { bs58 } from '@coral-xyz/anchor/dist/cjs/utils/bytes';
 import { encodeFunctionData, erc20Abi } from 'viem';
 
 import type { TokenBalance } from '@/components/balance-table';
@@ -17,16 +15,8 @@ import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { ChainSignaturesContract } from '@/lib/contracts/chain-signatures-contract';
 
 // Import types and constants from organized files
-import type {
-  ChainSignaturesSignature,
-  EventPromises,
-} from './types/chain-signatures.types';
-import type {
-  DecodedDepositInstruction,
-  PendingErc20Deposit,
-} from './types/bridge.types';
+import type { EventPromises } from './types/chain-signatures.types';
 import { CHAIN_SIGNATURES_CONFIG } from './constants/chain-signatures.constants';
-import { DEPOSIT_ERC20_BORSH_SCHEMA } from './constants/bridge.constants';
 import {
   COMMON_ERC20_ADDRESSES,
   HARDCODED_RECIPIENT_ADDRESS,
@@ -118,12 +108,6 @@ export class SolanaService {
     const derivedAddress = ethers.computeAddress(derivedPublicKey);
 
     return derivedAddress;
-  }
-
-  async fetchPendingDeposits(
-    publicKey: PublicKey,
-  ): Promise<PendingErc20Deposit[]> {
-    return await this.bridgeContract.fetchPendingDeposits(publicKey);
   }
 
   async fetchUserBalances(publicKey: PublicKey): Promise<TokenBalance[]> {
@@ -479,32 +463,6 @@ export class SolanaService {
     }
   }
 
-  async getRawTransactionFromPreviousDeposit(
-    requestId: string,
-  ): Promise<any | null> {
-    // Find signature from chain signatures program logs
-    const signature =
-      await this.chainSignaturesContract.findSignatureEventInLogs(requestId);
-
-    // Find deposit instruction from bridge program logs
-    const decodedInstruction =
-      await this._findDepositInstructionInLogs(requestId);
-
-    if (!decodedInstruction) {
-      throw new Error('No matching transaction found');
-    }
-
-    if (!this.wallet.publicKey) {
-      throw new Error('No wallet public key');
-    }
-
-    // Construct transaction from instruction data
-    return this._constructTransactionFromInstruction(
-      decodedInstruction,
-      signature ?? undefined,
-    );
-  }
-
   private async processDepositFlow(
     requestId: string,
     unsignedTx: any,
@@ -770,103 +728,5 @@ export class SolanaService {
     } finally {
       eventPromises.cleanup();
     }
-  }
-
-  private _decodeDepositInstruction(
-    instructionData: string,
-  ): DecodedDepositInstruction | null {
-    try {
-      const instructionBuffer = bs58.decode(instructionData);
-      const dataWithoutDiscriminator = instructionBuffer.slice(8);
-      return borsh.deserialize(
-        DEPOSIT_ERC20_BORSH_SCHEMA,
-        dataWithoutDiscriminator,
-      ) as DecodedDepositInstruction;
-    } catch {
-      return null;
-    }
-  }
-
-  private async _findDepositInstructionInLogs(
-    requestId: string,
-  ): Promise<DecodedDepositInstruction | null> {
-    const signatures = await this.connection.getSignaturesForAddress(
-      this.bridgeContract.programId,
-      { limit: 10 },
-    );
-
-    const requestIdBytes = Buffer.from(requestId.replace('0x', ''), 'hex');
-
-    for (const signatureInfo of signatures) {
-      const tx = await this.connection.getParsedTransaction(
-        signatureInfo.signature,
-        {
-          commitment: 'confirmed',
-          maxSupportedTransactionVersion: 0,
-        },
-      );
-
-      for (const instruction of tx?.transaction.message.instructions || []) {
-        if (!('data' in instruction)) {
-          continue;
-        }
-
-        const decodedInstruction = this._decodeDepositInstruction(
-          instruction.data,
-        );
-        if (!decodedInstruction) {
-          continue;
-        }
-
-        const eventRequestIdBytes = Buffer.from(decodedInstruction.requestId);
-        if (eventRequestIdBytes.equals(requestIdBytes)) {
-          return decodedInstruction;
-        }
-      }
-    }
-
-    return null;
-  }
-
-  private _constructTransactionFromInstruction(
-    decodedInstruction: DecodedDepositInstruction,
-    signature?: ChainSignaturesSignature,
-  ): any {
-    const erc20Address = `0x${Buffer.from(decodedInstruction.erc20Address).toString('hex')}`;
-
-    const transferInterface = new ethers.Interface([
-      'function transfer(address to, uint256 amount) returns (bool)',
-    ]);
-    const callData = transferInterface.encodeFunctionData('transfer', [
-      HARDCODED_RECIPIENT_ADDRESS,
-      decodedInstruction.amount,
-    ]);
-
-    const transaction = {
-      type: 2,
-      chainId: Number(decodedInstruction.txParams.chainId),
-      nonce: Number(decodedInstruction.txParams.nonce),
-      maxPriorityFeePerGas: decodedInstruction.txParams.maxPriorityFeePerGas,
-      maxFeePerGas: decodedInstruction.txParams.maxFeePerGas,
-      gasLimit: decodedInstruction.txParams.gasLimit,
-      to: erc20Address,
-      value: decodedInstruction.txParams.value,
-      data: callData,
-    };
-
-    if (signature) {
-      const r =
-        '0x' + Buffer.from(signature.bigR.x).toString('hex').padStart(64, '0');
-      const s =
-        '0x' + Buffer.from(signature.s).toString('hex').padStart(64, '0');
-      const v = BigInt(27 + signature.recoveryId);
-
-      return {
-        ...transaction,
-        signature: { r, s, v },
-      };
-    }
-
-    return transaction;
   }
 }

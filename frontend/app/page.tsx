@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { ArrowUpCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
@@ -17,16 +16,12 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { CopyButton } from '@/components/ui/copy-button';
 import { WelcomeScreen } from '@/components/welcome-screen';
 import { BalanceTable } from '@/components/balance-table';
-import { PendingDepositsTable } from '@/components/pending-deposits-table';
 import { formatAddress } from '@/lib/address-utils';
 import { DepositFlow } from '@/components/deposit-flow';
 import {
   useDepositAddress,
   useUserBalances,
   useWithdrawMutation,
-  usePendingDeposits,
-  useClaimErc20Mutation,
-  useSubmitSignedTransactionMutation,
 } from '@/hooks/use-solana-queries';
 
 function DAppContent() {
@@ -40,35 +35,7 @@ function DAppContent() {
     refetch: refetchBalances,
   } = useUserBalances();
 
-  const {
-    data: pendingDeposits = [],
-    isLoading: isLoadingPendingDeposits,
-    refetch: refetchPendingDeposits,
-  } = usePendingDeposits();
-
   const withdrawMutation = useWithdrawMutation();
-  const claimMutation = useClaimErc20Mutation();
-  const submitTransactionMutation = useSubmitSignedTransactionMutation();
-
-  // State for tracking individual button loading states
-  const [claimingMap, setClaimingMap] = useState<Record<string, boolean>>({});
-  const [submittingMap, setSubmittingMap] = useState<Record<string, boolean>>(
-    {},
-  );
-
-  // Update claiming state when mutation state changes
-  useEffect(() => {
-    if (!claimMutation.isPending) {
-      setClaimingMap({});
-    }
-  }, [claimMutation.isPending]);
-
-  // Update submitting state when mutation state changes
-  useEffect(() => {
-    if (!submitTransactionMutation.isPending) {
-      setSubmittingMap({});
-    }
-  }, [submitTransactionMutation.isPending]);
 
   const handleWithdraw = (
     erc20Address: string,
@@ -97,42 +64,6 @@ function DAppContent() {
           console.error('Withdrawal failed:', error);
           toast.error(
             error instanceof Error ? error.message : 'Withdrawal failed',
-          );
-        },
-      },
-    );
-  };
-
-  const handleClaim = (requestId: string) => {
-    setClaimingMap(prev => ({ ...prev, [requestId]: true }));
-    claimMutation.mutate(
-      { requestId },
-      {
-        onSuccess: () => {
-          toast.success('Tokens claimed successfully!');
-        },
-        onError: error => {
-          console.error('Claim failed:', error);
-          toast.error(error instanceof Error ? error.message : 'Claim failed');
-        },
-      },
-    );
-  };
-
-  const handleSubmitTransaction = (requestId: string) => {
-    setSubmittingMap(prev => ({ ...prev, [requestId]: true }));
-    submitTransactionMutation.mutate(
-      { requestId },
-      {
-        onSuccess: () => {
-          toast.success('Transaction submitted successfully!');
-        },
-        onError: error => {
-          console.error('Submit transaction failed:', error);
-          toast.error(
-            error instanceof Error
-              ? error.message
-              : 'Submit transaction failed',
           );
         },
       },
@@ -192,51 +123,6 @@ function DAppContent() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Pending Deposits Card */}
-      {pendingDeposits.length > 0 && (
-        <Card className='hover:shadow-md transition-shadow'>
-          <CardHeader>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center space-x-3'>
-                <div className='w-8 h-8 bg-orange-100 dark:bg-orange-900/20 rounded-full flex items-center justify-center'>
-                  <ArrowUpCircle className='h-4 w-4 text-orange-600 dark:text-orange-400' />
-                </div>
-                <div>
-                  <CardTitle className='text-base'>Pending Deposits</CardTitle>
-                  <CardDescription>
-                    Deposits being processed through the MPC system
-                  </CardDescription>
-                </div>
-              </div>
-              <Button
-                size='sm'
-                variant='outline'
-                onClick={() => refetchPendingDeposits()}
-                disabled={isLoadingPendingDeposits}
-                className='gap-2'
-              >
-                {isLoadingPendingDeposits ? (
-                  <LoadingSpinner size='sm' />
-                ) : (
-                  <RefreshCw className='h-4 w-4' />
-                )}
-                {isLoadingPendingDeposits ? 'Loading' : 'Refresh'}
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <PendingDepositsTable
-              pendingDeposits={pendingDeposits}
-              onClaim={handleClaim}
-              onSubmitTransaction={handleSubmitTransaction}
-              isLoading={isLoadingPendingDeposits}
-              isClaimingMap={claimingMap}
-              isSubmittingMap={submittingMap}
-            />
-          </CardContent>
-        </Card>
-      )}
 
       {/* Balances Card */}
       <Card className='hover:shadow-md transition-shadow'>

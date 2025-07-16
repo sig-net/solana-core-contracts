@@ -63,23 +63,6 @@ export function useUserBalances() {
   });
 }
 
-export function usePendingDeposits() {
-  const { publicKey } = useWallet();
-  const solanaService = useSolanaService();
-
-  return useQuery({
-    queryKey: publicKey
-      ? queryKeys.solana.pendingDeposits(publicKey.toString())
-      : [],
-    queryFn: () => {
-      if (!publicKey) throw new Error('No public key available');
-      return solanaService.fetchPendingDeposits(publicKey);
-    },
-    enabled: !!publicKey,
-    refetchInterval: 5000,
-  });
-}
-
 export function useDepositErc20Mutation() {
   const { publicKey } = useWallet();
   const solanaService = useSolanaService();
@@ -113,9 +96,6 @@ export function useDepositErc20Mutation() {
     },
     onSuccess: () => {
       if (publicKey) {
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.solana.pendingDeposits(publicKey.toString()),
-        });
       }
     },
     onError: error => {
@@ -138,9 +118,6 @@ export function useClaimErc20Mutation() {
       if (publicKey) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.solana.userBalances(publicKey.toString()),
-        });
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.solana.pendingDeposits(publicKey.toString()),
         });
       }
     },
@@ -190,31 +167,6 @@ export function useWithdrawMutation() {
     },
     onError: error => {
       console.error('Withdraw mutation failed:', error);
-    },
-  });
-}
-
-export function useSubmitSignedTransactionMutation() {
-  const { publicKey } = useWallet();
-  const solanaService = useSolanaService();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ requestId }: { requestId: string }) => {
-      if (!solanaService || !publicKey) {
-        throw new Error('Service not available');
-      }
-      return await solanaService.claimErc20(publicKey, requestId);
-    },
-    onSuccess: () => {
-      if (publicKey) {
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.solana.pendingDeposits(publicKey.toString()),
-        });
-      }
-    },
-    onError: error => {
-      console.error('Submit signed transaction mutation failed:', error);
     },
   });
 }

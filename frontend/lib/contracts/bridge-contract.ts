@@ -6,7 +6,6 @@ import {
 import { Program, AnchorProvider, BN, Wallet } from '@coral-xyz/anchor';
 
 import { IDL, type SolanaCoreContracts } from '@/lib/program/idl';
-import type { PendingErc20Deposit } from '@/lib/types/bridge.types';
 import {
   BRIDGE_PROGRAM_ID,
   BRIDGE_PDA_SEEDS,
@@ -126,38 +125,6 @@ export class BridgeContract {
   // ================================
   // Account Fetching Methods
   // ================================
-
-  /**
-   * Fetch all pending deposits for a user
-   */
-  async fetchPendingDeposits(
-    userPublicKey: PublicKey,
-  ): Promise<PendingErc20Deposit[]> {
-    try {
-      const pendingDeposits =
-        await this.getBridgeProgram().account.pendingErc20Deposit.all([
-          {
-            memcmp: {
-              offset: 8,
-              bytes: userPublicKey.toBase58(),
-            },
-          },
-        ]);
-
-      return pendingDeposits
-        .map(({ account, publicKey: pda }) => ({
-          requestId: '0x' + Buffer.from(account.requestId).toString('hex'),
-          amount: account.amount.toString(),
-          erc20Address:
-            '0x' + Buffer.from(account.erc20Address).toString('hex'),
-          requester: account.requester.toString(),
-          pda: pda.toString(),
-        }))
-        .sort((a, b) => a.requestId.localeCompare(b.requestId));
-    } catch (error) {
-      return [];
-    }
-  }
 
   /**
    * Fetch pending deposit account data

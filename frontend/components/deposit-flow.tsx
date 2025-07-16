@@ -33,14 +33,8 @@ import { deriveUserEthereumAddress } from '@/lib/program/utils';
 const SEPOLIA_TOKENS = [
   {
     address: '0xbe72e441bf55620febc26715db68d3494213d8cb',
-    symbol: 'TOKEN1',
-    name: 'Test Token 1',
-    decimals: 6,
-  },
-  {
-    address: '0x58eb19ef91e8a6327fed391b51ae1887b833cc91',
-    symbol: 'TOKEN2',
-    name: 'Test Token 2',
+    symbol: 'USDC',
+    name: 'USDC',
     decimals: 6,
   },
 ];

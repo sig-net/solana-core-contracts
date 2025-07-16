@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { useMemo } from 'react';
+import { Wallet } from '@coral-xyz/anchor';
 
 import { SolanaService } from '@/lib/solana-service';
 import { queryKeys } from '@/lib/query-client';
@@ -12,7 +13,14 @@ export function useSolanaService() {
   const wallet = useWallet();
 
   return useMemo(() => {
-    const service = new SolanaService(connection, wallet);
+    const anchorWallet: Wallet = {
+      publicKey: wallet.publicKey,
+      signTransaction: wallet.signTransaction,
+      signAllTransactions: wallet.signAllTransactions,
+      payer: wallet.publicKey ? { publicKey: wallet.publicKey } : undefined,
+    } as Wallet;
+
+    const service = new SolanaService(connection, anchorWallet);
     return service;
   }, [connection, wallet]);
 }
@@ -107,7 +115,7 @@ export function useClaimErc20Mutation() {
   return useMutation({
     mutationFn: async ({ requestId }: { requestId: string }) => {
       if (!publicKey) throw new Error('No public key available');
-      return solanaService.claimErc20(publicKey, requestId);
+      return solanaService.claimFromReadResponse(requestId);
     },
     onSuccess: () => {
       if (publicKey) {

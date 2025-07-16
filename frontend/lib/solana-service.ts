@@ -3,7 +3,7 @@ import {
   PublicKey,
   SYSVAR_INSTRUCTIONS_PUBKEY,
 } from '@solana/web3.js';
-import { Program, AnchorProvider, BN } from '@coral-xyz/anchor';
+import { Program, AnchorProvider, BN, Wallet } from '@coral-xyz/anchor';
 import { ethers } from 'ethers';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import * as borsh from 'borsh';
@@ -94,24 +94,14 @@ export class SolanaService {
 
   constructor(
     private connection: Connection,
-    private wallet?: any,
+    private wallet: Wallet,
   ) {}
 
-  private getProgram(): Program<SolanaCoreContracts> {
+  private getBridgeProgram(): Program<SolanaCoreContracts> {
     if (!this.program) {
-      const provider = new AnchorProvider(
-        this.connection,
-        this.wallet || {
-          publicKey: PublicKey.default,
-          signTransaction: async () => {
-            throw new Error('No wallet');
-          },
-          signAllTransactions: async () => {
-            throw new Error('No wallet');
-          },
-        },
-        { commitment: 'confirmed' },
-      );
+      const provider = new AnchorProvider(this.connection, this.wallet, {
+        commitment: 'confirmed',
+      });
 
       this.program = new Program(IDL, provider);
     }
@@ -119,19 +109,9 @@ export class SolanaService {
   }
 
   private getChainSigProgram(): Program<any> {
-    const provider = new AnchorProvider(
-      this.connection,
-      this.wallet || {
-        publicKey: PublicKey.default,
-        signTransaction: async () => {
-          throw new Error('No wallet');
-        },
-        signAllTransactions: async () => {
-          throw new Error('No wallet');
-        },
-      },
-      { commitment: 'confirmed' },
-    );
+    const provider = new AnchorProvider(this.connection, this.wallet, {
+      commitment: 'confirmed',
+    });
 
     return new Program(CHAIN_SIGNATURES_PROGRAM_IDl, provider);
   }
@@ -170,7 +150,7 @@ export class SolanaService {
   > {
     try {
       const pendingDeposits =
-        await this.getProgram().account.pendingErc20Deposit.all([
+        await this.getBridgeProgram().account.pendingErc20Deposit.all([
           {
             memcmp: {
               offset: 8,
@@ -179,13 +159,16 @@ export class SolanaService {
           },
         ]);
 
-      return pendingDeposits.map(({ account, publicKey: pda }) => ({
-        requestId: '0x' + Buffer.from(account.requestId).toString('hex'),
-        amount: account.amount.toString(),
-        erc20Address: '0x' + Buffer.from(account.erc20Address).toString('hex'),
-        requester: account.requester.toString(),
-        pda: pda.toString(),
-      }));
+      return pendingDeposits
+        .map(({ account, publicKey: pda }) => ({
+          requestId: '0x' + Buffer.from(account.requestId).toString('hex'),
+          amount: account.amount.toString(),
+          erc20Address:
+            '0x' + Buffer.from(account.erc20Address).toString('hex'),
+          requester: account.requester.toString(),
+          pda: pda.toString(),
+        }))
+        .sort((a, b) => a.requestId.localeCompare(b.requestId));
     } catch (error) {
       return [];
     }
@@ -354,12 +337,10 @@ export class SolanaService {
       const evmParams = evmParamsToProgram(txParams);
 
       // Step 3: Setup event listeners BEFORE calling depositErc20
-      console.log('Setting up event listeners for request:', requestId);
       const eventPromises = this.setupEventListeners(requestId);
 
       // Step 4: Call depositErc20 on Solana
-      console.log('Calling depositErc20 on Solana...');
-      const tx = await this.getProgram()
+      const tx = await this.getBridgeProgram()
         .methods.depositErc20(
           requestIdBytes,
           erc20AddressBytes,
@@ -378,8 +359,6 @@ export class SolanaService {
         } as any)
         .rpc();
 
-      console.log('Deposit transaction submitted:', tx);
-
       // Step 5: Process the flow following the exact pattern from the README
       this.processDepositFlow(
         requestId,
@@ -390,7 +369,6 @@ export class SolanaService {
         currentNonce,
         txParams,
       ).catch(error => {
-        console.error('Error in deposit flow:', error);
         // Store error status for UI
         this.storeDepositStatus(requestId, {
           status: 'failed',
@@ -426,7 +404,7 @@ export class SolanaService {
       let pendingDeposit;
       try {
         pendingDeposit =
-          await this.getProgram().account.pendingErc20Deposit.fetch(
+          await this.getBridgeProgram().account.pendingErc20Deposit.fetch(
             pendingDepositPda,
           );
       } catch (error) {
@@ -447,7 +425,7 @@ export class SolanaService {
         PROGRAM_ID,
       );
 
-      const tx = await this.getProgram()
+      const tx = await this.getBridgeProgram()
         .methods.claimErc20(
           Array.from(requestIdBytes),
           depositStatus.serializedOutput!,
@@ -523,8 +501,6 @@ export class SolanaService {
             const eventRequestIdBytes = Buffer.from(eventData.requestId);
 
             if (requestIdBytes.equals(eventRequestIdBytes)) {
-              console.log('🔍 Found matching request ID:', requestId);
-              console.log('🔍 Event data:', eventData);
               signature = eventData.signature;
               break;
             }
@@ -539,17 +515,16 @@ export class SolanaService {
       continue;
     }
 
-    let originalTx = null;
-    const program = this.getProgram();
+    const bridgeProgram = this.getBridgeProgram();
     const signaturesProgram = await this.connection.getSignaturesForAddress(
-      program.programId,
+      bridgeProgram.programId,
       {
         limit: 10,
       },
     );
 
     for (const signatureInfo of signaturesProgram) {
-      const tx = await program.provider.connection.getParsedTransaction(
+      const tx = await bridgeProgram.provider.connection.getParsedTransaction(
         signatureInfo.signature,
         {
           commitment: 'confirmed',
@@ -612,9 +587,6 @@ export class SolanaService {
           const eventRequestIdBytes = Buffer.from(decodedInstruction.requestId);
 
           if (eventRequestIdBytes.equals(requestIdBytes)) {
-            originalTx = decodedInstruction.txParams;
-            console.log('originalTx', originalTx);
-
             const erc20Address = `0x${Buffer.from(decodedInstruction.erc20Address).toString('hex')}`;
 
             if (!this.wallet.publicKey) {
@@ -661,7 +633,6 @@ export class SolanaService {
             return transaction;
           }
         } catch (error) {
-          console.error('Error on decoding instruction:', error);
           continue;
         }
       }
@@ -674,23 +645,14 @@ export class SolanaService {
     requestId: string,
   ): Promise<string> {
     try {
-      console.log(
-        '📡 Submitting signed transaction from previous deposit for:',
-        requestId,
-      );
-
-      // Get the raw transaction data from previous deposit
       const transaction =
         await this.getRawTransactionFromPreviousDeposit(requestId);
+
       if (!transaction) {
         throw new Error(
           'Could not find previous transaction data for this request',
         );
       }
-
-      const eventPromises = this.setupEventListeners(requestId);
-
-      // Submit to Ethereum using automated provider
       const provider = getAutomatedProvider();
 
       const txHash = await provider.send('eth_sendRawTransaction', [
@@ -702,54 +664,124 @@ export class SolanaService {
         throw new Error('Transaction receipt not found');
       }
 
-      this.storeDepositStatus(requestId, {
-        status: 'confirming_ethereum',
-        txHash,
-        blockNumber: receipt.blockNumber,
-      });
-
-      // Wait for read response only if we have event listeners
-      if (eventPromises) {
-        console.log('⏳ Waiting for read response...');
-        const readEvent = await eventPromises.readRespond;
-        console.log('✅ Read response received!');
-
-        // Store final status for claiming
-        this.storeDepositStatus(requestId, {
-          status: 'ready_to_claim',
-          txHash,
-          blockNumber: receipt.blockNumber,
-          signature: readEvent.signature,
-          serializedOutput: Buffer.from(readEvent.serializedOutput),
-        });
-
-        // Cleanup
-        eventPromises.cleanup();
-      } else {
-        // If we used existing signature, we still need to wait for read response
-        console.log('⏳ Setting up read response listener...');
-        const readEventPromises = this.setupEventListeners(requestId);
-        const readEvent = await readEventPromises.readRespond;
-        console.log('✅ Read response received!');
-
-        // Store final status for claiming
-        this.storeDepositStatus(requestId, {
-          status: 'ready_to_claim',
-          txHash,
-          blockNumber: receipt.blockNumber,
-          signature: readEvent.signature,
-          serializedOutput: Buffer.from(readEvent.serializedOutput),
-        });
-
-        // Cleanup
-        readEventPromises.cleanup();
-      }
-
       return txHash;
     } catch (error) {
-      console.error('❌ Error submitting signed transaction:', error);
       throw new Error(
         `Failed to submit signed transaction: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  async claimFromReadResponse(requestId: string): Promise<string> {
+    try {
+      // Look for ReadRespondedEvent in chainsig contract logs
+      const chainSigProgram = this.getChainSigProgram();
+      const signatures = await this.connection.getSignaturesForAddress(
+        chainSigProgram.programId,
+        { limit: 20 },
+      );
+
+      let readEvent = null;
+
+      for (const signatureInfo of signatures) {
+        const tx = await this.connection.getTransaction(
+          signatureInfo.signature,
+          {
+            commitment: 'confirmed',
+            maxSupportedTransactionVersion: 0,
+          },
+        );
+
+        for (const log of tx?.meta?.logMessages || []) {
+          try {
+            const logMessage = log.split(':')[1]?.trim();
+            const decoded = chainSigProgram.coder.events.decode(logMessage);
+
+            if (decoded && decoded.name === 'readRespondedEvent') {
+              const eventData = decoded.data as {
+                requestId: number[];
+                responder: PublicKey;
+                serializedOutput: number[];
+                signature: {
+                  bigR: {
+                    x: number[];
+                    y: number[];
+                  };
+                  s: number[];
+                  recoveryId: number;
+                };
+              };
+
+              const requestIdBytes = Buffer.from(
+                requestId.replace('0x', ''),
+                'hex',
+              );
+              const eventRequestIdBytes = Buffer.from(eventData.requestId);
+
+              if (requestIdBytes.equals(eventRequestIdBytes)) {
+                readEvent = eventData;
+                break;
+              }
+            }
+          } catch (decodeError) {
+            continue;
+          }
+        }
+
+        if (readEvent) break;
+      }
+
+      if (!readEvent) {
+        throw new Error(
+          'ReadRespondedEvent not found for request ID: ' + requestId,
+        );
+      }
+
+      if (!this.wallet.publicKey) {
+        throw new Error('No wallet connected');
+      }
+
+      const [pendingDepositPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('pending_erc20_deposit'),
+          Buffer.from(readEvent.requestId),
+        ],
+        PROGRAM_ID,
+      );
+
+      // Fetch pending deposit to get ERC20 address
+      const pendingDeposit =
+        await this.getBridgeProgram().account.pendingErc20Deposit.fetch(
+          pendingDepositPda,
+        );
+
+      // Get user balance PDA
+      const [userBalancePda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from('user_erc20_balance'),
+          this.wallet.publicKey.toBuffer(),
+          Buffer.from(pendingDeposit.erc20Address),
+        ],
+        PROGRAM_ID,
+      );
+
+      // Submit claim transaction
+      const tx = await this.getBridgeProgram()
+        .methods.claimErc20(
+          readEvent.requestId,
+          readEvent.serializedOutput,
+          readEvent.signature,
+        )
+        .accounts({
+          authority: this.wallet.publicKey,
+          userBalance: userBalancePda,
+        })
+        .rpc();
+
+      return tx;
+    } catch (error) {
+      throw new Error(
+        `Failed to claim from read response: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
@@ -774,60 +806,57 @@ export class SolanaService {
       readRespondReject = reject;
     });
 
-    // Create Chain Signatures Program instance for event listening
-    const chainSignaturesProvider = new AnchorProvider(
-      this.connection,
-      this.wallet || {
-        publicKey: PublicKey.default,
-        signTransaction: async () => {
-          throw new Error('No wallet');
-        },
-        signAllTransactions: async () => {
-          throw new Error('No wallet');
-        },
-      },
-      { commitment: 'confirmed' },
-    );
-
-    // Import the chain signatures IDL
-    const chainSignaturesProgram = new Program(
-      CHAIN_SIGNATURES_PROGRAM_IDl,
-      chainSignaturesProvider,
-    );
-
-    // Setup signature event listener on Chain Signatures Program
-    const signatureListener = (chainSignaturesProgram as any).addEventListener(
+    const chainSignaturesProgram = this.getChainSigProgram();
+    const signatureListener = chainSignaturesProgram.addEventListener(
       'signatureRespondedEvent',
-      (event: any) => {
+      (event: {
+        requestId: number[];
+        signature: {
+          bigR: {
+            x: number[];
+            y: number[];
+          };
+          s: number[];
+        };
+      }) => {
         const eventRequestId =
           '0x' + Buffer.from(event.requestId).toString('hex');
         if (eventRequestId === requestId) {
-          console.log('✅ Signature event received for request:', requestId);
           signatureResolve(event);
         }
       },
     );
 
-    // Setup read respond event listener on Chain Signatures Program
-    const readRespondListener = (
-      chainSignaturesProgram as any
-    ).addEventListener('readRespondedEvent', (event: any) => {
-      const eventRequestId =
-        '0x' + Buffer.from(event.requestId).toString('hex');
-      if (eventRequestId === requestId) {
-        console.log('✅ Read respond event received for request:', requestId);
-        readRespondResolve(event);
-      }
-    });
+    const readRespondListener = chainSignaturesProgram.addEventListener(
+      'readRespondedEvent',
+      (event: {
+        requestId: number[];
+        responder: PublicKey;
+        serializedOutput: number[];
+        signature: {
+          bigR: {
+            x: number[];
+            y: number[];
+          };
+          s: number[];
+          recoveryId: number;
+        };
+      }) => {
+        const eventRequestId =
+          '0x' + Buffer.from(event.requestId).toString('hex');
+        if (eventRequestId === requestId) {
+          readRespondResolve(event);
+        }
+      },
+    );
 
-    // Setup timeouts
     const signatureTimeout = setTimeout(() => {
       signatureReject(new Error('Signature timeout'));
-    }, 120000); // 2 minutes
+    }, 120000);
 
     const readRespondTimeout = setTimeout(() => {
       readRespondReject(new Error('Read response timeout'));
-    }, 300000); // 5 minutes
+    }, 300000);
 
     const cleanup = () => {
       clearTimeout(signatureTimeout);
@@ -857,19 +886,14 @@ export class SolanaService {
     txParams: any,
   ): Promise<void> {
     try {
-      console.log('🔄 Starting deposit flow for request:', requestId);
-
       // Step 5: Wait for signature from MPC network
-      console.log('⏳ Waiting for signature from MPC network...');
       this.storeDepositStatus(requestId, { status: 'waiting_signature' });
 
       const signatureEvent = await eventPromises.signature;
-      console.log('✅ Signature received!');
 
       const signature = this.extractSignature(signatureEvent.signature);
 
       // Step 6: Construct signed Ethereum transaction
-      console.log('🔧 Constructing signed transaction...');
       const signedTx = ethers.Transaction.from({
         type: 2,
         chainId: 11155111,
@@ -884,16 +908,13 @@ export class SolanaService {
       });
 
       // Step 7: Submit to Ethereum network
-      console.log('📡 Submitting transaction to Ethereum...');
       this.storeDepositStatus(requestId, { status: 'submitting_ethereum' });
 
       const txHash = await provider.send('eth_sendRawTransaction', [
         signedTx.serialized,
       ]);
-      console.log('✅ Transaction submitted with hash:', txHash);
 
       // Step 8: Wait for Ethereum confirmation
-      console.log('⏳ Waiting for Ethereum confirmation...');
       this.storeDepositStatus(requestId, {
         status: 'confirming_ethereum',
         txHash,
@@ -904,17 +925,7 @@ export class SolanaService {
         throw new Error('Transaction receipt not found');
       }
 
-      console.log(
-        '✅ Ethereum transaction confirmed in block:',
-        receipt.blockNumber,
-      );
-      console.log(
-        'Transaction status:',
-        receipt.status === 1 ? 'Success' : 'Failed',
-      );
-
       // Step 9: Wait for read response from MPC network
-      console.log('⏳ Waiting for read response from MPC network...');
       this.storeDepositStatus(requestId, {
         status: 'waiting_read_response',
         txHash,
@@ -922,7 +933,6 @@ export class SolanaService {
       });
 
       const readEvent = await eventPromises.readRespond;
-      console.log('✅ Read response received!');
 
       // Step 10: Store final status for claiming
       this.storeDepositStatus(requestId, {
@@ -932,13 +942,7 @@ export class SolanaService {
         signature: readEvent.signature,
         serializedOutput: Buffer.from(readEvent.serializedOutput),
       });
-
-      console.log(
-        '🎉 Deposit flow completed successfully for request:',
-        requestId,
-      );
     } catch (error) {
-      console.error('❌ Error in deposit flow:', error);
       this.storeDepositStatus(requestId, {
         status: 'failed',
         error: error instanceof Error ? error.message : 'Unknown error',

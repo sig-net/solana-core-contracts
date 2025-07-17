@@ -4,7 +4,7 @@ import { ethers } from 'ethers';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { encodeFunctionData, erc20Abi } from 'viem';
 
-import type { TokenBalance } from '@/components/balance-table';
+import type { TokenBalance, UnclaimedTokenBalance } from '@/lib/types/token.types';
 import {
   generateRequestId,
   createEvmTransactionParams,
@@ -13,6 +13,7 @@ import {
 import { getAutomatedProvider } from '@/lib/viem/providers';
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { ChainSignaturesContract } from '@/lib/contracts/chain-signatures-contract';
+import { getTokenMetadata } from '@/lib/constants/token-metadata';
 
 // Import types and constants from organized files
 import type { EventPromises } from './types/chain-signatures.types';
@@ -94,6 +95,21 @@ export class SolanaService {
     );
   }
 
+  async getActualTokenDecimals(erc20Address: string): Promise<number> {
+    const provider = getAutomatedProvider();
+    try {
+      const contractDecimals = await provider.readContract({
+        address: erc20Address as `0x${string}`,
+        abi: erc20Abi,
+        functionName: 'decimals',
+      });
+      return Number(contractDecimals);
+    } catch {
+      const tokenMetadata = getTokenMetadata(erc20Address);
+      return tokenMetadata?.decimals || 18;
+    }
+  }
+
   async deriveDepositAddress(publicKey: PublicKey): Promise<string> {
     const [vaultAuthority] =
       this.bridgeContract.deriveVaultAuthorityPda(publicKey);
@@ -110,7 +126,9 @@ export class SolanaService {
     return derivedAddress;
   }
 
-  async fetchUnclaimedBalances(publicKey: PublicKey): Promise<TokenBalance[]> {
+  async fetchUnclaimedBalances(
+    publicKey: PublicKey,
+  ): Promise<UnclaimedTokenBalance[]> {
     try {
       const derivedAddress = await this.deriveDepositAddress(publicKey);
       const provider = getAutomatedProvider();
@@ -126,9 +144,16 @@ export class SolanaService {
           });
 
           if (balance && balance > BigInt(0)) {
+            // Fetch actual decimals from the token contract
+            const actualDecimals = await this.getActualTokenDecimals(erc20Address);
+
+            const tokenMetadata = getTokenMetadata(erc20Address);
             return {
               erc20Address,
               amount: balance.toString(),
+              symbol: tokenMetadata?.symbol || 'Unknown',
+              name: tokenMetadata?.name || 'Unknown Token',
+              decimals: actualDecimals,
             };
           }
         } catch (error) {
@@ -138,7 +163,7 @@ export class SolanaService {
       });
 
       const results = await Promise.all(balancesPromises);
-      return results.filter(Boolean) as TokenBalance[];
+      return results.filter(Boolean) as UnclaimedTokenBalance[];
     } catch (error) {
       console.error('Error fetching unclaimed balances:', error);
       return [];
@@ -152,9 +177,11 @@ export class SolanaService {
       const balancesPromises = commonErc20Addresses.map(async erc20Address => {
         const balance = await this.fetchUserBalance(publicKey, erc20Address);
         if (balance !== '0') {
+          const decimals = await this.getActualTokenDecimals(erc20Address);
           return {
             erc20Address,
             amount: balance,
+            decimals,
           };
         }
         return null;
@@ -194,7 +221,11 @@ export class SolanaService {
     let eventPromises: EventPromises | null = null;
 
     try {
-      const amountBigInt = ethers.parseUnits(amount, decimals);
+      // Fetch actual decimals from the contract
+      const actualDecimals = await this.getActualTokenDecimals(erc20Address);
+      const provider = getAutomatedProvider();
+
+      const amountBigInt = ethers.parseUnits(amount, actualDecimals);
       const amountBN = new BN(amountBigInt.toString(), 10);
 
       const [vaultAuthority] =
@@ -219,7 +250,6 @@ export class SolanaService {
         amountBigInt,
       ]);
 
-      const provider = getAutomatedProvider();
       const currentNonce = await provider.getTransactionCount({
         address: derivedAddress as `0x${string}`,
       });
@@ -256,11 +286,12 @@ export class SolanaService {
       const [pendingDepositPda] =
         this.bridgeContract.derivePendingDepositPda(requestIdBytes);
 
+      // Check if a pending deposit already exists
       const existingPendingDeposit =
         await this.bridgeContract.checkPendingDepositExists(pendingDepositPda);
       if (existingPendingDeposit) {
         throw new Error(
-          `A pending deposit already exists for this request. Please wait for it to be processed or use a different transaction.`,
+          `A pending deposit already exists for this request. Please wait for it to be processed before initiating a new deposit.`,
         );
       }
 

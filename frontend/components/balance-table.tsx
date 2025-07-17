@@ -3,7 +3,6 @@
 import { AlertCircle } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -13,15 +12,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { EmptyState } from '@/components/ui/empty-state';
-import { CopyButton } from '@/components/ui/copy-button';
+import { AddressDisplay } from '@/components/ui/address-display';
 import { WithdrawDialog } from '@/components/withdraw-dialog';
-import { formatAddress } from '@/lib/address-utils';
 import { formatTokenAmount } from '@/lib/program/utils';
-
-export interface TokenBalance {
-  erc20Address: string;
-  amount: string;
-}
+import { getTokenMetadata } from '@/lib/constants/token-metadata';
+import type { TokenBalance } from '@/lib/types/token.types';
 
 interface BalanceTableProps {
   balances: TokenBalance[];
@@ -71,23 +66,24 @@ export function BalanceTable({
                 className='hover:bg-muted/50'
               >
                 <TableCell>
-                  <div className='flex items-center space-x-3'>
-                    <Badge variant='secondary' className='font-mono text-xs'>
-                      {formatAddress(balance.erc20Address)}
-                    </Badge>
-                    <CopyButton text={balance.erc20Address} />
-                  </div>
+                  <AddressDisplay address={balance.erc20Address} />
                 </TableCell>
                 <TableCell>
                   <span className='font-mono text-sm font-medium'>
-                    {formatTokenAmount(balance.amount, 6)}
+                    {formatTokenAmount(
+                      balance.amount,
+                      balance.decimals,
+                    )}
                   </span>
                 </TableCell>
                 <TableCell className='text-right'>
                   <WithdrawDialog
                     erc20Address={balance.erc20Address}
-                    amount={formatTokenAmount(balance.amount, 6)}
-                    symbol='ERC20'
+                    amount={formatTokenAmount(
+                      balance.amount,
+                      balance.decimals,
+                    )}
+                    symbol={getTokenMetadata(balance.erc20Address)?.symbol || 'ERC20'}
                     onConfirm={recipientAddress =>
                       onWithdraw(
                         balance.erc20Address,

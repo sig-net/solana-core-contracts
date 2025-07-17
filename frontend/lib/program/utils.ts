@@ -114,7 +114,23 @@ export function hexToBytes(hex: string): Uint8Array {
  * Format token amount to human-readable string
  */
 export function formatTokenAmount(amount: string, decimals = 6): string {
-  return ethers.formatUnits(amount, decimals);
+  const formatted = ethers.formatUnits(amount, decimals);
+  const num = parseFloat(formatted);
+
+  // Handle very large numbers by formatting them with appropriate precision
+  if (num >= 1e9) {
+    return (num / 1e9).toFixed(2) + 'B';
+  } else if (num >= 1e6) {
+    return (num / 1e6).toFixed(2) + 'M';
+  } else if (num >= 1e3) {
+    return (num / 1e3).toFixed(2) + 'K';
+  } else if (num < 0.01 && num > 0) {
+    // Show more precision for very small numbers
+    return num.toFixed(6);
+  } else {
+    // Show up to 4 decimal places for normal numbers
+    return num.toFixed(4).replace(/\.?0+$/, '');
+  }
 }
 
 /**

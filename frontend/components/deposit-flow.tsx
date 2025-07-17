@@ -24,20 +24,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CopyButton } from '@/components/ui/copy-button';
-import {
-  useDepositErc20Mutation,
-  useClaimErc20Mutation,
-} from '@/hooks/use-solana-queries';
+import { useDepositErc20Mutation, useClaimErc20Mutation } from '@/hooks';
 import { deriveUserEthereumAddress } from '@/lib/program/utils';
+import { SUPPORTED_TOKENS } from '@/lib/constants/token-metadata';
 
-const SEPOLIA_TOKENS = [
-  {
-    address: '0xbe72e441bf55620febc26715db68d3494213d8cb',
-    symbol: 'USDC',
-    name: 'USDC',
-    decimals: 6,
-  },
-];
+const SEPOLIA_TOKENS = SUPPORTED_TOKENS;
 
 const VAULT_ADDRESS = '0x041477de8ecbcf633cb13ea10aa86cdf4d437c29';
 
@@ -134,8 +125,24 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
       const errorMessage =
         err instanceof Error ? err.message : 'Failed to initiate bridge';
       console.error('Failed to initiate bridge:', err);
-      setError(errorMessage);
-      toast.error(errorMessage);
+
+      // Handle specific "already processed" error
+      if (errorMessage.includes('already been processed')) {
+        setError(
+          'This transaction has already been processed. Please check your balances or refresh the page.',
+        );
+        toast.error(
+          'Transaction already processed. Please check your balances.',
+        );
+      } else if (errorMessage.includes('pending deposit already exists')) {
+        setError(
+          'A deposit is already being processed. Please wait for it to complete before initiating another deposit.',
+        );
+        toast.error('Deposit in progress. Please wait for completion.');
+      } else {
+        setError(errorMessage);
+        toast.error(errorMessage);
+      }
     }
   };
 

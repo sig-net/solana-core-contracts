@@ -51,6 +51,7 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
     note?: string;
     error?: string;
   } | null>(null);
+  const [_isRetrying, setIsRetrying] = useState(false);
 
   const depositMutation = useDepositErc20Mutation();
   const claimMutation = useClaimErc20Mutation();
@@ -122,27 +123,10 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
       setRequestId(requestIdResult);
       setCurrentStep('claim');
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to initiate bridge';
       console.error('Failed to initiate bridge:', err);
-
-      // Handle specific "already processed" error
-      if (errorMessage.includes('already been processed')) {
-        setError(
-          'This transaction has already been processed. Please check your balances or refresh the page.',
-        );
-        toast.error(
-          'Transaction already processed. Please check your balances.',
-        );
-      } else if (errorMessage.includes('pending deposit already exists')) {
-        setError(
-          'A deposit is already being processed. Please wait for it to complete before initiating another deposit.',
-        );
-        toast.error('Deposit in progress. Please wait for completion.');
-      } else {
-        setError(errorMessage);
-        toast.error(errorMessage);
-      }
+      const friendlyError = getErrorMessage(err);
+      setError(friendlyError);
+      toast.error(friendlyError);
     }
   };
 
@@ -160,11 +144,10 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
       onRefreshBalances();
       toast.success('Tokens claimed successfully!');
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? err.message : 'Failed to claim tokens';
       console.error('Failed to claim tokens:', err);
-      setError(errorMessage);
-      toast.error(errorMessage);
+      const friendlyError = getErrorMessage(err);
+      setError(friendlyError);
+      toast.error(friendlyError);
     }
   };
 
@@ -175,6 +158,54 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
     setRequestId('');
     setError('');
     setDepositStatus(null);
+    setIsRetrying(false);
+  };
+
+  const restartFromInitiate = () => {
+    setCurrentStep('initiate');
+    setError('');
+    setDepositStatus(null);
+    setIsRetrying(false);
+  };
+
+  const restartFromClaim = () => {
+    setCurrentStep('claim');
+    setError('');
+    setIsRetrying(false);
+  };
+
+  const getErrorMessage = (error: unknown): string => {
+    if (!error) return '';
+
+    const errorMessage = error instanceof Error ? error.message : String(error);
+
+    // Provide more user-friendly error messages
+    if (errorMessage.includes('already been processed')) {
+      return 'This transaction has already been processed. Please check your balances or start a new deposit.';
+    }
+
+    if (errorMessage.includes('pending deposit already exists')) {
+      return 'A deposit is already in progress. Please wait for it to complete or try again later.';
+    }
+
+    if (errorMessage.includes('insufficient funds')) {
+      return 'Insufficient funds in your derived address. Please send tokens to your derived address first.';
+    }
+
+    if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+      return 'Network error occurred. Please check your connection and try again.';
+    }
+
+    if (errorMessage.includes('signature')) {
+      return 'Signature process failed. This may be due to network issues. Please try again.';
+    }
+
+    if (errorMessage.includes('claim')) {
+      return 'Failed to claim tokens. The transaction may have already been processed. Please check your balances.';
+    }
+
+    // Return original error if no specific handling
+    return errorMessage;
   };
 
   const selectedTokenInfo = SEPOLIA_TOKENS.find(
@@ -184,12 +215,24 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
   return (
     <Card className='w-full max-w-2xl mx-auto'>
       <CardHeader>
-        <CardTitle className='flex items-center gap-2'>
-          <div className='w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center'>
-            <ArrowRight className='h-4 w-4 text-blue-600 dark:text-blue-400' />
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-2'>
+            <div className='w-8 h-8 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center'>
+              <ArrowRight className='h-4 w-4 text-blue-600 dark:text-blue-400' />
+            </div>
+            <CardTitle>Bridge ERC20 Tokens</CardTitle>
           </div>
-          Bridge ERC20 Tokens
-        </CardTitle>
+          {currentStep !== 'select' && (
+            <Button
+              variant='ghost'
+              size='sm'
+              onClick={resetFlow}
+              className='text-gray-500 hover:text-gray-700'
+            >
+              Reset
+            </Button>
+          )}
+        </div>
         <CardDescription>
           Bridge your Sepolia testnet tokens to Solana
         </CardDescription>
@@ -429,9 +472,40 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
               </div>
 
               {error && (
-                <div className='flex items-center gap-2 text-red-500 text-sm'>
-                  <AlertCircle className='w-4 h-4' />
-                  {error}
+                <div className='bg-red-50 dark:bg-red-900/20 rounded-lg p-4'>
+                  <div className='flex items-center gap-2 text-red-500 text-sm mb-2'>
+                    <AlertCircle className='w-4 h-4' />
+                    <span className='font-medium'>Error</span>
+                  </div>
+                  <p className='text-red-700 dark:text-red-300 text-sm mb-3'>
+                    {error}
+                  </p>
+                  <div className='flex gap-2'>
+                    <Button
+                      onClick={restartFromInitiate}
+                      size='sm'
+                      variant='outline'
+                      className='border-red-300 text-red-700 hover:bg-red-50'
+                    >
+                      Try Again
+                    </Button>
+                    <Button
+                      onClick={() => setCurrentStep('deposit')}
+                      size='sm'
+                      variant='outline'
+                      className='border-red-300 text-red-700 hover:bg-red-50'
+                    >
+                      Back to Deposit
+                    </Button>
+                    <Button
+                      onClick={resetFlow}
+                      size='sm'
+                      variant='outline'
+                      className='border-red-300 text-red-700 hover:bg-red-50'
+                    >
+                      Start Over
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -440,14 +514,14 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                   variant='outline'
                   onClick={() => setCurrentStep('deposit')}
                   className='flex-1'
-                  disabled={depositMutation.isPending}
+                  disabled={depositMutation.isPending || !!error}
                 >
                   Back
                 </Button>
                 <Button
                   onClick={handleInitiateBridge}
                   className='flex-1'
-                  disabled={depositMutation.isPending}
+                  disabled={depositMutation.isPending || !!error}
                 >
                   {depositMutation.isPending ? (
                     <>
@@ -568,9 +642,72 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
               </div>
 
               {error && (
-                <div className='flex items-center gap-2 text-red-500 text-sm'>
-                  <AlertCircle className='w-4 h-4' />
-                  {error}
+                <div className='bg-red-50 dark:bg-red-900/20 rounded-lg p-4'>
+                  <div className='flex items-center gap-2 text-red-500 text-sm mb-2'>
+                    <AlertCircle className='w-4 h-4' />
+                    <span className='font-medium'>Error</span>
+                  </div>
+                  <p className='text-red-700 dark:text-red-300 text-sm mb-3'>
+                    {error}
+                  </p>
+                  <div className='flex gap-2'>
+                    <Button
+                      onClick={restartFromClaim}
+                      size='sm'
+                      variant='outline'
+                      className='border-red-300 text-red-700 hover:bg-red-50'
+                    >
+                      Try Again
+                    </Button>
+                    <Button
+                      onClick={restartFromInitiate}
+                      size='sm'
+                      variant='outline'
+                      className='border-red-300 text-red-700 hover:bg-red-50'
+                    >
+                      Restart from Bridge
+                    </Button>
+                    <Button
+                      onClick={resetFlow}
+                      size='sm'
+                      variant='outline'
+                      className='border-red-300 text-red-700 hover:bg-red-50'
+                    >
+                      Start Over
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {(depositStatus?.status === 'failed' ||
+                depositStatus?.status === 'claim_failed') && (
+                <div className='bg-red-50 dark:bg-red-900/20 rounded-lg p-4'>
+                  <div className='flex items-center gap-2 text-red-500 text-sm mb-2'>
+                    <AlertCircle className='w-4 h-4' />
+                    <span className='font-medium'>Process Failed</span>
+                  </div>
+                  <p className='text-red-700 dark:text-red-300 text-sm mb-3'>
+                    {depositStatus?.error ||
+                      'The deposit process failed. You can try again or restart from the beginning.'}
+                  </p>
+                  <div className='flex gap-2'>
+                    <Button
+                      onClick={restartFromInitiate}
+                      size='sm'
+                      variant='outline'
+                      className='border-red-300 text-red-700 hover:bg-red-50'
+                    >
+                      Restart Bridge Process
+                    </Button>
+                    <Button
+                      onClick={resetFlow}
+                      size='sm'
+                      variant='outline'
+                      className='border-red-300 text-red-700 hover:bg-red-50'
+                    >
+                      Start Over
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -579,6 +716,9 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                 className='w-full'
                 disabled={
                   claimMutation.isPending ||
+                  !!error ||
+                  depositStatus?.status === 'failed' ||
+                  depositStatus?.status === 'claim_failed' ||
                   (depositStatus?.status !== 'ready_to_claim' &&
                     depositStatus?.status !== 'completed')
                 }

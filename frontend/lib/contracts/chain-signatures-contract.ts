@@ -107,8 +107,8 @@ export class ChainSignaturesContract {
     const cleanup = () => {
       clearTimeout(signatureTimeout);
       clearTimeout(readRespondTimeout);
-      (chainSignaturesProgram as any).removeEventListener(signatureListener);
-      (chainSignaturesProgram as any).removeEventListener(readRespondListener);
+      chainSignaturesProgram.removeEventListener(signatureListener);
+      chainSignaturesProgram.removeEventListener(readRespondListener);
     };
 
     return {

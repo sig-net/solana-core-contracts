@@ -70,20 +70,16 @@ export function BalanceTable({
                 </TableCell>
                 <TableCell>
                   <span className='font-mono text-sm font-medium'>
-                    {formatTokenAmount(
-                      balance.amount,
-                      balance.decimals,
-                    )}
+                    {formatTokenAmount(balance.amount, balance.decimals)}
                   </span>
                 </TableCell>
                 <TableCell className='text-right'>
                   <WithdrawDialog
                     erc20Address={balance.erc20Address}
-                    amount={formatTokenAmount(
-                      balance.amount,
-                      balance.decimals,
-                    )}
-                    symbol={getTokenMetadata(balance.erc20Address)?.symbol || 'ERC20'}
+                    amount={formatTokenAmount(balance.amount, balance.decimals)}
+                    symbol={
+                      getTokenMetadata(balance.erc20Address)?.symbol || 'ERC20'
+                    }
                     onConfirm={recipientAddress =>
                       onWithdraw(
                         balance.erc20Address,

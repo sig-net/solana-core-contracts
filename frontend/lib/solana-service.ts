@@ -4,7 +4,10 @@ import { ethers } from 'ethers';
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { encodeFunctionData, erc20Abi } from 'viem';
 
-import type { TokenBalance, UnclaimedTokenBalance } from '@/lib/types/token.types';
+import type {
+  TokenBalance,
+  UnclaimedTokenBalance,
+} from '@/lib/types/token.types';
 import {
   generateRequestId,
   createEvmTransactionParams,
@@ -57,6 +60,7 @@ function derivePublicKey(
     const epsilon = deriveEpsilon(requesterAddress, path);
     const basePoint = publicKeyToPoint(basePublicKey);
 
+    // Using ProjectivePoint (suppressing deprecation warnings as it's still functional)
     const epsilonPoint = secp256k1.ProjectivePoint.BASE.multiply(epsilon);
 
     const baseProjectivePoint = new secp256k1.ProjectivePoint(
@@ -85,7 +89,7 @@ export class SolanaService {
   private chainSignaturesContract: ChainSignaturesContract;
 
   constructor(
-    private connection: Connection,
+    connection: Connection,
     private wallet: Wallet,
   ) {
     this.bridgeContract = new BridgeContract(connection, wallet);
@@ -95,7 +99,7 @@ export class SolanaService {
     );
   }
 
-  async getActualTokenDecimals(erc20Address: string): Promise<number> {
+  async getTokenDecimals(erc20Address: string): Promise<number> {
     const provider = getAutomatedProvider();
     try {
       const contractDecimals = await provider.readContract({
@@ -145,7 +149,7 @@ export class SolanaService {
 
           if (balance && balance > BigInt(0)) {
             // Fetch actual decimals from the token contract
-            const actualDecimals = await this.getActualTokenDecimals(erc20Address);
+            const actualDecimals = await this.getTokenDecimals(erc20Address);
 
             const tokenMetadata = getTokenMetadata(erc20Address);
             return {
@@ -177,7 +181,7 @@ export class SolanaService {
       const balancesPromises = commonErc20Addresses.map(async erc20Address => {
         const balance = await this.fetchUserBalance(publicKey, erc20Address);
         if (balance !== '0') {
-          const decimals = await this.getActualTokenDecimals(erc20Address);
+          const decimals = await this.getTokenDecimals(erc20Address);
           return {
             erc20Address,
             amount: balance,
@@ -210,7 +214,7 @@ export class SolanaService {
     publicKey: PublicKey,
     erc20Address: string,
     amount: string,
-    decimals = 6,
+    _decimals = 6,
     onStatusChange?: (status: {
       status: string;
       txHash?: string;
@@ -222,7 +226,7 @@ export class SolanaService {
 
     try {
       // Fetch actual decimals from the contract
-      const actualDecimals = await this.getActualTokenDecimals(erc20Address);
+      const actualDecimals = await this.getTokenDecimals(erc20Address);
       const provider = getAutomatedProvider();
 
       const amountBigInt = ethers.parseUnits(amount, actualDecimals);

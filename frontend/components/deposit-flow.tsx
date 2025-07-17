@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { ArrowRight, Check, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -133,6 +133,14 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
   const handleClaimTokens = async () => {
     if (!publicKey || !requestId) return;
 
+    // If already completed, just transition to the complete step
+    if (depositStatus?.status === 'completed') {
+      setCurrentStep('complete');
+      onRefreshBalances();
+      toast.success('Tokens claimed successfully!');
+      return;
+    }
+
     setError('');
 
     try {
@@ -211,6 +219,19 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
   const selectedTokenInfo = SEPOLIA_TOKENS.find(
     t => t.address === selectedToken,
   );
+
+  // Auto-transition to complete step when status is completed
+  useEffect(() => {
+    if (depositStatus?.status === 'completed' && currentStep === 'claim') {
+      const timer = setTimeout(() => {
+        setCurrentStep('complete');
+        onRefreshBalances();
+        toast.success('Tokens claimed successfully!');
+      }, 1500); // Wait 1.5 seconds to show the completed state briefly
+
+      return () => clearTimeout(timer);
+    }
+  }, [depositStatus?.status, currentStep, onRefreshBalances]);
 
   return (
     <Card className='w-full max-w-2xl mx-auto'>
@@ -614,22 +635,28 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                   <div className='flex items-center gap-2'>
                     <div
                       className={`w-4 h-4 rounded-full ${
-                        depositStatus?.status === 'ready_to_claim' ||
                         depositStatus?.status === 'completed'
                           ? 'bg-green-500'
-                          : depositStatus?.status === 'waiting_read_response'
+                          : depositStatus?.status === 'auto_claiming'
                             ? 'bg-blue-500 animate-pulse'
-                            : 'bg-gray-300'
+                            : depositStatus?.status === 'ready_to_claim'
+                              ? 'bg-green-500'
+                              : depositStatus?.status ===
+                                  'waiting_read_response'
+                                ? 'bg-blue-500 animate-pulse'
+                                : 'bg-gray-300'
                       }`}
                     ></div>
                     <span className='text-sm'>
                       {depositStatus?.status === 'completed'
                         ? 'Tokens claimed successfully!'
-                        : depositStatus?.status === 'ready_to_claim'
-                          ? 'Ready to claim!'
-                          : depositStatus?.status === 'waiting_read_response'
-                            ? 'Waiting for read response...'
-                            : 'Waiting for transaction result...'}
+                        : depositStatus?.status === 'auto_claiming'
+                          ? 'Auto-claiming tokens...'
+                          : depositStatus?.status === 'ready_to_claim'
+                            ? 'Ready to claim!'
+                            : depositStatus?.status === 'waiting_read_response'
+                              ? 'Waiting for read response...'
+                              : 'Waiting for transaction result...'}
                     </span>
                   </div>
                   {depositStatus?.txHash && (
@@ -640,6 +667,49 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                   )}
                 </div>
               </div>
+
+              {depositStatus?.status === 'auto_claiming' && (
+                <div className='bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4'>
+                  <div className='flex items-center gap-2 text-blue-600 text-sm mb-2'>
+                    <Loader2 className='w-4 h-4 animate-spin' />
+                    <span className='font-medium'>Auto-claiming Tokens...</span>
+                  </div>
+                  <p className='text-blue-700 dark:text-blue-300 text-sm'>
+                    Your tokens are being automatically claimed. This process
+                    usually takes a few seconds.
+                  </p>
+                </div>
+              )}
+
+              {depositStatus?.status === 'completed' && (
+                <div className='bg-green-50 dark:bg-green-900/20 rounded-lg p-4'>
+                  <div className='flex items-center gap-2 text-green-600 text-sm mb-2'>
+                    <Check className='w-4 h-4' />
+                    <span className='font-medium'>
+                      Tokens Claimed Successfully!
+                    </span>
+                  </div>
+                  <p className='text-green-700 dark:text-green-300 text-sm'>
+                    Your tokens have been automatically claimed and will be
+                    available in your balance shortly. You&apos;ll be redirected
+                    to the completion page in a moment.
+                  </p>
+                </div>
+              )}
+
+              {depositStatus?.status === 'ready_to_claim' && (
+                <div className='bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4'>
+                  <div className='flex items-center gap-2 text-blue-600 text-sm mb-2'>
+                    <Clock className='w-4 h-4' />
+                    <span className='font-medium'>Ready to Claim</span>
+                  </div>
+                  <p className='text-blue-700 dark:text-blue-300 text-sm'>
+                    Your transaction is confirmed and tokens are ready to be
+                    claimed. The claiming process will start automatically, or
+                    you can click the button below to claim manually.
+                  </p>
+                </div>
+              )}
 
               {error && (
                 <div className='bg-red-50 dark:bg-red-900/20 rounded-lg p-4'>
@@ -680,15 +750,23 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
               )}
 
               {(depositStatus?.status === 'failed' ||
-                depositStatus?.status === 'claim_failed') && (
+                depositStatus?.status === 'claim_failed' ||
+                depositStatus?.status === 'processing_interrupted') && (
                 <div className='bg-red-50 dark:bg-red-900/20 rounded-lg p-4'>
                   <div className='flex items-center gap-2 text-red-500 text-sm mb-2'>
                     <AlertCircle className='w-4 h-4' />
-                    <span className='font-medium'>Process Failed</span>
+                    <span className='font-medium'>
+                      {depositStatus?.status === 'processing_interrupted'
+                        ? 'Process Interrupted'
+                        : 'Process Failed'}
+                    </span>
                   </div>
                   <p className='text-red-700 dark:text-red-300 text-sm mb-3'>
-                    {depositStatus?.error ||
-                      'The deposit process failed. You can try again or restart from the beginning.'}
+                    {depositStatus?.status === 'processing_interrupted'
+                      ? depositStatus?.note ||
+                        'The deposit process was interrupted. This may happen if the transaction was already processed.'
+                      : depositStatus?.error ||
+                        'The deposit process failed. You can try again or restart from the beginning.'}
                   </p>
                   <div className='flex gap-2'>
                     <Button
@@ -719,6 +797,8 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                   !!error ||
                   depositStatus?.status === 'failed' ||
                   depositStatus?.status === 'claim_failed' ||
+                  depositStatus?.status === 'processing_interrupted' ||
+                  depositStatus?.status === 'auto_claiming' ||
                   (depositStatus?.status !== 'ready_to_claim' &&
                     depositStatus?.status !== 'completed')
                 }
@@ -734,7 +814,12 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                 ) : depositStatus?.status === 'completed' ? (
                   <>
                     <Check className='w-4 h-4 mr-2' />
-                    Completed!
+                    Tokens Claimed - Finishing...
+                  </>
+                ) : depositStatus?.status === 'auto_claiming' ? (
+                  <>
+                    <Loader2 className='w-4 h-4 mr-2 animate-spin' />
+                    Auto-claiming tokens...
                   </>
                 ) : depositStatus?.status !== 'ready_to_claim' ? (
                   <>
@@ -743,7 +828,9 @@ export function DepositFlow({ onRefreshBalances }: DepositFlowProps) {
                   </>
                 ) : (
                   <>
-                    Call claim_erc20
+                    {depositStatus?.status === 'ready_to_claim'
+                      ? 'Claim Tokens'
+                      : 'Call claim_erc20'}
                     <ArrowRight className='w-4 h-4 ml-2' />
                   </>
                 )}

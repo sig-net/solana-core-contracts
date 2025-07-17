@@ -604,6 +604,9 @@ export class SolanaService {
       }
 
       try {
+        // Indicate that auto-claiming is starting
+        onStatusChange?.({ status: 'auto_claiming' });
+
         const claimTxHash = await this.claimErc20(
           this.wallet.publicKey,
           requestId,

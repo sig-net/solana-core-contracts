@@ -10,7 +10,6 @@ import { IconCard } from '@/components/ui/icon-card';
 import { AddressDisplay } from '@/components/ui/address-display';
 import { LoadingIndicator } from '@/components/ui/loading-indicator';
 import { WelcomeScreen } from '@/components/welcome-screen';
-import { WelcomeMessage } from '@/components/welcome-message';
 import { BalanceTable } from '@/components/balance-table';
 import { DepositFlow } from '@/components/deposit-flow';
 import { UnclaimedBalances } from '@/components/unclaimed-balances';
@@ -79,8 +78,6 @@ export function DAppContent() {
 
   return (
     <div className='space-y-6'>
-      <WelcomeMessage publicKey={publicKey} />
-
       <IconCard
         icon={ArrowUpCircle}
         title='Sepolia Deposit Address'

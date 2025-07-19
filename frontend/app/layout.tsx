@@ -4,7 +4,6 @@ import { Toaster } from 'sonner';
 
 import './globals.css';
 import { Providers } from '@/providers/providers';
-import { AppHeader } from '@/components/app-header';
 import { ErrorBoundary } from '@/components/error-boundary';
 
 const geistSans = Geist({
@@ -18,8 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Solana dApp',
-  description: 'Solana dApp for ERC20 token management',
+  title: 'Solana Token Manager',
+  description: 'Manage your ERC20 tokens on Solana',
 };
 
 export default function RootLayout({
@@ -28,17 +27,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang='en' className='dark'>
+    <html lang='en'>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
-          <div className='min-h-screen bg-background'>
-            <AppHeader />
-            <main className='container mx-auto px-4 py-8 max-w-4xl'>
-              <ErrorBoundary>{children}</ErrorBoundary>
-            </main>
-          </div>
+          <ErrorBoundary>{children}</ErrorBoundary>
           <Toaster richColors position='top-right' />
         </Providers>
       </body>

@@ -27,7 +27,7 @@ export function NavigationHeader({
   return (
     <header
       className={cn(
-        'w-full h-20 bg-header-bg border-b border-header-border ',
+        'w-full h-20 bg-header-bg border-b border-dark-neutral-50 ',
         className,
       )}
     >
@@ -44,10 +44,10 @@ export function NavigationHeader({
 
         {/* Center: Balance */}
         <div className='flex flex-col items-center'>
-          <span className='text-header-text-secondary text-xs font-medium uppercase tracking-wider'>
+          <span className='text-dark-neutral-200 text-xs font-medium uppercase tracking-wider'>
             Total Balance
           </span>
-          <span className='text-header-text-primary text-2xl font-light font-mono'>
+          <span className='text-header-tundora-3000 text-2xl font-light font-mono'>
             {displayBalance}
           </span>
         </div>
@@ -58,7 +58,7 @@ export function NavigationHeader({
             variant='ghost'
             size='icon'
             onClick={onSettingsClick}
-            className='h-10 w-10 text-header-text-primary hover:bg-header-text-primary/10'
+            className='h-10 w-10 text-header-tundora-3000 hover:bg-header-tundora-3000/10'
             aria-label='Settings'
           >
             <Settings className='h-5 w-5' />

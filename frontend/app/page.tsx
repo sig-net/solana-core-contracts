@@ -33,7 +33,9 @@ export default function Home() {
     // TODO: Implement user menu or wallet management
   };
 
-  if (!publicKey) {
+  // Temporarily bypass wallet check for demo purposes
+  const demoMode = true;
+  if (!publicKey && !demoMode) {
     return (
       <div className='min-h-screen gradient-bg-main'>
         <NavigationHeader
@@ -49,87 +51,77 @@ export default function Home() {
     );
   }
 
+  // Demo data for testing the balance components
+  const demoTotalBalance = BigInt(1800000000); // 1.8 SOL in lamports
+  const demoUserInfo = demoMode ? 'Demo Mode' : (publicKey ? `${publicKey.toString().slice(0, 4)}...${publicKey.toString().slice(-4)}` : 'Connect Wallet');
+
   return (
-    <div className='min-h-screen gradient-bg-main relative'>
+    <div className='min-h-screen gradient-bg-main'>
       {/* Navigation Header */}
       <NavigationHeader
-        totalBalance={totalBalance}
+        totalBalance={demoMode ? demoTotalBalance : totalBalance}
         balanceSymbol='SOL'
         balanceDecimals={9}
-        userInfo={userInfo}
+        userInfo={demoUserInfo}
         onSettingsClick={handleSettingsClick}
         onUserClick={handleUserClick}
       />
 
-      {/* Main Layout Container - Figma viewport 1440x1072 */}
-      <div className='w-full relative'>
-        {/* Desktop Layout - matches Figma design exactly */}
-        <div className='hidden xl:block'>
-          {/* Right Sidebar - Frame 300:2933 - 413px width, padding 220px 0px 207px, gap 10px */}
-          <div className='fixed right-0 top-0 w-[413px] h-screen flex flex-col justify-start pt-[220px] pb-[207px] pr-4 gap-2.5 z-10'>
-            {/* Swap Widget - 300:2934 */}
-            <div className='w-full max-w-[380px]'>
-              <SwapWidget />
+      {/* Main Layout Container */}
+      <div className='flex min-h-screen pt-[140px]'>
+        {/* Left Content Area - Main content */}
+        <div className='flex-1 max-w-[1027px]'>
+          {/* Frame 178 - Token Dashboard Area with proper spacing */}
+          <div className='px-[60px] pt-[79px] pb-[40px]'>
+            {/* Frame 8 & Frame 172 - Balance display section */}
+            <div className='mb-[361px]'>
+              <BalanceDisplay
+                balance={demoMode ? demoTotalBalance : totalBalance}
+                symbol='SOL'
+                decimals={9}
+              />
             </div>
 
-            {/* Frame 173 - 40px padding, 19px gap */}
-            <div className='w-full p-10 space-y-[19px]'>
-              {/* Additional content can go here if needed */}
-            </div>
-          </div>
-
-          {/* Main Content Area - left side, accounting for right sidebar */}
-          <div className='mr-[413px] min-h-screen relative'>
-            {/* Token Dashboard Area - Frame 178 at x:60, y:219, width:867px */}
-            <div
-              className='absolute left-[60px] top-[219px] w-[867px]'
-              style={{ marginTop: '0px' }}
-            >
-              {/* Frame 8 - title section with 16px gap */}
-              <div className='space-y-4 mb-6'>
-                {/* Frame 172 - balance display with 42px gap */}
-                <div className='space-y-[42px]'>
-                  {/* Balance box component - 293:4845 with 67px gap and 20px vertical padding */}
-                  <div className='py-5 space-y-[67px]'>
-                    <BalanceDisplay
-                      balance={totalBalance}
-                      symbol='SOL'
-                      decimals={9}
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Main Content Area - Frame 134 at x:60, y:580, width:867px */}
-            <div
-              className='absolute left-[60px] top-[580px] w-[867px]'
-              style={{ marginTop: '0px' }}
-            >
+            {/* Frame 134 - Activity List section */}
+            <div className='w-full max-w-[867px]'>
               <ActivityList />
             </div>
           </div>
         </div>
 
-        {/* Responsive Layout for smaller screens */}
-        <div className='xl:hidden'>
-          <div className='container mx-auto px-6 py-12 pt-[140px]'>
-            <div className='grid grid-cols-1 gap-8 lg:grid-cols-3'>
-              {/* Main content area */}
-              <div className='space-y-8 lg:col-span-2'>
-                <BalanceDisplay
-                  balance={totalBalance}
-                  symbol='SOL'
-                  decimals={9}
-                />
-                <ActivityList />
-              </div>
+        {/* Right Sidebar - Frame 300:2933 */}
+        <div className='hidden xl:flex w-[413px] flex-col border-l border-[#C6B3B2]'>
+          {/* Sidebar content with Figma spacing: padding 220px 0px 207px, gap 10px */}
+          <div className='flex flex-col pt-[80px] pb-[67px] px-4 gap-2.5'>
+            {/* Swap Widget - 300:2934 */}
+            <SwapWidget className='w-full' />
 
-              {/* Sidebar with swap widget */}
-              <div className='lg:col-span-1'>
-                <div className='sticky top-8'>
-                  <SwapWidget />
-                </div>
+            {/* Frame 173 - Additional content area with 40px padding, 19px gap */}
+            <div className='p-10 space-y-[19px]'>
+              {/* Additional sidebar content can go here */}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile/Tablet Layout - Responsive grid for smaller screens */}
+      <div className='xl:hidden pt-[140px]'>
+        <div className='container mx-auto px-6 py-12'>
+          <div className='grid grid-cols-1 gap-8 lg:grid-cols-3'>
+            {/* Main content area */}
+            <div className='space-y-8 lg:col-span-2'>
+              <BalanceDisplay
+                balance={demoMode ? demoTotalBalance : totalBalance}
+                symbol='SOL'
+                decimals={9}
+              />
+              <ActivityList />
+            </div>
+
+            {/* Sidebar with swap widget */}
+            <div className='lg:col-span-1'>
+              <div className='sticky top-8'>
+                <SwapWidget />
               </div>
             </div>
           </div>

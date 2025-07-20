@@ -62,38 +62,42 @@ function TokenInput({
   return (
     <div
       className={cn(
-        'rounded-[2px] border border-[#B49E9E] p-5',
+        'rounded-[2px] border border-[#B49E9E] p-5 bg-transparent',
         error && 'border-red-500',
       )}
     >
-      <div className='flex items-center justify-between'>
-        <Input
-          type='text'
-          value={amount}
-          onChange={handleAmountChange}
-          placeholder={placeholder}
-          disabled={disabled}
-          className={cn(
-            'border-0 bg-transparent p-0 text-2xl font-light placeholder:text-[#625757] focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0',
-            'font-mono', // Using Test Söhne Mono equivalent
-          )}
-          style={{ fontSize: '24px', fontWeight: 300 }}
-        />
+      <div className='flex items-center justify-between gap-3'>
+        <div className='flex-1'>
+          <Input
+            type='text'
+            value={amount}
+            onChange={handleAmountChange}
+            placeholder={placeholder}
+            disabled={disabled}
+            className={cn(
+              'border-0 bg-transparent p-0 text-[24px] font-light text-[#625757] placeholder:text-[#625757] focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0',
+              'font-mono leading-[36px]', // Test Söhne Mono equivalent with proper line height
+            )}
+            style={{ fontWeight: 300 }}
+          />
+        </div>
 
-        <Button
-          onClick={onTokenSelect}
-          disabled={disabled}
-          variant='ghost'
-          className={cn(
-            'h-auto p-2 text-[#625757] hover:bg-transparent',
-            !selectedToken && 'text-[#625757]',
-          )}
-        >
-          <span className='mr-2'>
-            {selectedToken ? selectedToken.symbol : 'Select'}
-          </span>
-          <ChevronDown className='h-4 w-4' />
-        </Button>
+        <div className='rounded-md bg-white px-[10px] py-[10px] border border-gray-200'>
+          <Button
+            onClick={onTokenSelect}
+            disabled={disabled}
+            variant='ghost'
+            className={cn(
+              'h-auto p-0 text-[#625757] hover:bg-transparent flex items-center gap-2',
+              !selectedToken && 'text-[#625757]',
+            )}
+          >
+            <span className='text-sm font-medium'>
+              {selectedToken ? selectedToken.symbol : 'Select'}
+            </span>
+            <ChevronDown className='h-4 w-4' />
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -48,8 +48,14 @@ export interface ActivityListTableProps {
   emptyStateMessage?: string;
 }
 
-// Column widths from Figma specifications
-const COLUMN_WIDTHS = ['98px', 'flex-1', '187px', '126px', '131px'];
+// Column widths from Figma specifications (node 293-4803)
+const COLUMN_WIDTHS = [
+  'w-[98px]',
+  'flex-1',
+  'w-[187px]',
+  'w-[126px]',
+  'w-[131px]',
+];
 
 // Icon components for different transaction types
 function TransactionIcon({ type }: { type: string }) {
@@ -126,12 +132,12 @@ function Badge({
 // Cell renderer component
 function TableCell({
   data,
-  columnIndex: _columnIndex,
+  columnIndex,
 }: {
   data: CellData;
   columnIndex: number;
 }) {
-  const baseStyles = 'px-6 py-4 border-b border-[rgba(156,134,134,0.5)]';
+  const baseStyles = `px-6 py-4 border-b border-[rgba(156,134,134,0.5)] ${COLUMN_WIDTHS[columnIndex]}`;
 
   switch (data.type) {
     case 'icon-text':
@@ -206,8 +212,10 @@ function HeaderCell({
 }) {
   return (
     <th
-      className='px-6 py-3 border-b-2 border-[#9C8686] text-left text-sm font-medium text-gray-700 bg-gray-50'
-      style={{ width: COLUMN_WIDTHS[columnIndex] }}
+      className={cn(
+        'px-6 py-3 border-b-2 border-[#9C8686] text-left text-sm font-medium text-gray-700 bg-white',
+        COLUMN_WIDTHS[columnIndex],
+      )}
     >
       {children}
     </th>
@@ -223,10 +231,10 @@ export function ActivityListTable({
 }: ActivityListTableProps) {
   return (
     <div className={cn('w-full', className)}>
-      <div className='overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm'>
-        <table className='min-w-full divide-y divide-gray-200'>
+      <div className='overflow-x-auto bg-white'>
+        <table className='w-full'>
           <thead>
-            <tr>
+            <tr className='flex w-full'>
               {headers.map((header, index) => (
                 <HeaderCell key={index} columnIndex={index}>
                   {header}
@@ -234,20 +242,20 @@ export function ActivityListTable({
               ))}
             </tr>
           </thead>
-          <tbody className='divide-y divide-gray-200 bg-white'>
+          <tbody className='bg-white'>
             {rows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={headers.length}
-                  className='px-6 py-12 text-center text-sm text-gray-500'
-                >
+              <tr className='flex w-full'>
+                <td className='px-6 py-12 text-center text-sm text-gray-500 w-full'>
                   <Clock className='mx-auto mb-3 h-12 w-12 text-gray-400' />
                   {emptyStateMessage}
                 </td>
               </tr>
             ) : (
               rows.map(row => (
-                <tr key={row.id} className='hover:bg-gray-50 transition-colors'>
+                <tr
+                  key={row.id}
+                  className='flex w-full hover:bg-gray-50 transition-colors'
+                >
                   {row.cells.map((cell, cellIndex) => (
                     <TableCell
                       key={cellIndex}

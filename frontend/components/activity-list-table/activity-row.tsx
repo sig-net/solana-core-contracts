@@ -1,8 +1,10 @@
 import { ExternalLink } from 'lucide-react';
-import { COLUMN_WIDTHS, ActivityTransaction } from './index';
+
 import { TableCell } from './table-cell';
 import { DetailsCell } from './details-cell';
 import { StatusBadge } from './status-badge';
+
+import { COLUMN_WIDTHS, ActivityTransaction } from './index';
 
 interface ActivityRowProps {
   transaction: ActivityTransaction;

@@ -1,4 +1,5 @@
 import { cn } from '@/lib/utils';
+
 import { ACTIVITY_DATA } from './mockdata';
 import { TableHeader } from './table-header';
 import { ActivityRow } from './activity-row';

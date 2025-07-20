@@ -1,7 +1,8 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import { TokenIcon, NetworkIcon } from '@web3icons/react';
+
+import { cn } from '@/lib/utils';
 
 export function CryptoIcon({
   chain,

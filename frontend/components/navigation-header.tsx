@@ -1,6 +1,6 @@
 'use client';
 
-import { Settings, Wallet } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { formatUnits } from 'viem';
 import Image from 'next/image';
 

@@ -4,15 +4,10 @@
 @theme inline {
   --: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
-  --color-input: var(--input);
-  --color-destructive: var(--destructive);
-  --color-accent: var(--accent);
-  --color-secondary: var(--secondary);
-  --color-button-primary: var(--button-primary);
-  --color-button-secondary: var(--button-secondary);
-  --color-address-text: var(--address-text);
 
   /* Figma design colors */
+  --color-brand-100: var(--brand-100);
+  --color-brand-950: var(--brand-950);
   --color-pastels-polar-200: var(--pastels-polar-200);
   --color-dark-neutral-200: var(--dark-neutral-200);
   --color-dark-neutral-300: var(--dark-neutral-300);
@@ -24,19 +19,14 @@
   --color-tundora-300: var(--tundora-300);
   --color-tundora-50: var(--tundora-50);
   --color-stone-100: var(--stone-100);
+  --color-stone-600: var(--stone-600);
   --color-stone-700: var(--stone-700);
 }
 
 :root {
-  --secondary: #f7f6f3;
-  --accent: #f0f4f0;
-  --destructive: #ef4444;
-  --input: #e5e7eb;
-  --button-primary: #eaeec9;
-  --button-secondary: #f2e0c5;
-  --address-text: #4a5468;
-
   /* Figma design colors */
+  --brand-100: #f2e0c5;
+  --brand-950: #eaeec9;
   --pastels-polar-200: #f2fcfb;
   --dark-neutral-200: #a28b8a;
   --dark-neutral-300: #8e7777;
@@ -48,6 +38,7 @@
   --tundora-300: #6c6060;
   --tundora-50: #9c8686;
   --stone-100: #f5f0ee;
+  --stone-600: #625757;
   --stone-700: #4c4646;
 }
 @layer base {

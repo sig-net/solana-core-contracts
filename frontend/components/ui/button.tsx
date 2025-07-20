@@ -10,11 +10,10 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-button-primary border-dark-neutral-400 text-dark-neutral-400 hover:bg-button-primary/90 active:bg-button-primary/80',
+          'bg-brand-950 border-dark-neutral-400 text-dark-neutral-400 hover:bg-brand-950/90 active:bg-brand-950/80',
         secondary:
-          'bg-button-secondary border-dark-neutral-400 text-dark-neutral-400 hover:bg-button-secondary/90 active:bg-button-secondary/80',
-        ghost:
-          'border-transparent hover:bg-accent hover:text-stone-700',
+          'bg-brand-100 border-dark-neutral-400 text-dark-neutral-400 hover:bg-brand-100/90 active:bg-brand-100/80',
+        ghost: 'border-transparent hover:bg-accent hover:text-stone-700',
         outline:
           'bg-pastels-polar-200 border-dark-neutral-400 text-dark-neutral-400',
       },

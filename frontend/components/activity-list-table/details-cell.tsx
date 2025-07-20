@@ -20,7 +20,7 @@ export function DetailsCell({ transaction }: DetailsCellProps) {
       ) : (
         <div className='flex gap-2 items-center'>
           <WalletIcon className='h-5 w-5 text-tundora-50' />
-          <div className=' font-medium text-sm leading-6 text-address-text'>
+          <div className=' font-medium text-sm leading-6 text-stone-600'>
             {transaction.address}
           </div>
         </div>

@@ -13,13 +13,13 @@ export function DetailsCell({ transaction }: DetailsCellProps) {
     <div className='flex gap-4 items-center'>
       <TokenDisplay token={transaction.fromToken} />
 
-      <ArrowRight className='w-5 h-5 text-text-secondary shrink-0' />
+      <ArrowRight className='w-5 h-5 text-tundora-50 shrink-0' />
 
       {isSwap ? (
         <TokenDisplay token={transaction.toToken} />
       ) : (
         <div className='flex gap-2 items-center'>
-          <WalletIcon className='h-5 w-5 text-text-secondary' />
+          <WalletIcon className='h-5 w-5 text-tundora-50' />
           <div className=' font-medium text-sm leading-6 text-address-text'>
             {transaction.address}
           </div>

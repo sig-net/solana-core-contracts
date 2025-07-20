@@ -6,22 +6,13 @@
   --color-foreground: var(--foreground);
   --: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
-  --color-ring: var(--ring);
   --color-input: var(--input);
-  --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -38,13 +29,8 @@
   --color-pastels-polar-200: var(--pastels-polar-200);
   --color-button-primary: var(--button-primary);
   --color-button-secondary: var(--button-secondary);
-  --color-button-border: var(--button-border);
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
   --color-header-bg: var(--header-bg);
-  --color-header-border: var(--header-border);
   --color-header-text-primary: var(--header-text-primary);
-  --color-header-text-secondary: var(--header-text-secondary);
   --color-address-text: var(--address-text);
   --color-dark-neutral-200: var(--dark-neutral-200);
   --color-dark-neutral-300: var(--dark-neutral-300);
@@ -78,47 +64,34 @@
   --accent: #f0f4f0;
   --accent-foreground: #4c4646;
   --destructive: #ef4444;
-  --border: #c6b3b2;
   --input: #e5e7eb;
-  --ring: #a28b8a;
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: #f5f0ee;
   --sidebar-foreground: #4c4646;
   --sidebar-primary: #4c4646;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #f0f4f0;
   --sidebar-accent-foreground: #4c4646;
-  --sidebar-border: #c6b3b2;
-  --sidebar-ring: #a28b8a;
   --button-primary: #eaeec9;
   --button-secondary: #f2e0c5;
-  --button-border: #786767;
-  --text-primary: #6c6060;
-  --text-secondary: #9c8686;
   --header-bg: #f5f0ee;
-  --header-border: #c6b3b2;
   --header-text-primary: #4c4646;
-  --header-text-secondary: #a28b8a;
   --address-text: #4a5468;
   --pastels-polar-200: #f2fcfb;
+
   /* Figma design colors - exact variable names from Figma */
   --dark-neutral-200: #a28b8a;
   --dark-neutral-300: #8e7777;
   --dark-neutral-400: #786767;
   --dark-neutral-500: #625757;
-  --color-dark-neutral-50: #c6b3b2;
-  --color-pastels-polar-100: #f6fdfd;
+  --dark-neutral-50: #c6b3b2;
+  --pastels-polar-100: #f6fdfd;
   --success-500: #17b26a;
   --tundora-300: #6c6060;
   --tundora-50: #9c8686;
 }
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-dark-neutral-50 outline-dark-neutral-50;
   }
   body {
     @apply bg-background text-foreground;

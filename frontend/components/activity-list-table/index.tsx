@@ -37,22 +37,25 @@ interface ActivityListTableProps {
 
 export function ActivityListTable({ className }: ActivityListTableProps) {
   return (
-    <div className={cn('w-full', className)}>
-      <div className='flex flex-col'>
-        {/* Headers */}
-        <div className='flex w-full'>
-          <TableHeader width={COLUMN_WIDTHS.activity}>Activity</TableHeader>
-          <TableHeader width={COLUMN_WIDTHS.details}>Details</TableHeader>
-          <TableHeader width={COLUMN_WIDTHS.timestamp}>Timestamp</TableHeader>
-          <TableHeader width={COLUMN_WIDTHS.status}>Status</TableHeader>
-          <TableHeader width={COLUMN_WIDTHS.explorer}>Explorer</TableHeader>
-        </div>
-
-        {/* Rows */}
+    <div>
+      <p className='text-dark-neutral-200 font-bold uppercase mb-8'>Activity</p>
+      <div className={cn('w-full', className)}>
         <div className='flex flex-col'>
-          {ACTIVITY_DATA.map(transaction => (
-            <ActivityRow key={transaction.id} transaction={transaction} />
-          ))}
+          {/* Headers */}
+          <div className='flex w-full'>
+            <TableHeader width={COLUMN_WIDTHS.activity}>Activity</TableHeader>
+            <TableHeader width={COLUMN_WIDTHS.details}>Details</TableHeader>
+            <TableHeader width={COLUMN_WIDTHS.timestamp}>Timestamp</TableHeader>
+            <TableHeader width={COLUMN_WIDTHS.status}>Status</TableHeader>
+            <TableHeader width={COLUMN_WIDTHS.explorer}>Explorer</TableHeader>
+          </div>
+
+          {/* Rows */}
+          <div className='flex flex-col'>
+            {ACTIVITY_DATA.map(transaction => (
+              <ActivityRow key={transaction.id} transaction={transaction} />
+            ))}
+          </div>
         </div>
       </div>
     </div>

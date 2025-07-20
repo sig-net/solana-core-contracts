@@ -49,7 +49,7 @@ export default function Home() {
         onSettingsClick={handleSettingsClick}
       />
       <div className='flex container mx-auto mt-16 justify-between'>
-        <div className='flex flex-col gap-10'>
+        <div className='flex flex-col gap-12'>
           <BalanceDisplay
             tokens={[
               {

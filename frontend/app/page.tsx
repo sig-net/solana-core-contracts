@@ -43,30 +43,27 @@ export default function Home() {
         balanceDecimals={9}
         onSettingsClick={handleSettingsClick}
       />
-      <div className='flex-col container mx-auto mt-16'>
-        <BalanceDisplay
-          tokens={[
-            {
-              balance: demoMode ? demoTotalBalance : totalBalance,
-              token: 'SOL',
-              chain: 'solana',
-              decimals: 9,
-            },
-            {
-              balance: demoMode ? demoTotalBalance : totalBalance,
-              token: 'ETH',
-              chain: 'ethereum',
-              decimals: 18,
-            },
-          ]}
-        />
-        <ActivityListTable />
-        <div className='hidden xl:flex w-[413px] flex-col border-l border-[#C6B3B2]'>
-          <div className='flex flex-col pt-[80px] pb-[67px] px-4 gap-2.5'>
-            <SwapWidget className='w-full' />
-            <div className='p-10 space-y-[19px]'></div>
-          </div>
+      <div className='flex container mx-auto mt-16 justify-between'>
+        <div className='flex flex-col gap-10'>
+          <BalanceDisplay
+            tokens={[
+              {
+                balance: demoMode ? demoTotalBalance : totalBalance,
+                token: 'SOL',
+                chain: 'solana',
+                decimals: 9,
+              },
+              {
+                balance: demoMode ? demoTotalBalance : totalBalance,
+                token: 'ETH',
+                chain: 'ethereum',
+                decimals: 18,
+              },
+            ]}
+          />
+          <ActivityListTable />
         </div>
+        <SwapWidget className='w-90' />
       </div>
     </div>
   );

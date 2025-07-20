@@ -27,22 +27,20 @@ export function NavigationHeader({
   return (
     <header
       className={cn(
-        'w-full h-20 bg-header-bg border-b border-header-border px-6',
+        'w-full h-20 bg-header-bg border-b border-header-border ',
         className,
       )}
     >
-      <div className='flex items-center justify-between h-full max-w-7xl mx-auto'>
+      <div className='flex items-center justify-between h-full container mx-auto'>
         {/* Left: Logo */}
-        <div className='flex items-center'>
-          <Image
-            src='/logo.svg'
-            alt='Logo'
-            width={140}
-            height={28}
-            className='object-contain'
-            priority
-          />
-        </div>
+        <Image
+          src='/logo.svg'
+          alt='Logo'
+          width={140}
+          height={28}
+          className='object-contain'
+          priority
+        />
 
         {/* Center: Balance */}
         <div className='flex flex-col items-center'>
@@ -55,7 +53,7 @@ export function NavigationHeader({
         </div>
 
         {/* Right: Settings & Wallet */}
-        <div className='flex items-center gap-4'>
+        <div className='space-x-4 justify-end'>
           <Button
             variant='ghost'
             size='icon'
@@ -65,7 +63,6 @@ export function NavigationHeader({
           >
             <Settings className='h-5 w-5' />
           </Button>
-
           <WalletButton />
         </div>
       </div>

@@ -4,19 +4,16 @@
 @theme inline {
   --: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar: var(--sidebar);
   --color-input: var(--input);
   --color-destructive: var(--destructive);
   --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
   --color-secondary: var(--secondary);
-  --color-pastels-polar-200: var(--pastels-polar-200);
   --color-button-primary: var(--button-primary);
   --color-button-secondary: var(--button-secondary);
-  --color-header-bg: var(--header-bg);
   --color-address-text: var(--address-text);
+
+  /* Figma design colors */
+  --color-pastels-polar-200: var(--pastels-polar-200);
   --color-dark-neutral-200: var(--dark-neutral-200);
   --color-dark-neutral-300: var(--dark-neutral-300);
   --color-dark-neutral-400: var(--dark-neutral-400);
@@ -26,30 +23,21 @@
   --color-success-500: var(--success-500);
   --color-tundora-300: var(--tundora-300);
   --color-tundora-50: var(--tundora-50);
+  --color-stone-100: var(--stone-100);
   --color-stone-700: var(--stone-700);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
 }
 
 :root {
-  --radius: 0.625rem;
   --secondary: #f7f6f3;
-  --muted: #f5f0ee;
-  --muted-foreground: #6b7280;
   --accent: #f0f4f0;
   --destructive: #ef4444;
   --input: #e5e7eb;
-  --sidebar: #f5f0ee;
-  --sidebar-accent: #f0f4f0;
   --button-primary: #eaeec9;
   --button-secondary: #f2e0c5;
-  --header-bg: #f5f0ee;
   --address-text: #4a5468;
-  --pastels-polar-200: #f2fcfb;
 
-  /* Figma design colors - exact variable names from Figma */
+  /* Figma design colors */
+  --pastels-polar-200: #f2fcfb;
   --dark-neutral-200: #a28b8a;
   --dark-neutral-300: #8e7777;
   --dark-neutral-400: #786767;
@@ -59,6 +47,7 @@
   --success-500: #17b26a;
   --tundora-300: #6c6060;
   --tundora-50: #9c8686;
+  --stone-100: #f5f0ee;
   --stone-700: #4c4646;
 }
 @layer base {

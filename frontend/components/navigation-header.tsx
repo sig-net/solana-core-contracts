@@ -27,7 +27,7 @@ export function NavigationHeader({
   return (
     <header
       className={cn(
-        'w-full h-20 bg-header-bg border-b border-dark-neutral-50 ',
+        'w-full h-20 bg-stone-100 border-b border-dark-neutral-50 ',
         className,
       )}
     >

@@ -41,6 +41,10 @@
   --color-button-border: var(--button-border);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
+  --color-header-bg: var(--header-bg);
+  --color-header-border: var(--header-border);
+  --color-header-text-primary: var(--header-text-primary);
+  --color-header-text-secondary: var(--header-text-secondary);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -85,6 +89,10 @@
   --button-border: #786767;
   --text-primary: #6c6060;
   --text-secondary: #9c8686;
+  --header-bg: #f5f0ee;
+  --header-border: #c6b3b2;
+  --header-text-primary: #4c4646;
+  --header-text-secondary: #a28b8a;
 }
 @layer base {
   * {

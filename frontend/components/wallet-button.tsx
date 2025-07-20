@@ -30,7 +30,7 @@ export function WalletButton() {
     return (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant='outline' className='gap-2'>
+          <Button variant='outline' className='gap-2 font-medium'>
             <Wallet className='h-4 w-4' />
             {formatAddress(publicKey.toString(), 4, 4)}
             <ChevronDown className='h-3 w-3' />
@@ -54,7 +54,7 @@ export function WalletButton() {
   }
 
   return (
-    <Button onClick={() => setVisible(true)}>
+    <Button onClick={() => setVisible(true)} className='font-medium'>
       <Wallet className='h-4 w-4 mr-2' />
       Connect Wallet
     </Button>

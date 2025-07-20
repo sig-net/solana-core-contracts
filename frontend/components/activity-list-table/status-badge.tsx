@@ -6,8 +6,8 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status }: StatusBadgeProps) {
   const variants = {
-    pending: 'bg-table-badge-success border-border',
-    completed: 'bg-table-badge-bg border-border',
+    pending: 'bg-colors-pastels-polar-100 border-colors-dark-neutral-50',
+    completed: 'bg-colors-pastels-polar-100 border-colors-dark-neutral-50',
   } as const;
 
   return (
@@ -17,8 +17,8 @@ export function StatusBadge({ status }: StatusBadgeProps) {
         variants[status],
       )}
     >
-      <div className='w-2 h-2 rounded-full bg-green-500' />
-      <span className='text-xs font-medium  text-text-secondary'>
+      <div className='w-2 h-2 rounded-full bg-success-500' />
+      <span className='text-xs font-medium text-colors-dark-neutral-500'>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     </div>

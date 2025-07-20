@@ -20,20 +20,20 @@ export function BalanceBox({
   return (
     <div
       className={cn(
-        'flex items-center justify-between py-5 border-t border-dark-neutral-200 w-full',
+        'flex items-center justify-between py-5 border-t border-colors-dark-neutral-200 w-full',
         className,
       )}
     >
       <div className='flex gap-8'>
         <div className='flex flex-col gap-2'>
-          <div className='text-3xl font-light text-text-primary'>{amount}</div>
-          <div className='text-sm font-semibold text-text-secondary'>
+          <div className='text-3xl font-light text-tundora-300'>{amount}</div>
+          <div className='text-sm font-semibold text-tundora-50'>
             {usdValue}
           </div>
         </div>
         <div className='flex items-center gap-4'>
           {icon}
-          <span className='text-base font-bold text-text-primary'>
+          <span className='text-base font-bold text-tundora-300'>
             {tokenSymbol}
           </span>
         </div>

@@ -1,18 +1,20 @@
 'use client';
 
+import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 import { NavigationHeader } from '@/components/navigation-header';
 import { BalanceDisplay } from '@/components/balance-display';
-import { BalancesSectionHeader } from '@/components/balance-display/balance-section-header';
 import { SwapWidget } from '@/components/swap-widget';
 import { ActivityListTable } from '@/components/activity-list-table';
 import { WelcomeScreen } from '@/components/welcome-screen';
+import { DepositDialog } from '@/components/deposit-dialog';
 import { useUserBalances } from '@/hooks';
 
 export default function Home() {
   const { publicKey } = useWallet();
   const { data: userBalances = [] } = useUserBalances();
+  const [isDepositDialogOpen, setIsDepositDialogOpen] = useState(false);
 
   const totalBalance = userBalances.reduce((sum, balance) => {
     return sum + BigInt(balance.amount || 0);
@@ -23,7 +25,7 @@ export default function Home() {
   };
 
   const handleDepositClick = () => {
-    console.log('Deposit clicked');
+    setIsDepositDialogOpen(true);
   };
 
   const demoMode = true;
@@ -71,6 +73,11 @@ export default function Home() {
         </div>
         <SwapWidget className='w-90' />
       </div>
+
+      <DepositDialog
+        open={isDepositDialogOpen}
+        onOpenChange={setIsDepositDialogOpen}
+      />
     </div>
   );
 }

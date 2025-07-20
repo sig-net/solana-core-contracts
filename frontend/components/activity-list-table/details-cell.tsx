@@ -1,5 +1,7 @@
 import { ArrowRight, WalletIcon } from 'lucide-react';
+
 import { TokenDisplay } from './token-display';
+
 import { ActivityTransaction } from './index';
 
 interface DetailsCellProps {

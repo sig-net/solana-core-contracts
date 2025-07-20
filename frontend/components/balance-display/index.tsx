@@ -7,37 +7,43 @@ import { cn } from '@/lib/utils';
 import { BalanceBox } from './balance-box';
 import { CryptoIcon } from './crypto-icon';
 
+interface Token {
+  balance: bigint;
+  token: string;
+  chain: string;
+  decimals: number;
+}
+
 interface BalanceDisplayProps {
-  balance?: bigint;
-  symbol?: string;
-  decimals?: number;
+  tokens: Token[];
   className?: string;
 }
 
 export function BalanceDisplay({
-  balance = BigInt(0),
-  symbol: _symbol = 'SOL',
-  decimals = 9,
-  className,
+  tokens,
+  className = '',
 }: BalanceDisplayProps) {
-  const formattedBalance = formatUnits(balance, decimals);
-  const displayAmount = parseFloat(formattedBalance).toFixed(1);
-
   return (
-    <div className={cn('flex items-stretch gap-[42px] w-full', className)}>
-      <BalanceBox
-        amount={displayAmount || '1.8'}
-        usdValue='$5387.89'
-        tokenSymbol='SOL'
-        icon={<CryptoIcon chain='solana' token='SOL' />}
-      />
+    <div className={cn('grid md:grid-cols-2 gap-10 w-full', className)}>
+      {tokens.map((tokenData, index) => {
+        const formattedBalance = formatUnits(
+          tokenData.balance,
+          tokenData.decimals,
+        );
+        const displayAmount = parseFloat(formattedBalance).toFixed(1);
 
-      <BalanceBox
-        amount='1.8'
-        usdValue='$5387.89'
-        tokenSymbol='ETH'
-        icon={<CryptoIcon chain='ethereum' token='ETH' />}
-      />
+        return (
+          <BalanceBox
+            key={`${tokenData.chain}-${tokenData.token}-${index}`}
+            amount={displayAmount}
+            usdValue='$5387.89'
+            tokenSymbol={tokenData.token}
+            icon={
+              <CryptoIcon chain={tokenData.chain} token={tokenData.token} />
+            }
+          />
+        );
+      })}
     </div>
   );
 }

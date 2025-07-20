@@ -5,7 +5,7 @@ import { ArrowUpDown, Send } from 'lucide-react';
 
 export function ActionButtons() {
   return (
-    <div className='flex items-center gap-3'>
+    <div className='flex items-center gap-4'>
       <Button variant='default' size='default'>
         <ArrowUpDown className='h-3 w-3' />
         Swap

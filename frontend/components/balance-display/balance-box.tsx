@@ -10,12 +10,16 @@ export function BalanceBox({
   tokenSymbol,
   icon,
   className,
+  onSwapClick,
+  onSendClick,
 }: {
   amount: string;
   usdValue: string;
   tokenSymbol: string;
   icon: React.ReactNode;
   className?: string;
+  onSwapClick?: () => void;
+  onSendClick?: () => void;
 }) {
   return (
     <div
@@ -38,7 +42,7 @@ export function BalanceBox({
           </span>
         </div>
       </div>
-      <ActionButtons />
+      <ActionButtons onSwapClick={onSwapClick} onSendClick={onSendClick} />
     </div>
   );
 }

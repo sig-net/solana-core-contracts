@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 
 import { cn } from '@/lib/utils';
-import { CryptoIcon } from '@/components/balance-display/crypto-icon';
 
 interface QRCodeProps {
   /** The value to encode in the QR code */

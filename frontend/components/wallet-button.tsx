@@ -37,14 +37,7 @@ export function WalletButton() {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end'>
-          <DropdownMenuItem
-            onClick={() => {
-              navigator.clipboard.writeText(publicKey.toString());
-            }}
-          >
-            Copy Address
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={disconnect} className='text-destructive'>
+          <DropdownMenuItem onClick={disconnect} className='text-red-500'>
             <LogOut className='h-4 w-4 mr-2' />
             Disconnect
           </DropdownMenuItem>

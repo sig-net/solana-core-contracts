@@ -39,6 +39,8 @@
   --color-button-primary: var(--button-primary);
   --color-button-secondary: var(--button-secondary);
   --color-button-border: var(--button-border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -81,6 +83,8 @@
   --button-primary: #eaeec9;
   --button-secondary: #f2e0c5;
   --button-border: #786767;
+  --text-primary: #6c6060;
+  --text-secondary: #9c8686;
 }
 @layer base {
   * {

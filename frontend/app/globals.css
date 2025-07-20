@@ -49,6 +49,15 @@
   --color-table-badge-bg: var(--table-badge-bg);
   --color-table-badge-success: var(--table-badge-success);
   --color-address-text: var(--address-text);
+  --color-tundora-400: var(--color-tundora-400);
+  --color-dark-neutral-300: var(--color-dark-neutral-300);
+  --color-dark-neutral-500: var(--color-dark-neutral-500);
+  --color-dark-neutral-400: var(--color-dark-neutral-400);
+  --color-dark-neutral-100: var(--color-dark-neutral-100);
+  --color-pastels-green-white-200: var(--color-pastels-green-white-200);
+  --color-pastels-mercury-100: var(--color-pastels-mercury-100);
+  --color-dark-neutral-50: var(--color-dark-neutral-50);
+  --color-disabled-text: var(--color-disabled-text);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -102,6 +111,17 @@
   --table-badge-bg: #f6fdfd;
   --table-badge-success: #f2fcfb;
   --address-text: #4a5468;
+  
+  /* Figma design colors */
+  --color-tundora-400: #5c5353;
+  --color-dark-neutral-300: #8e7777;
+  --color-dark-neutral-500: #625757;
+  --color-dark-neutral-400: #786767;
+  --color-dark-neutral-100: #b49e9e;
+  --color-pastels-green-white-200: #f0f4f0;
+  --color-pastels-mercury-100: #f9f6f6;
+  --color-dark-neutral-50: #c6b3b2;
+  --color-disabled-text: #cbb7ad;
 }
 @layer base {
   * {

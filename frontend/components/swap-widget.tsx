@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { TokenMetadata } from '@/lib/constants/token-metadata';
 
-// TypeScript interfaces for the component
 interface SwapWidgetProps {
   className?: string;
   availableTokens?: TokenMetadata[];
@@ -41,7 +40,6 @@ interface SwapState {
   isSwapping: boolean;
 }
 
-// Token Input Component matching Figma design
 function TokenInput({
   amount,
   onAmountChange,
@@ -53,7 +51,7 @@ function TokenInput({
 }: TokenInputProps) {
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Allow only numbers and single decimal point
+
     if (/^\d*\.?\d*$/.test(value)) {
       onAmountChange(value);
     }
@@ -62,11 +60,11 @@ function TokenInput({
   return (
     <div
       className={cn(
-        'rounded-[2px] border border-[#B49E9E] p-5 bg-transparent',
-        error && 'border-red-500',
+        'rounded-sm border border-dark-neutral-100 p-5 bg-transparent relative',
+        error && 'border-destructive',
       )}
     >
-      <div className='flex items-center justify-between gap-3'>
+      <div className='flex items-center justify-between'>
         <div className='flex-1'>
           <Input
             type='text'
@@ -75,27 +73,28 @@ function TokenInput({
             placeholder={placeholder}
             disabled={disabled}
             className={cn(
-              'border-0 bg-transparent p-0 text-[24px] font-light text-[#625757] placeholder:text-[#625757] focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0',
-              'font-mono leading-[36px]', // Test Söhne Mono equivalent with proper line height
+              'border-0 bg-transparent p-0 text-2xl text-dark-neutral-500 placeholder:text-dark-neutral-500',
+              'focus:ring-0 focus-visible:ring-0 focus-visible:ring-offset-0',
+              'font-mono leading-[1.5] font-light',
             )}
             style={{ fontWeight: 300 }}
           />
         </div>
 
-        <div className='rounded-md bg-white px-[10px] py-[10px] border border-gray-200'>
+        <div className='flex items-center gap-2.5 p-2.5'>
           <Button
             onClick={onTokenSelect}
             disabled={disabled}
             variant='ghost'
             className={cn(
-              'h-auto p-0 text-[#625757] hover:bg-transparent flex items-center gap-2',
-              !selectedToken && 'text-[#625757]',
+              'h-auto p-0 text-dark-neutral-400 hover:bg-transparent flex items-center gap-2.5 text-base font-medium',
+              !selectedToken && 'text-dark-neutral-400',
             )}
           >
-            <span className='text-sm font-medium'>
-              {selectedToken ? selectedToken.symbol : 'Select'}
+            <span className='whitespace-pre leading-[19px]'>
+              {selectedToken ? selectedToken.symbol : 'Select Token'}
             </span>
-            <ChevronDown className='h-4 w-4' />
+            <ChevronDown className='h-5 w-5' />
           </Button>
         </div>
       </div>
@@ -103,14 +102,8 @@ function TokenInput({
   );
 }
 
-export function SwapWidget({
-  className,
-  onSwap,
-  onTokenSelect,
-  loading = false,
-  error = null,
-}: SwapWidgetProps) {
-  const [swapState, setSwapState] = useState<SwapState>({
+export function SwapWidget({ className }: Pick<SwapWidgetProps, 'className'>) {
+  const [swapState] = useState<SwapState>({
     fromToken: null,
     toToken: null,
     fromAmount: '',
@@ -118,141 +111,90 @@ export function SwapWidget({
     isSwapping: false,
   });
 
-  const handleFromAmountChange = (amount: string) => {
-    setSwapState(prev => ({ ...prev, fromAmount: amount }));
-    // TODO: Calculate toAmount based on exchange rate
-  };
+  const isSwapSupported = false;
 
-  const handleToAmountChange = (amount: string) => {
-    setSwapState(prev => ({ ...prev, toAmount: amount }));
-    // TODO: Calculate fromAmount based on exchange rate
-  };
+  const handleFromAmountChange = () => {};
 
-  const handleTokenSelect = (side: 'from' | 'to') => {
-    // For now, just cycle through available tokens or implement a dropdown
-    console.log(`Token select for ${side} side`);
-    onTokenSelect?.(null, side);
-  };
+  const handleToAmountChange = () => {};
 
-  const handleSwapDirection = () => {
-    setSwapState(prev => ({
-      ...prev,
-      fromToken: prev.toToken,
-      toToken: prev.fromToken,
-      fromAmount: prev.toAmount,
-      toAmount: prev.fromAmount,
-    }));
-  };
+  const handleTokenSelect = () => {};
 
-  const handleSwap = () => {
-    if (!swapState.fromToken || !swapState.toToken || !swapState.fromAmount) {
-      return;
-    }
+  const handleSwap = () => {};
 
-    setSwapState(prev => ({ ...prev, isSwapping: true }));
-    onSwap?.(
-      swapState.fromToken,
-      swapState.toToken,
-      swapState.fromAmount,
-      swapState.toAmount,
-    );
-  };
-
-  const isSwapDisabled =
-    !swapState.fromToken ||
-    !swapState.toToken ||
-    !swapState.fromAmount ||
-    loading ||
-    swapState.isSwapping;
+  const isSwapDisabled = true;
 
   return (
     <div
       className={cn(
-        'w-[413px] rounded-2xl border-[0.5px] border-[#C6B3B2] bg-gradient-to-b from-[#F0F4F0] to-[#F9F6F6] p-10',
-        'flex flex-col items-center gap-5',
+        'relative bg-gradient-to-b from-pastels-green-white-200 to-pastels-mercury-100',
+        'border-[0.5px] border-dark-neutral-50 flex flex-col items-center',
         className,
       )}
     >
-      {/* Header section matching Frame 37 */}
-      <div className='flex w-full items-center justify-between'>
-        <h2
-          className='text-xl font-semibold text-[#5C5353]'
-          style={{
-            fontSize: '20px',
-            fontWeight: 600,
-            fontFamily: 'var(--)', // Using Elza Text equivalent
-          }}
-        >
-          Swap
-        </h2>
+      <div className='flex flex-col gap-5 items-center justify-start p-10 w-full'>
+        {/* Header section matching Figma exactly */}
+        <div className='flex items-center justify-between w-full'>
+          <h2 className='text-xl font-semibold text-tundora-400 leading-normal'>
+            Swap
+          </h2>
 
-        <Button
-          variant='ghost'
-          size='icon'
-          className='h-8 w-8 p-0 hover:bg-transparent'
-          onClick={() => console.log('Settings clicked')}
-        >
-          <Settings className='h-8 w-8 stroke-[#8E7777]' strokeWidth={1.5} />
-        </Button>
-      </div>
-
-      {/* Token input sections */}
-      <div className='w-full space-y-5'>
-        <TokenInput
-          amount={swapState.fromAmount}
-          onAmountChange={handleFromAmountChange}
-          selectedToken={swapState.fromToken}
-          onTokenSelect={() => handleTokenSelect('from')}
-          disabled={loading}
-          placeholder='0'
-        />
-
-        {/* Arrow down icon between sections */}
-        <div className='flex justify-center'>
           <Button
-            onClick={handleSwapDirection}
             variant='ghost'
             size='icon'
             className='h-8 w-8 p-0 hover:bg-transparent'
-            disabled={loading}
+            onClick={() => console.log('Settings clicked')}
+            disabled={!isSwapSupported}
           >
-            <ArrowDown className='h-8 w-8 fill-[#8E7777] stroke-none' />
+            <Settings
+              className='h-8 w-8 stroke-dark-neutral-300'
+              strokeWidth={1.5}
+            />
           </Button>
         </div>
 
-        <TokenInput
-          amount={swapState.toAmount}
-          onAmountChange={handleToAmountChange}
-          selectedToken={swapState.toToken}
-          onTokenSelect={() => handleTokenSelect('to')}
-          disabled={loading}
-          placeholder='0'
-        />
+        {/* Token input sections */}
+        <div className='w-full'>
+          <TokenInput
+            amount={swapState.fromAmount}
+            onAmountChange={handleFromAmountChange}
+            selectedToken={swapState.fromToken}
+            onTokenSelect={handleTokenSelect}
+            disabled={!isSwapSupported}
+            placeholder='0'
+          />
+        </div>
+
+        {/* Arrow down icon between sections */}
+        <div className='flex justify-center'>
+          <ArrowDown className='h-8 w-8 text-dark-neutral-300' />
+        </div>
+
+        <div className='flex flex-col gap-1.5 items-center justify-start w-full'>
+          <TokenInput
+            amount={swapState.toAmount}
+            onAmountChange={handleToAmountChange}
+            selectedToken={swapState.toToken}
+            onTokenSelect={handleTokenSelect}
+            disabled={!isSwapSupported}
+            placeholder='0'
+          />
+        </div>
+
+        {/* Disabled swap button exactly matching Figma */}
+        <div className='bg-disabled-bg relative rounded-sm w-full'>
+          <Button
+            onClick={handleSwap}
+            disabled={isSwapDisabled}
+            className={cn(
+              'w-full rounded-sm border border-disabled-text bg-transparent text-disabled-text hover:bg-transparent',
+              'flex items-center justify-center px-[18px] py-3 gap-1.5',
+              'text-sm font-medium leading-5',
+            )}
+          >
+            Button CTA
+          </Button>
+        </div>
       </div>
-
-      {/* Error message */}
-      {error && (
-        <div className='w-full text-center text-sm text-red-500'>{error}</div>
-      )}
-
-      {/* Swap button */}
-      <Button
-        onClick={handleSwap}
-        disabled={isSwapDisabled}
-        className={cn(
-          'w-full h-[58px] rounded-md border border-[#D5C4BB] bg-[#F5F0EE] text-[#D5C4BB] hover:bg-[#F5F0EE]/90',
-          'text-lg font-semibold',
-          !isSwapDisabled &&
-            'bg-[#5C5353] text-white border-[#5C5353] hover:bg-[#5C5353]/90',
-        )}
-        style={{
-          fontSize: '18px',
-          fontWeight: 600,
-          fontFamily: 'Inter, sans-serif',
-        }}
-      >
-        {swapState.isSwapping ? 'Swapping...' : 'Swap'}
-      </Button>
     </div>
   );
 }

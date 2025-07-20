@@ -28,7 +28,7 @@ export const COLUMN_WIDTHS = {
   details: 'flex-1',
   timestamp: 'w-50',
   status: 'w-32',
-  explorer: 'w-40',
+  explorer: 'w-25',
 } as const;
 
 interface ActivityListTableProps {
@@ -37,7 +37,7 @@ interface ActivityListTableProps {
 
 export function ActivityListTable({ className }: ActivityListTableProps) {
   return (
-    <div className={cn('relative w-full', className)}>
+    <div className={cn('w-full', className)}>
       <div className='flex flex-col'>
         {/* Headers */}
         <div className='flex w-full'>
@@ -45,9 +45,7 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
           <TableHeader width={COLUMN_WIDTHS.details}>Details</TableHeader>
           <TableHeader width={COLUMN_WIDTHS.timestamp}>Timestamp</TableHeader>
           <TableHeader width={COLUMN_WIDTHS.status}>Status</TableHeader>
-          <TableHeader width={COLUMN_WIDTHS.explorer}>
-            Block Explorer
-          </TableHeader>
+          <TableHeader width={COLUMN_WIDTHS.explorer}>Explorer</TableHeader>
         </div>
 
         {/* Rows */}

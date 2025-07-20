@@ -22,7 +22,7 @@ export function ActivityRow({ transaction }: ActivityRowProps) {
       </TableCell>
 
       <TableCell width={COLUMN_WIDTHS.timestamp}>
-        <div className=' font-medium text-sm leading-5 text-header-text-primary'>
+        <div className=' font-medium text-sm leading-5 text-stone-700'>
           {transaction.timestamp}
         </div>
       </TableCell>

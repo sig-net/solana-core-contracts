@@ -14,7 +14,7 @@ const buttonVariants = cva(
         secondary:
           'bg-button-secondary border-dark-neutral-400 text-dark-neutral-400 hover:bg-button-secondary/90 active:bg-button-secondary/80',
         ghost:
-          'border-transparent hover:bg-accent hover:text-accent-foreground',
+          'border-transparent hover:bg-accent hover:text-stone-700',
         outline:
           'bg-pastels-polar-200 border-dark-neutral-400 text-dark-neutral-400',
       },

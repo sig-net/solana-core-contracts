@@ -47,7 +47,7 @@ export function NavigationHeader({
           <span className='text-dark-neutral-200 text-xs font-medium uppercase tracking-wider'>
             Total Balance
           </span>
-          <span className='text-header-tundora-3000 text-2xl font-light font-mono'>
+          <span className='text-stone-700 text-2xl font-light font-mono'>
             {displayBalance}
           </span>
         </div>
@@ -58,7 +58,7 @@ export function NavigationHeader({
             variant='ghost'
             size='icon'
             onClick={onSettingsClick}
-            className='h-10 w-10 text-header-tundora-3000 hover:bg-header-tundora-3000/10'
+            className='h-10 w-10 text-stone-700 hover:bg-stone-700/10'
             aria-label='Settings'
           >
             <Settings className='h-5 w-5' />

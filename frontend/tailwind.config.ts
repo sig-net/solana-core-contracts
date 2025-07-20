@@ -16,6 +16,7 @@ export default {
         'dark-neutral': {
           50: '#c6b3b2',
           100: '#b49e9e',
+          200: '#a28b8a',
           300: '#8e7777',
           400: '#786767',
           500: '#625757',
@@ -26,6 +27,9 @@ export default {
           },
           'mercury': {
             100: '#f9f6f6',
+          },
+          'mint': {
+            100: '#f2fcfb',
           },
         },
         'disabled': {

@@ -20,7 +20,7 @@ export function BalanceBox({
   return (
     <div
       className={cn(
-        'flex items-center justify-between py-5 border-t border-neutral-400 w-full',
+        'flex items-center justify-between py-5 border-t border-dark-neutral-200 w-full',
         className,
       )}
     >

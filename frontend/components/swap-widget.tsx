@@ -180,7 +180,7 @@ export function SwapWidget({
           style={{
             fontSize: '20px',
             fontWeight: 600,
-            fontFamily: 'var(--font-sans)', // Using Elza Text equivalent
+            fontFamily: 'var(--)', // Using Elza Text equivalent
           }}
         >
           Swap

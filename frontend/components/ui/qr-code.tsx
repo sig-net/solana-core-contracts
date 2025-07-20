@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import QRCode from 'qrcode';
 
 import { cn } from '@/lib/utils';
+import { CryptoIcon } from '@/components/balance-display/crypto-icon';
 
 interface QRCodeProps {
   /** The value to encode in the QR code */
@@ -18,6 +19,10 @@ interface QRCodeProps {
   errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';
   /** Margin around the QR code */
   margin?: number;
+  /** Show network icon in center */
+  showNetworkIcon?: boolean;
+  /** Token symbol for network icon */
+  tokenSymbol?: string;
 }
 
 // QR code colors - always black for better scanning
@@ -35,6 +40,8 @@ export function QRCodeComponent({
   network = 'default',
   errorCorrectionLevel = 'M',
   margin = 2,
+  showNetworkIcon = false,
+  tokenSymbol,
 }: QRCodeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isGenerating, setIsGenerating] = useState(true);

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Copy, Check, ArrowLeft } from 'lucide-react';
+import { Copy, Check, ArrowLeft, Eye } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { QRCode } from '@/components/ui/qr-code';
@@ -35,62 +35,77 @@ export function DepositAddress({
     handleCopy();
   };
 
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
   return (
-    <div className='space-y-6'>
-      {/* Deposit Address */}
-      <div className='space-y-3'>
-        <div className='flex items-center gap-3 p-4 bg-pastels-polar-200 rounded-sm border border-dark-neutral-50'>
-          <code className='flex-1 font-mono text-sm text-dark-neutral-500 font-medium'>
-            {depositAddress}
-          </code>
-          <Button
-            variant='ghost'
-            size='sm'
-            onClick={handleCopy}
-            className={cn(
-              'h-8 w-8 p-0 shrink-0 text-dark-neutral-300 hover:text-dark-neutral-500 hover:bg-white/60',
-              copied && 'text-success-500',
-            )}
-          >
-            {copied ? (
-              <Check className='h-4 w-4' />
-            ) : (
-              <Copy className='h-4 w-4' />
-            )}
-          </Button>
-        </div>
-
-        {/* QR Code */}
-        <div className='flex justify-center'>
-          <div
-            className='inline-block cursor-pointer transition-transform hover:scale-105'
-            onClick={handleQRClick}
-            role='button'
-            tabIndex={0}
-            onKeyDown={e => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                handleQRClick();
-              }
-            }}
-          >
-            <QRCode
-              value={depositAddress}
-              size={200}
-              network={token.chain}
-              className='mx-auto'
-              errorCorrectionLevel='M'
-            />
-          </div>
-        </div>
-
-        {/* Copy Feedback */}
-        {copied && (
-          <p className='text-xs text-success-500 text-center font-medium'>
-            Address copied to clipboard
+    <div className='space-y-8'>
+      {/* Header */}
+      <div className='flex items-center gap-3'>
+        <Button variant='ghost' size='icon' onClick={onBack}>
+          <ArrowLeft className='h-5 w-5' />
+        </Button>
+        <div>
+          <h3 className='text-tundora-300 text-xl font-semibold'>
+            Your {token.chainName} address
+          </h3>
+          <p className='text-dark-neutral-400 text-sm mt-1'>
+            Deposit to 💳 Wallet
           </p>
-        )}
+        </div>
       </div>
+
+      {/* QR Code Container */}
+      <div className='flex justify-center'>
+        <div className='bg-white rounded-2xl p-6 border border-dark-neutral-50 shadow-sm'>
+          <QRCode
+            value={depositAddress}
+            size={280}
+            network={token.chain}
+            tokenSymbol={token.symbol}
+            className='mx-auto'
+            errorCorrectionLevel='M'
+          />
+        </div>
+      </div>
+
+      {/* Address Display */}
+      <div className='flex items-center justify-center gap-3'>
+        <div className='flex items-center gap-3 bg-pastels-polar-200 rounded-full px-6 py-3 border border-dark-neutral-50'>
+          <Eye className='h-4 w-4 text-dark-neutral-400' />
+          <span className='text-tundora-300 font-mono text-sm font-medium'>
+            {formatAddress(depositAddress)}
+          </span>
+        </div>
+        <Button
+          variant='ghost'
+          size='icon'
+          onClick={handleCopy}
+          className={cn(
+            'h-12 w-12 rounded-full bg-pastels-polar-200 border border-dark-neutral-50 text-dark-neutral-400 hover:bg-pastels-polar-100 hover:text-tundora-300',
+            copied && 'text-success-500',
+          )}
+        >
+          {copied ? (
+            <Check className='h-5 w-5' />
+          ) : (
+            <Copy className='h-5 w-5' />
+          )}
+        </Button>
+      </div>
+
+      {/* Description */}
+      <p className='text-center text-dark-neutral-400 text-sm leading-relaxed'>
+        Use this address to deposit tokens and collectibles on {token.chainName}
+      </p>
+
+      {/* Copy Feedback */}
+      {copied && (
+        <p className='text-xs text-success-500 text-center font-medium'>
+          Address copied to clipboard
+        </p>
+      )}
     </div>
   );
 }

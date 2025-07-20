@@ -62,15 +62,11 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className='max-w-xl'>
-        <DialogHeader className='pb-2'>
-          <DialogTitle>
-            {step === 'select-token'
-              ? 'Deposit'
-              : isGeneratingAddress
-                ? 'Generating Address'
-                : 'Deposit Address'}
-          </DialogTitle>
-        </DialogHeader>
+        {step === 'select-token' && (
+          <DialogHeader className='pb-2'>
+            <DialogTitle>Deposit</DialogTitle>
+          </DialogHeader>
+        )}
 
         {step === 'select-token' && !isGeneratingAddress && (
           <TokenSelection

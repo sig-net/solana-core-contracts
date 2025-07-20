@@ -4,6 +4,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 
 import { NavigationHeader } from '@/components/navigation-header';
 import { BalanceDisplay } from '@/components/balance-display';
+import { BalancesSectionHeader } from '@/components/balance-display/balance-section-header';
 import { SwapWidget } from '@/components/swap-widget';
 import { ActivityListTable } from '@/components/activity-list-table';
 import { WelcomeScreen } from '@/components/welcome-screen';
@@ -19,6 +20,10 @@ export default function Home() {
 
   const handleSettingsClick = () => {
     console.log('Settings clicked');
+  };
+
+  const handleDepositClick = () => {
+    console.log('Deposit clicked');
   };
 
   const demoMode = true;
@@ -60,6 +65,7 @@ export default function Home() {
                 decimals: 18,
               },
             ]}
+            onDepositClick={handleDepositClick}
           />
           <ActivityListTable />
         </div>

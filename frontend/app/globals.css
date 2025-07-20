@@ -2,35 +2,20 @@
 @import 'tw-animate-css';
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --: var(--font-inter);
   --font-mono: var(--font-jetbrains-mono);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
   --color-input: var(--input);
   --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
   --color-pastels-polar-200: var(--pastels-polar-200);
   --color-button-primary: var(--button-primary);
   --color-button-secondary: var(--button-secondary);
   --color-header-bg: var(--header-bg);
-  --color-header-text-primary: var(--header-text-primary);
   --color-address-text: var(--address-text);
   --color-dark-neutral-200: var(--dark-neutral-200);
   --color-dark-neutral-300: var(--dark-neutral-300);
@@ -41,6 +26,7 @@
   --color-success-500: var(--success-500);
   --color-tundora-300: var(--tundora-300);
   --color-tundora-50: var(--tundora-50);
+  --color-stone-700: var(--stone-700);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -49,32 +35,17 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #ffffff;
-  --foreground: #4c4646;
-  --card: #ffffff;
-  --card-foreground: #4c4646;
-  --popover: #ffffff;
-  --popover-foreground: #4c4646;
-  --primary: #4c4646;
-  --primary-foreground: #ffffff;
   --secondary: #f7f6f3;
-  --secondary-foreground: #4c4646;
   --muted: #f5f0ee;
   --muted-foreground: #6b7280;
   --accent: #f0f4f0;
-  --accent-foreground: #4c4646;
   --destructive: #ef4444;
   --input: #e5e7eb;
   --sidebar: #f5f0ee;
-  --sidebar-foreground: #4c4646;
-  --sidebar-primary: #4c4646;
-  --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #f0f4f0;
-  --sidebar-accent-foreground: #4c4646;
   --button-primary: #eaeec9;
   --button-secondary: #f2e0c5;
   --header-bg: #f5f0ee;
-  --header-text-primary: #4c4646;
   --address-text: #4a5468;
   --pastels-polar-200: #f2fcfb;
 
@@ -88,13 +59,14 @@
   --success-500: #17b26a;
   --tundora-300: #6c6060;
   --tundora-50: #9c8686;
+  --stone-700: #4c4646;
 }
 @layer base {
   * {
     @apply border-dark-neutral-50 outline-dark-neutral-50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-white text-stone-700;
   }
 
   /* Base typography styles */

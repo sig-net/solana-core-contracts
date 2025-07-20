@@ -5,7 +5,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { NavigationHeader } from '@/components/navigation-header';
 import { BalanceDisplay } from '@/components/balance-display';
 import { SwapWidget } from '@/components/swap-widget';
-import { ActivityList } from '@/components/activity-list';
+import { ActivityListTable } from '@/components/activity-list-table';
 import { WelcomeScreen } from '@/components/welcome-screen';
 import { useUserBalances } from '@/hooks';
 
@@ -60,9 +60,7 @@ export default function Home() {
             },
           ]}
         />
-        <div className='w-full max-w-[867px]'>
-          <ActivityList />
-        </div>
+        <ActivityListTable />
         <div className='hidden xl:flex w-[413px] flex-col border-l border-[#C6B3B2]'>
           <div className='flex flex-col pt-[80px] pb-[67px] px-4 gap-2.5'>
             <SwapWidget className='w-full' />

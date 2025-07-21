@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { formatUnits } from 'viem';
 
-import { cn } from '@/lib/utils';
+import { cn, calculateUsdValue, formatUsdValue } from '@/lib/utils';
 import { DepositDialog } from '@/components/deposit-dialog';
 import { WithdrawDialog, WithdrawToken } from '@/components/withdraw-dialog';
+import { useTokenPrices } from '@/hooks/use-token-prices';
 
 import { BalanceBox } from './balance-box';
 import { CryptoIcon } from './crypto-icon';
@@ -31,6 +32,10 @@ export function BalanceDisplay({
   const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   const [selectedTokenForWithdraw, setSelectedTokenForWithdraw] =
     useState<WithdrawToken | null>(null);
+
+  // Get unique token symbols for price fetching
+  const tokenSymbols = [...new Set(tokens.map(token => token.token))];
+  const { data: tokenPrices } = useTokenPrices(tokenSymbols);
 
   // Convert tokens to withdraw format
   const withdrawTokens: WithdrawToken[] = tokens.map(token => {
@@ -61,6 +66,13 @@ export function BalanceDisplay({
           );
           const displayAmount = parseFloat(formattedBalance).toFixed(1);
 
+          // Calculate USD value
+          const tokenPrice = tokenPrices?.[tokenData.token.toUpperCase()];
+          const usdValue = tokenPrice
+            ? calculateUsdValue(tokenData.balance.toString(), tokenData.decimals, tokenPrice.usd)
+            : 0;
+          const formattedUsdValue = formatUsdValue(usdValue);
+
           // Find corresponding withdraw token
           const withdrawToken = withdrawTokens.find(
             wt => wt.symbol === tokenData.token && wt.chain === tokenData.chain,
@@ -77,7 +89,7 @@ export function BalanceDisplay({
             <BalanceBox
               key={`${tokenData.chain}-${tokenData.token}-${index}`}
               amount={displayAmount}
-              usdValue='$5387.89'
+              usdValue={formattedUsdValue}
               tokenSymbol={tokenData.token}
               icon={
                 <CryptoIcon chain={tokenData.chain} token={tokenData.token} />

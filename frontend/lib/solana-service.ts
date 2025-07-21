@@ -192,9 +192,7 @@ export class SolanaService {
       });
 
       const results = await Promise.all(balancesPromises);
-      return results.filter(
-        (result): result is TokenBalance => result !== null,
-      );
+      return results.filter(result => result !== null);
     } catch (error) {
       console.error('Failed to fetch user balances:', error);
       throw new Error(

@@ -12,12 +12,14 @@ interface DepositAddressProps {
   token: DepositToken;
   onBack: () => void;
   depositAddress: string;
+  onContinue?: () => void;
 }
 
 export function DepositAddress({
   token,
   onBack,
   depositAddress,
+  onContinue,
 }: DepositAddressProps) {
   const [copied, setCopied] = useState(false);
 
@@ -101,6 +103,25 @@ export function DepositAddress({
         <p className='text-xs text-success-500 text-center font-medium'>
           Address copied to clipboard
         </p>
+      )}
+
+      {/* Continue Button */}
+      {onContinue && (
+        <div className="flex gap-3 pt-4">
+          <Button
+            onClick={onBack}
+            variant="outline"
+            className="flex-1"
+          >
+            Back
+          </Button>
+          <Button
+            onClick={onContinue}
+            className="flex-1"
+          >
+            I've sent the tokens
+          </Button>
+        </div>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 import {
   Dialog,
@@ -9,81 +10,171 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { DepositToken } from '@/lib/constants/deposit-tokens';
+import { useDepositAddress, useDepositErc20Mutation } from '@/hooks';
 
 import { TokenSelection } from './token-selection';
 import { DepositAddress } from './deposit-address';
 import { LoadingState } from './loading-state';
+import { AmountInput } from './amount-input';
+import { DepositProcessing, DepositStatus } from './deposit-processing';
 
 interface DepositDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-type DepositStep = 'select-token' | 'show-address';
+type DepositStep = 
+  | 'select-token' 
+  | 'generating-address' 
+  | 'show-address' 
+  | 'amount-input' 
+  | 'processing';
 
 export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
+  const { publicKey } = useWallet();
   const [step, setStep] = useState<DepositStep>('select-token');
   const [selectedToken, setSelectedToken] = useState<DepositToken | null>(null);
-  const [isGeneratingAddress, setIsGeneratingAddress] = useState(false);
+  const [depositAmount, setDepositAmount] = useState<string>('');
+  const [depositStatus, setDepositStatus] = useState<DepositStatus>('processing');
+  const [txHash, setTxHash] = useState<string>('');
+  const [error, setError] = useState<string>('');
 
-  // Mock deposit address - in real app this would be generated per user/token
-  const generateDepositAddress = (token: DepositToken): string => {
-    // This is a mock implementation
-    if (token.chain === 'ethereum') {
-      return '0x742d35cc6af58e9e3d8a8b6c4b8e5ff1ca7b2345';
-    } else if (token.chain === 'solana') {
-      return 'DRiP2Pn2K6fuMLKQmt5rZWxa91HWqnA5a5uoMQqk7uYy';
+  // Get deposit address for selected token
+  const { data: depositAddress, isLoading: isGeneratingAddress } = useDepositAddress(
+    selectedToken?.chain === 'ethereum' && publicKey ? publicKey : null
+  );
+
+  // Deposit mutation
+  const depositMutation = useDepositErc20Mutation();
+
+  const handleTokenSelect = (token: DepositToken) => {
+    if (token.chain !== 'ethereum') {
+      // For now, only support Ethereum tokens for bridging
+      return;
     }
-    return 'address-not-available';
+    
+    setSelectedToken(token);
+    setStep('generating-address');
+    
+    // Wait for address to be generated
+    if (depositAddress) {
+      setStep('show-address');
+    }
   };
 
-  const handleTokenSelect = async (token: DepositToken) => {
-    setSelectedToken(token);
-    setIsGeneratingAddress(true);
+  const handleContinueToAmount = () => {
+    setStep('amount-input');
+  };
 
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+  const handleAmountSet = (amount: string) => {
+    setDepositAmount(amount);
+    setStep('processing');
+    initiateDeposit(amount);
+  };
 
-    setIsGeneratingAddress(false);
-    setStep('show-address');
+  const initiateDeposit = async (amount: string) => {
+    if (!selectedToken || !publicKey) return;
+
+    try {
+      setError('');
+      setDepositStatus('processing');
+
+      await depositMutation.mutateAsync({
+        erc20Address: selectedToken.address,
+        amount,
+        onStatusChange: (status) => {
+          setDepositStatus(status.status as DepositStatus);
+          if (status.txHash) {
+            setTxHash(status.txHash);
+          }
+          if (status.error) {
+            setError(status.error);
+          }
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Deposit failed');
+      setDepositStatus('failed');
+    }
+  };
+
+  const handleRetryDeposit = () => {
+    if (depositAmount) {
+      initiateDeposit(depositAmount);
+    }
   };
 
   const handleBack = () => {
-    setStep('select-token');
-    setSelectedToken(null);
+    if (step === 'show-address' || step === 'generating-address') {
+      setStep('select-token');
+      setSelectedToken(null);
+    } else if (step === 'amount-input') {
+      setStep('show-address');
+    }
   };
 
   const handleClose = () => {
+    // Reset all state
     setStep('select-token');
     setSelectedToken(null);
+    setDepositAmount('');
+    setDepositStatus('processing');
+    setTxHash('');
+    setError('');
     onOpenChange(false);
   };
+
+  // When address is loaded, move to show-address step
+  if (step === 'generating-address' && depositAddress && !isGeneratingAddress) {
+    setStep('show-address');
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className='max-w-xl'>
         {step === 'select-token' && (
-          <DialogHeader className='pb-2'>
-            <DialogTitle>Deposit</DialogTitle>
-          </DialogHeader>
+          <>
+            <DialogHeader className='pb-2'>
+              <DialogTitle>Deposit Tokens</DialogTitle>
+            </DialogHeader>
+            <TokenSelection
+              onTokenSelect={handleTokenSelect}
+              selectedToken={selectedToken || undefined}
+            />
+          </>
         )}
 
-        {step === 'select-token' && !isGeneratingAddress && (
-          <TokenSelection
-            onTokenSelect={handleTokenSelect}
-            selectedToken={selectedToken || undefined}
-          />
-        )}
-
-        {isGeneratingAddress && selectedToken && (
+        {step === 'generating-address' && selectedToken && (
           <LoadingState token={selectedToken} />
         )}
 
-        {step === 'show-address' && selectedToken && !isGeneratingAddress && (
+        {step === 'show-address' && selectedToken && depositAddress && (
           <DepositAddress
             token={selectedToken}
             onBack={handleBack}
-            depositAddress={generateDepositAddress(selectedToken)}
+            depositAddress={depositAddress}
+            onContinue={handleContinueToAmount}
+          />
+        )}
+
+        {step === 'amount-input' && selectedToken && depositAddress && (
+          <AmountInput
+            token={selectedToken}
+            depositAddress={depositAddress}
+            onBack={handleBack}
+            onProceed={handleAmountSet}
+          />
+        )}
+
+        {step === 'processing' && selectedToken && (
+          <DepositProcessing
+            token={selectedToken}
+            amount={depositAmount}
+            status={depositStatus}
+            txHash={txHash}
+            error={error}
+            onRetry={handleRetryDeposit}
+            onClose={handleClose}
           />
         )}
       </DialogContent>

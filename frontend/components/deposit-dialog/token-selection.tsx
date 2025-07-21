@@ -26,7 +26,7 @@ export function TokenSelection({
             key={`${token.chain}-${token.address}-${index}`}
             onClick={() => onTokenSelect(token)}
             className={cn(
-              'w-full flex items-center gap-4 p-4 rounded-sm border transition-all text-left group hover:shadow-sm',
+              'w-full flex items-center gap-4 p-4 rounded-sm border transition-all text-left group hover:shadow-sm cursor-pointer',
               selectedToken?.address === token.address &&
                 selectedToken?.chain === token.chain
                 ? 'border-dark-neutral-400 bg-brand-100/20 shadow-sm'

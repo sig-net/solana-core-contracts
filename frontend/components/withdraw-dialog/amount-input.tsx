@@ -58,16 +58,8 @@ export function AmountInput({
 
     if (!receiverAddress.trim()) {
       newErrors.receiverAddress = 'Enter receiver address';
-    } else if (
-      selectedToken?.chain === 'ethereum' &&
-      !receiverAddress.match(/^0x[a-fA-F0-9]{40}$/)
-    ) {
-      newErrors.receiverAddress = 'Invalid Ethereum address';
-    } else if (
-      selectedToken?.chain === 'solana' &&
-      receiverAddress.length < 32
-    ) {
-      newErrors.receiverAddress = 'Invalid Solana address';
+    } else if (!receiverAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
+      newErrors.receiverAddress = 'Must be a valid Ethereum address';
     }
 
     setErrors(newErrors);
@@ -98,14 +90,14 @@ export function AmountInput({
   };
 
   return (
-    <div className='space-y-6'>
+    <div className='space-y-4'>
       {/* Token Selection */}
-      <div className='space-y-3'>
+      <div className='space-y-2'>
         <Label className='text-sm font-medium text-tundora-300'>Token</Label>
         <div className='relative'>
           <button
             onClick={() => setShowTokenDropdown(!showTokenDropdown)}
-            className='w-full flex items-center justify-between p-4 bg-pastels-polar-200 border border-dark-neutral-50 rounded-sm hover:border-dark-neutral-200 hover:bg-pastels-polar-100/30 transition-all focus-visible:ring-2 focus-visible:ring-dark-neutral-200 focus-visible:ring-offset-2'
+            className='w-full flex items-center justify-between p-3 bg-pastels-polar-200 border border-dark-neutral-50 rounded-sm hover:border-dark-neutral-200 hover:bg-pastels-polar-100/30 transition-all focus-visible:ring-2 focus-visible:ring-dark-neutral-200 focus-visible:ring-offset-2 cursor-pointer'
           >
             {selectedToken ? (
               <div className='flex items-center gap-3'>
@@ -136,7 +128,7 @@ export function AmountInput({
 
           {/* Token Dropdown */}
           {showTokenDropdown && (
-            <div className='absolute top-full left-0 right-0 mt-2 bg-white border border-dark-neutral-50 rounded-sm shadow-xl z-10 max-h-60 overflow-y-auto'>
+            <div className='absolute top-full left-0 right-0 mt-2 bg-white border border-dark-neutral-50 rounded-sm shadow-xl z-10 max-h-48 overflow-y-auto'>
               {availableTokens.map((token, index) => {
                 const isSelected =
                   selectedToken?.symbol === token.symbol &&
@@ -150,7 +142,7 @@ export function AmountInput({
                       setAmount('');
                     }}
                     className={cn(
-                      'w-full flex items-center gap-3 p-4 transition-all text-left',
+                      'w-full flex items-center gap-3 p-4 transition-all text-left cursor-pointer',
                       isSelected
                         ? 'bg-brand-100/20 border-l-2 border-brand-950'
                         : 'hover:bg-pastels-polar-100/30',
@@ -207,7 +199,7 @@ export function AmountInput({
             variant='ghost'
             size='sm'
             onClick={handleMaxClick}
-            className='absolute right-3 top-1/2 -translate-y-1/2 h-7 px-3 text-xs font-semibold text-dark-neutral-400 hover:text-tundora-300 hover:bg-brand-100/20 rounded border border-dark-neutral-50'
+            className='absolute right-3 top-1/2 -translate-y-1/2 h-7 px-3 text-xs font-semibold text-dark-neutral-400 hover:text-tundora-300 hover:bg-brand-100/20 rounded border border-dark-neutral-50 cursor-pointer'
           >
             MAX
           </Button>
@@ -237,13 +229,7 @@ export function AmountInput({
           Receiver Address
         </Label>
         <Input
-          placeholder={
-            selectedToken?.chain === 'ethereum'
-              ? '0x1234567890abcdef1234567890abcdef12345678'
-              : selectedToken?.chain === 'solana'
-                ? 'DRiP2Pn2K6fuMLKQmt5rZWxa91HWqnA5a5uoMQqk7uYy'
-                : 'Enter recipient address'
-          }
+          placeholder='0x1234567890abcdef1234567890abcdef12345678'
           value={receiverAddress}
           onChange={e => setReceiverAddress(e.target.value)}
           className={cn(
@@ -260,11 +246,11 @@ export function AmountInput({
             </p>
           </div>
         )}
-        {selectedToken && !errors.receiverAddress && receiverAddress && (
+        {!errors.receiverAddress && receiverAddress && (
           <div className='flex items-center gap-2 p-3 bg-pastels-polar-100 border border-dark-neutral-50 rounded-sm'>
             <div className='w-2 h-2 bg-success-500 rounded-full shrink-0'></div>
             <p className='text-xs text-dark-neutral-400 font-medium'>
-              Valid {selectedToken.chainName} address
+              Valid Ethereum address
             </p>
           </div>
         )}
@@ -274,7 +260,12 @@ export function AmountInput({
       <Button
         onClick={handleSubmit}
         disabled={!selectedToken || !amount || !receiverAddress}
-        className='w-full h-12 text-base font-semibold'
+        className={cn(
+          'w-full h-12 text-base font-semibold',
+          (!selectedToken || !amount || !receiverAddress) 
+            ? 'cursor-not-allowed' 
+            : 'cursor-pointer'
+        )}
         size='lg'
       >
         Continue

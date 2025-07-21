@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { CryptoIcon } from '@/components/balance-display/crypto-icon';
 import { DepositToken } from '@/lib/constants/deposit-tokens';
+import { cn } from '@/lib/utils';
 
 interface AmountInputProps {
   token: DepositToken;
@@ -45,7 +46,7 @@ export function AmountInput({
           onClick={onBack}
           variant="ghost"
           size="sm"
-          className="p-1.5 h-auto"
+          className="p-1.5 h-auto cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
         </Button>
@@ -117,14 +118,17 @@ export function AmountInput({
         <Button
           onClick={onBack}
           variant="outline"
-          className="flex-1"
+          className="flex-1 cursor-pointer"
         >
           Back
         </Button>
         <Button
           onClick={handleProceed}
           disabled={!isValid}
-          className="flex-1"
+          className={cn(
+            "flex-1",
+            isValid ? "cursor-pointer" : "cursor-not-allowed"
+          )}
         >
           Continue
         </Button>

@@ -8,11 +8,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { useWithdrawMutation } from '@/hooks';
 
 import { AmountInput } from './amount-input';
 import { TransactionConfirmation } from './transaction-confirmation';
-import { SignatureRequest } from './signature-request';
 import { LoadingState } from './loading-state';
+import { WithdrawProcessing, WithdrawStatus } from './withdraw-processing';
 
 export interface WithdrawToken {
   symbol: string;
@@ -42,8 +43,7 @@ interface WithdrawDialogProps {
 type WithdrawStep =
   | 'amount-input'
   | 'confirmation'
-  | 'signature-request'
-  | 'success';
+  | 'processing';
 
 export function WithdrawDialog({
   open,
@@ -52,10 +52,14 @@ export function WithdrawDialog({
   preSelectedToken,
 }: WithdrawDialogProps) {
   const [step, setStep] = useState<WithdrawStep>('amount-input');
-  const [transaction, setTransaction] = useState<WithdrawTransaction | null>(
-    null,
-  );
+  const [transaction, setTransaction] = useState<WithdrawTransaction | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [withdrawStatus, setWithdrawStatus] = useState<WithdrawStatus>('processing');
+  const [txHash, setTxHash] = useState<string>('');
+  const [error, setError] = useState<string>('');
+
+  // Withdrawal mutation
+  const withdrawMutation = useWithdrawMutation();
 
   const handleAmountSubmit = async (data: {
     token: WithdrawToken;
@@ -64,13 +68,11 @@ export function WithdrawDialog({
   }) => {
     setIsProcessing(true);
 
-    // Simulate fee calculation
+    // Simulate fee calculation (you can enhance this later)
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    const estimatedFee = '0.001'; // Mock fee
-    const totalAmount = (
-      parseFloat(data.amount) + parseFloat(estimatedFee)
-    ).toString();
+    const estimatedFee = '0.001'; // Mock fee - enhance this later
+    const totalAmount = data.amount; // For now, don't add fees
 
     setTransaction({
       token: data.token,
@@ -85,79 +87,109 @@ export function WithdrawDialog({
   };
 
   const handleConfirmTransaction = () => {
-    setStep('signature-request');
+    setStep('processing');
+    initiateWithdrawal();
   };
 
-  const handleSignatureComplete = () => {
-    setStep('success');
-    // Auto close after success
-    setTimeout(() => {
-      handleClose();
-    }, 2000);
+  const initiateWithdrawal = async () => {
+    if (!transaction) return;
+
+    try {
+      setError('');
+      setWithdrawStatus('processing');
+
+      await withdrawMutation.mutateAsync({
+        erc20Address: transaction.token.address,
+        amount: transaction.amount,
+        recipientAddress: transaction.receiverAddress,
+        onStatusChange: (status) => {
+          setWithdrawStatus(status.status as WithdrawStatus);
+          if (status.txHash) {
+            setTxHash(status.txHash);
+          }
+          if (status.error) {
+            setError(status.error);
+          }
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Withdrawal failed');
+      setWithdrawStatus('failed');
+    }
+  };
+
+  const handleRetryWithdrawal = () => {
+    if (transaction) {
+      initiateWithdrawal();
+    }
   };
 
   const handleBack = () => {
     if (step === 'confirmation') {
       setStep('amount-input');
-    } else if (step === 'signature-request') {
-      setStep('confirmation');
     }
   };
 
   const handleClose = () => {
+    // Reset all state
     setStep('amount-input');
     setTransaction(null);
     setIsProcessing(false);
+    setWithdrawStatus('processing');
+    setTxHash('');
+    setError('');
     onOpenChange(false);
   };
 
   const getDialogTitle = () => {
     switch (step) {
       case 'amount-input':
-        return 'Send';
+        return 'Withdraw Tokens';
       case 'confirmation':
-        return 'Confirm Transaction';
-      case 'signature-request':
-        return 'Sign Transaction';
-      case 'success':
-        return 'Transaction Sent';
+        return 'Confirm Withdrawal';
+      case 'processing':
+        return 'Processing Withdrawal';
       default:
-        return 'Send';
+        return 'Withdraw';
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className='max-w-lg'>
-        <DialogHeader className='pb-2'>
-          <DialogTitle>{getDialogTitle()}</DialogTitle>
-        </DialogHeader>
+      <DialogContent className='max-w-md max-h-[90vh] overflow-hidden flex flex-col'>
 
-        {step === 'amount-input' && !isProcessing && (
-          <AmountInput
-            availableTokens={availableTokens}
-            onSubmit={handleAmountSubmit}
-            preSelectedToken={preSelectedToken}
-          />
-        )}
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {step === 'amount-input' && !isProcessing && (
+            <AmountInput
+              availableTokens={availableTokens}
+              onSubmit={handleAmountSubmit}
+              preSelectedToken={preSelectedToken}
+            />
+          )}
 
-        {isProcessing && <LoadingState message='Calculating fees...' />}
+          {isProcessing && <LoadingState message='Calculating fees...' />}
 
-        {step === 'confirmation' && transaction && (
-          <TransactionConfirmation
-            transaction={transaction}
-            onConfirm={handleConfirmTransaction}
-            onBack={handleBack}
-          />
-        )}
+          {step === 'confirmation' && transaction && (
+            <TransactionConfirmation
+              transaction={transaction}
+              onConfirm={handleConfirmTransaction}
+              onBack={handleBack}
+            />
+          )}
 
-        {step === 'signature-request' && transaction && (
-          <SignatureRequest
-            transaction={transaction}
-            onSignatureComplete={handleSignatureComplete}
-            onBack={handleBack}
-          />
-        )}
+          {step === 'processing' && transaction && (
+            <WithdrawProcessing
+              token={transaction.token}
+              amount={transaction.amount}
+              recipientAddress={transaction.receiverAddress}
+              status={withdrawStatus}
+              txHash={txHash}
+              error={error}
+              onRetry={handleRetryWithdrawal}
+              onClose={handleClose}
+            />
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );

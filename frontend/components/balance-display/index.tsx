@@ -17,6 +17,7 @@ interface Token {
   token: string;
   chain: string;
   decimals: number;
+  erc20Address: string;
 }
 
 interface BalanceDisplayProps {
@@ -47,7 +48,7 @@ export function BalanceDisplay({
       chain: token.chain as 'ethereum' | 'solana',
       chainName:
         token.chain === 'ethereum' ? 'Ethereum Sepolia' : 'Solana Devnet',
-      address: '0x...', // Mock address
+      address: token.erc20Address, // Use the actual ERC20 address
       balance: formattedBalance,
       decimals: token.decimals,
     };

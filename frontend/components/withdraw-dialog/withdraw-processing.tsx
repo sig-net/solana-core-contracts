@@ -4,24 +4,25 @@ import { CheckCircle, Clock, XCircle, Loader2, ExternalLink } from 'lucide-react
 
 import { Button } from '@/components/ui/button';
 import { CryptoIcon } from '@/components/balance-display/crypto-icon';
-import { DepositToken } from '@/lib/constants/deposit-tokens';
+import { WithdrawToken } from './index';
 
-export type DepositStatus = 
+export type WithdrawStatus = 
   | 'processing'
   | 'waiting_signature' 
   | 'submitting_ethereum'
   | 'confirming_ethereum'
   | 'waiting_read_response'
-  | 'auto_claiming'
+  | 'completing_withdrawal'
   | 'completed'
   | 'failed'
-  | 'claim_failed'
+  | 'complete_failed'
   | 'processing_interrupted';
 
-interface DepositProcessingProps {
-  token: DepositToken;
+interface WithdrawProcessingProps {
+  token: WithdrawToken;
   amount: string;
-  status: DepositStatus;
+  recipientAddress: string;
+  status: WithdrawStatus;
   txHash?: string;
   error?: string;
   onRetry?: () => void;
@@ -32,15 +33,15 @@ const statusConfig = {
   processing: {
     icon: Loader2,
     iconClass: 'text-blue-500 animate-spin',
-    title: 'Processing Deposit',
-    description: 'Initiating deposit transaction...',
+    title: 'Processing Withdrawal',
+    description: 'Initiating withdrawal transaction...',
     showProgress: true,
   },
   waiting_signature: {
     icon: Clock,
     iconClass: 'text-yellow-500',
     title: 'Waiting for Signature',
-    description: 'MPC network is signing the transaction...',
+    description: 'MPC network is signing the withdrawal transaction...',
     showProgress: true,
   },
   submitting_ethereum: {
@@ -64,32 +65,32 @@ const statusConfig = {
     description: 'MPC network is reading the transaction receipt...',
     showProgress: true,
   },
-  auto_claiming: {
+  completing_withdrawal: {
     icon: Loader2,
     iconClass: 'text-green-500 animate-spin',
-    title: 'Claiming Tokens',
-    description: 'Automatically claiming tokens to your Solana balance...',
+    title: 'Completing Withdrawal',
+    description: 'Finalizing withdrawal on Solana...',
     showProgress: true,
   },
   completed: {
     icon: CheckCircle,
     iconClass: 'text-green-500',
-    title: 'Deposit Completed!',
-    description: 'Your tokens have been successfully bridged to Solana.',
+    title: 'Withdrawal Completed!',
+    description: 'Your tokens have been successfully sent to Ethereum.',
     showProgress: false,
   },
   failed: {
     icon: XCircle,
     iconClass: 'text-red-500',
-    title: 'Deposit Failed',
-    description: 'The deposit process encountered an error.',
+    title: 'Withdrawal Failed',
+    description: 'The withdrawal process encountered an error.',
     showProgress: false,
   },
-  claim_failed: {
+  complete_failed: {
     icon: XCircle,
     iconClass: 'text-orange-500',
-    title: 'Claim Failed',
-    description: 'Deposit succeeded but claiming failed. You can retry claiming.',
+    title: 'Completion Failed',
+    description: 'Withdrawal succeeded but completion failed. You can retry completion.',
     showProgress: false,
   },
   processing_interrupted: {
@@ -101,31 +102,36 @@ const statusConfig = {
   },
 };
 
-export function DepositProcessing({
+export function WithdrawProcessing({
   token,
   amount,
+  recipientAddress,
   status,
   txHash,
   error,
   onRetry,
   onClose,
-}: DepositProcessingProps) {
+}: WithdrawProcessingProps) {
   const config = statusConfig[status];
   const StatusIcon = config.icon;
 
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="text-center space-y-4">
+    <div className="space-y-4">
+      <div className="text-center space-y-3">
         {/* Status Icon */}
         <div className="flex justify-center">
-          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center">
-            <StatusIcon className={`w-8 h-8 ${config.iconClass}`} />
+          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
+            <StatusIcon className={`w-6 h-6 ${config.iconClass}`} />
           </div>
         </div>
 
         {/* Title and Description */}
         <div>
-          <h2 className="text-xl font-semibold text-dark-neutral-900 mb-2">
+          <h2 className="text-lg font-semibold text-dark-neutral-900 mb-1">
             {config.title}
           </h2>
           <p className="text-dark-neutral-600">
@@ -139,45 +145,28 @@ export function DepositProcessing({
         </div>
       </div>
 
-      {/* Transaction Details */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-3 p-4 bg-pastels-polar-100/30 rounded-lg border border-dark-neutral-50">
-          <CryptoIcon
-            chain={token.chain}
-            token={token.symbol}
-            className="w-8 h-8"
-          />
-          <div className="flex-1">
-            <p className="font-semibold text-dark-neutral-900">
-              {amount} {token.symbol}
-            </p>
-            <p className="text-sm text-dark-neutral-600">{token.name}</p>
+      {/* Transaction Hash */}
+      {txHash && (
+        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-medium text-blue-900">
+              Transaction Hash:
+            </span>
+            <a
+              href={`https://sepolia.etherscan.io/tx/${txHash}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm cursor-pointer"
+            >
+              View on Etherscan
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="mt-2 p-2 bg-white rounded border break-all font-mono text-xs text-blue-800">
+            {txHash}
           </div>
         </div>
-
-        {/* Transaction Hash */}
-        {txHash && (
-          <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium text-blue-900">
-                Transaction Hash:
-              </span>
-              <a
-                href={`https://sepolia.etherscan.io/tx/${txHash}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm cursor-pointer"
-              >
-                View on Etherscan
-                <ExternalLink className="w-3 h-3" />
-              </a>
-            </div>
-            <div className="mt-2 p-2 bg-white rounded border break-all font-mono text-xs text-blue-800">
-              {txHash}
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Progress Bar */}
       {config.showProgress && (
@@ -190,7 +179,7 @@ export function DepositProcessing({
               {status === 'submitting_ethereum' && '50%'}
               {status === 'confirming_ethereum' && '70%'}
               {status === 'waiting_read_response' && '85%'}
-              {status === 'auto_claiming' && '95%'}
+              {status === 'completing_withdrawal' && '95%'}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -203,7 +192,7 @@ export function DepositProcessing({
                   status === 'submitting_ethereum' ? '50%' :
                   status === 'confirming_ethereum' ? '70%' :
                   status === 'waiting_read_response' ? '85%' :
-                  status === 'auto_claiming' ? '95%' : '0%'
+                  status === 'completing_withdrawal' ? '95%' : '0%'
               }}
             />
           </div>
@@ -211,7 +200,7 @@ export function DepositProcessing({
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-3 pt-4">
+      <div className="flex gap-3 pt-2">
         {status === 'completed' && (
           <Button
             onClick={onClose}
@@ -221,7 +210,7 @@ export function DepositProcessing({
           </Button>
         )}
 
-        {(status === 'failed' || status === 'claim_failed') && onRetry && (
+        {(status === 'failed' || status === 'complete_failed') && onRetry && (
           <>
             <Button
               onClick={onClose}

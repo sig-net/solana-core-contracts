@@ -41,7 +41,7 @@ export function DepositAddress({
     <div className='space-y-8'>
       {/* Header */}
       <div className='flex items-center gap-3'>
-        <Button variant='ghost' size='icon' onClick={onBack}>
+        <Button variant='ghost' size='icon' onClick={onBack} className="cursor-pointer">
           <ArrowLeft className='h-5 w-5' />
         </Button>
         <div>
@@ -81,7 +81,7 @@ export function DepositAddress({
           size='icon'
           onClick={handleCopy}
           className={cn(
-            'h-12 w-12 rounded-full bg-pastels-polar-200 border border-dark-neutral-50 text-dark-neutral-400 hover:bg-pastels-polar-100 hover:text-tundora-300',
+            'h-12 w-12 rounded-full bg-pastels-polar-200 border border-dark-neutral-50 text-dark-neutral-400 hover:bg-pastels-polar-100 hover:text-tundora-300 cursor-pointer',
             copied && 'text-success-500',
           )}
         >
@@ -111,13 +111,13 @@ export function DepositAddress({
           <Button
             onClick={onBack}
             variant="outline"
-            className="flex-1"
+            className="flex-1 cursor-pointer"
           >
             Back
           </Button>
           <Button
             onClick={onContinue}
-            className="flex-1"
+            className="flex-1 cursor-pointer"
           >
             I've sent the tokens
           </Button>

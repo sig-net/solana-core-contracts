@@ -30,7 +30,7 @@ export function TransactionConfirmation({
   };
 
   return (
-    <div className='space-y-6'>
+    <div className='space-y-4'>
       {/* Header */}
       <div className='flex items-center gap-3 pb-2'>
         <Button
@@ -47,18 +47,18 @@ export function TransactionConfirmation({
       </div>
 
       {/* Transaction Summary Card */}
-      <div className='bg-pastels-polar-200 border border-dark-neutral-50 rounded-sm p-6 space-y-5'>
+      <div className='bg-pastels-polar-200 border border-dark-neutral-50 rounded-sm p-4 space-y-4'>
         {/* Token and Amount */}
-        <div className='text-center space-y-3'>
+        <div className='text-center space-y-2'>
           <div className='flex justify-center'>
             <CryptoIcon
               chain={transaction.token.chain}
               token={transaction.token.symbol}
-              className='w-16 h-16'
+              className='w-12 h-12'
             />
           </div>
           <div>
-            <div className='text-2xl font-semibold text-tundora-300 mb-1'>
+            <div className='text-xl font-semibold text-tundora-300 mb-1'>
               {formatAmount(transaction.amount)} {transaction.token.symbol}
             </div>
             <div className='text-sm text-dark-neutral-400 font-medium'>
@@ -97,83 +97,22 @@ export function TransactionConfirmation({
         </div>
       </div>
 
-      {/* Transaction Details */}
-      <div className='space-y-4'>
-        <h4 className='text-lg font-semibold text-tundora-300'>
-          Transaction Details
-        </h4>
-
-        <div className='bg-white border border-dark-neutral-50 rounded-sm p-5 space-y-4'>
-          {/* Network */}
-          <div className='flex justify-between items-center'>
-            <span className='text-sm text-dark-neutral-400'>Network</span>
-            <span className='text-sm font-medium text-tundora-300'>
-              {transaction.token.chainName}
-            </span>
-          </div>
-
-          {/* Amount */}
-          <div className='flex justify-between items-center'>
-            <span className='text-sm text-dark-neutral-400'>Amount</span>
-            <span className='text-sm font-medium text-tundora-300'>
-              {formatAmount(transaction.amount)} {transaction.token.symbol}
-            </span>
-          </div>
-
-          {/* Estimated Fee */}
-          <div className='flex justify-between items-center'>
-            <span className='text-sm text-dark-neutral-400'>Network Fee</span>
-            <span className='text-sm font-medium text-tundora-300'>
-              {formatAmount(transaction.estimatedFee)}{' '}
-              {transaction.token.symbol}
-            </span>
-          </div>
-
-          {/* Divider */}
-          <div className='border-t border-dark-neutral-50 pt-4'>
-            <div className='flex justify-between items-center'>
-              <span className='text-base font-semibold text-tundora-300'>
-                Total
-              </span>
-              <span className='text-base font-semibold text-tundora-300'>
-                {formatAmount(transaction.totalAmount)}{' '}
-                {transaction.token.symbol}
-              </span>
-            </div>
-          </div>
-
-          {/* Receiver Address */}
-          <div className='border-t border-dark-neutral-50 pt-4'>
-            <div className='space-y-2'>
-              <span className='text-sm font-medium text-dark-neutral-400'>
-                To Address
-              </span>
-              <div className='bg-pastels-polar-100 border border-dark-neutral-50 rounded-sm p-3'>
-                <span className='text-sm font-mono font-medium text-tundora-300 break-all'>
-                  {transaction.receiverAddress}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Action Buttons */}
-      <div className='flex gap-4 pt-2'>
+      <div className='flex gap-3 pt-2'>
         <Button
           variant='outline'
           onClick={onBack}
-          className='flex-1 h-12 text-base font-semibold'
+          className='flex-1 h-12 text-base font-semibold cursor-pointer'
           size='lg'
         >
           Back
         </Button>
         <Button
           onClick={onConfirm}
-          className='flex-1 h-12 text-base font-semibold'
+          className='flex-1 h-12 text-base font-semibold cursor-pointer'
           size='lg'
         >
-          Confirm & Sign
+          Confirm & Send
         </Button>
       </div>
     </div>

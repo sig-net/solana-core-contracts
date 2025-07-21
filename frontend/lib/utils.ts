@@ -17,6 +17,7 @@ export function convertTokenBalanceToDisplayToken(tokenBalance: TokenBalance) {
     token: getTokenSymbol(tokenBalance.erc20Address),
     chain: 'ethereum', // ERC20 tokens are on Ethereum
     decimals: tokenBalance.decimals,
+    erc20Address: tokenBalance.erc20Address,
   };
 }
 

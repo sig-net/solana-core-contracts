@@ -81,7 +81,7 @@ export default function Home() {
             )}
             <ActivityListTable />
           </div>
-          <SwapWidget className='w-90' />
+          <SwapWidget />
         </div>
       )}
 

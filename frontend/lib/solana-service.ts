@@ -372,11 +372,23 @@ export class SolanaService {
       const [globalVaultAuthority] =
         this.bridgeContract.deriveGlobalVaultAuthorityPda();
 
-      // Step 2: Convert amount to program format
-      const amountBN = new BN(amount);
+      // Step 2: Get token decimals and convert amount to proper format
+      const decimals = await this.getTokenDecimals(erc20Address);
+      const amountBigInt = ethers.parseUnits(amount, decimals);
+      const amountBN = new BN(amountBigInt.toString());
       const erc20AddressBytes = this.bridgeContract.hexToBytes(erc20Address);
+
+      console.log('recipientAddress', recipientAddress);
+
+      // Validate and convert recipient address (must be Ethereum format)
+      if (!ethers.isAddress(recipientAddress)) {
+        throw new Error('Invalid Ethereum address format');
+      }
+
+      // Get properly checksummed address for ethers compatibility
+      const checksummedAddress = ethers.getAddress(recipientAddress);
       const recipientAddressBytes =
-        this.bridgeContract.hexToBytes(recipientAddress);
+        this.bridgeContract.hexToBytes(checksummedAddress);
 
       // Step 3: Get current nonce from the hardcoded recipient address (for withdrawals)
       const provider = getAutomatedProvider();
@@ -393,7 +405,7 @@ export class SolanaService {
       const callData = encodeFunctionData({
         abi: erc20Abi,
         functionName: 'transfer',
-        args: [recipientAddress as `0x${string}`, BigInt(amount)],
+        args: [checksummedAddress as `0x${string}`, amountBigInt],
       });
 
       const tempTx = {

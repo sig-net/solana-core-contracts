@@ -16,7 +16,7 @@ export function CryptoIcon({
   return (
     <div
       className={cn(
-        'w-7 h-7 rounded-full flex items-center justify-center shadow-sm relative',
+        'relative flex h-7 w-7 items-center justify-center rounded-full shadow-sm',
         className,
       )}
     >
@@ -31,7 +31,7 @@ export function CryptoIcon({
         name={chain}
         size={16}
         variant='background'
-        className='rounded-full absolute bottom-0 -right-1.5 w-4 h-4'
+        className='absolute -right-1.5 bottom-0 h-4 w-4 rounded-sm'
       />
     </div>
   );

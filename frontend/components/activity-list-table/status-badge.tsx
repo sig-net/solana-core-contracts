@@ -17,8 +17,8 @@ export function StatusBadge({ status }: StatusBadgeProps) {
         variants[status],
       )}
     >
-      <div className='w-2 h-2 rounded-full bg-success-500' />
-      <span className='text-xs font-medium text-colors-dark-neutral-500'>
+      <div className='bg-success-500 h-2 w-2 rounded-full' />
+      <span className='text-colors-dark-neutral-500 text-xs font-medium'>
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>
     </div>

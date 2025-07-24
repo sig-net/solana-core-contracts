@@ -9,7 +9,7 @@ export function TableHeader({ children, width }: TableHeaderProps) {
   return (
     <div
       className={cn(
-        'h-12 border-b-2 border-colors-dark-neutral-200 px-6 py-3 font-bold text-xs text-colors-dark-neutral-500 flex items-center',
+        'border-colors-dark-neutral-200 text-colors-dark-neutral-500 flex h-12 items-center border-b-2 px-6 py-3 text-xs font-bold',
         width,
       )}
     >

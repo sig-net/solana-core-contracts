@@ -1,4 +1,5 @@
 import { LucideIcon } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 
 interface EmptyStateProps {
@@ -31,14 +32,14 @@ export function EmptyState({
       <div
         className={cn(
           'flex flex-col items-center justify-center text-center',
-          compact ? 'p-8 max-w-md' : 'p-16 max-w-2xl',
+          compact ? 'max-w-md p-8' : 'max-w-2xl p-16',
         )}
       >
         {Icon && (
           <div
             className={cn(
-              'flex items-center justify-center rounded-full mb-6',
-              compact ? 'w-16 h-16' : 'w-20 h-20',
+              'mb-6 flex items-center justify-center rounded-full',
+              compact ? 'h-16 w-16' : 'h-20 w-20',
               'bg-dark-neutral-800',
               iconClassName,
             )}
@@ -46,7 +47,7 @@ export function EmptyState({
             <Icon
               className={cn(
                 'text-dark-neutral-400',
-                compact ? 'w-8 h-8' : 'w-10 h-10',
+                compact ? 'h-8 w-8' : 'h-10 w-10',
               )}
             />
           </div>
@@ -54,7 +55,7 @@ export function EmptyState({
 
         <h2
           className={cn(
-            'font-semibold text-dark-neutral-900 mb-3',
+            'text-dark-neutral-900 mb-3 font-semibold',
             compact ? 'text-xl' : 'text-3xl',
           )}
         >
@@ -64,8 +65,8 @@ export function EmptyState({
         {description && (
           <p
             className={cn(
-              'text-dark-neutral-600 text-center mb-8',
-              compact ? 'text-base max-w-sm' : 'text-lg max-w-md',
+              'text-dark-neutral-600 mb-8 text-center',
+              compact ? 'max-w-sm text-base' : 'max-w-md text-lg',
             )}
           >
             {description}

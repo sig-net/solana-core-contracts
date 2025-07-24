@@ -24,20 +24,20 @@ export function BalanceBox({
   return (
     <div
       className={cn(
-        'flex items-center justify-between py-5 border-t border-colors-dark-neutral-200 w-full',
+        'border-colors-dark-neutral-200 flex w-full items-center justify-between border-t py-5',
         className,
       )}
     >
       <div className='flex gap-8'>
         <div className='flex flex-col gap-2'>
-          <div className='text-3xl font-light text-tundora-300'>{amount}</div>
-          <div className='text-sm font-semibold text-tundora-50'>
+          <div className='text-tundora-300 text-3xl font-light'>{amount}</div>
+          <div className='text-tundora-50 text-sm font-semibold'>
             {usdValue}
           </div>
         </div>
         <div className='flex items-center gap-4'>
           {icon}
-          <span className='text-base font-bold text-tundora-300'>
+          <span className='text-tundora-300 text-base font-bold'>
             {tokenSymbol}
           </span>
         </div>

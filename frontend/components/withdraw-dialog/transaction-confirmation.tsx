@@ -41,27 +41,27 @@ export function TransactionConfirmation({
         >
           <ArrowLeft className='h-5 w-5' />
         </Button>
-        <h3 className='text-xl font-semibold text-tundora-300'>
+        <h3 className='text-tundora-300 text-xl font-semibold'>
           Review Transaction
         </h3>
       </div>
 
       {/* Transaction Summary Card */}
-      <div className='bg-pastels-polar-200 border border-dark-neutral-50 rounded-sm p-4 space-y-4'>
+      <div className='bg-pastels-polar-200 border-dark-neutral-50 space-y-4 rounded-sm border p-4'>
         {/* Token and Amount */}
-        <div className='text-center space-y-2'>
+        <div className='space-y-2 text-center'>
           <div className='flex justify-center'>
             <CryptoIcon
               chain={transaction.token.chain}
               token={transaction.token.symbol}
-              className='w-12 h-12'
+              className='h-12 w-12'
             />
           </div>
           <div>
-            <div className='text-xl font-semibold text-tundora-300 mb-1'>
+            <div className='text-tundora-300 mb-1 text-xl font-semibold'>
               {formatAmount(transaction.amount)} {transaction.token.symbol}
             </div>
-            <div className='text-sm text-dark-neutral-400 font-medium'>
+            <div className='text-dark-neutral-400 text-sm font-medium'>
               {transaction.token.name} • {transaction.token.chainName}
             </div>
           </div>
@@ -70,26 +70,26 @@ export function TransactionConfirmation({
         {/* Transaction Flow */}
         <div className='flex items-center gap-4 py-3'>
           <div className='flex-1 text-center'>
-            <div className='text-xs font-semibold text-dark-neutral-400 mb-2 uppercase tracking-wide'>
+            <div className='text-dark-neutral-400 mb-2 text-xs font-semibold tracking-wide uppercase'>
               FROM
             </div>
-            <div className='bg-white border border-dark-neutral-50 rounded-sm px-4 py-3 shadow-sm'>
-              <div className='text-sm font-semibold text-tundora-300'>
+            <div className='border-dark-neutral-50 rounded-sm border bg-white px-4 py-3 shadow-sm'>
+              <div className='text-tundora-300 text-sm font-semibold'>
                 Your Wallet
               </div>
             </div>
           </div>
 
-          <div className='bg-white border border-dark-neutral-50 rounded-full p-2'>
-            <ArrowRight className='h-4 w-4 text-dark-neutral-400' />
+          <div className='border-dark-neutral-50 rounded-full border bg-white p-2'>
+            <ArrowRight className='text-dark-neutral-400 h-4 w-4' />
           </div>
 
           <div className='flex-1 text-center'>
-            <div className='text-xs font-semibold text-dark-neutral-400 mb-2 uppercase tracking-wide'>
+            <div className='text-dark-neutral-400 mb-2 text-xs font-semibold tracking-wide uppercase'>
               TO
             </div>
-            <div className='bg-white border border-dark-neutral-50 rounded-sm px-4 py-3 shadow-sm'>
-              <div className='text-sm font-mono font-semibold text-tundora-300'>
+            <div className='border-dark-neutral-50 rounded-sm border bg-white px-4 py-3 shadow-sm'>
+              <div className='text-tundora-300 font-mono text-sm font-semibold'>
                 {formatAddress(transaction.receiverAddress)}
               </div>
             </div>
@@ -102,14 +102,14 @@ export function TransactionConfirmation({
         <Button
           variant='outline'
           onClick={onBack}
-          className='flex-1 h-12 text-base font-semibold cursor-pointer'
+          className='h-12 flex-1 cursor-pointer text-base font-semibold'
           size='lg'
         >
           Back
         </Button>
         <Button
           onClick={onConfirm}
-          className='flex-1 h-12 text-base font-semibold cursor-pointer'
+          className='h-12 flex-1 cursor-pointer text-base font-semibold'
           size='lg'
         >
           Confirm & Send

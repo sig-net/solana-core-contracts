@@ -2,12 +2,7 @@
 
 import { useState } from 'react';
 
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useWithdrawMutation } from '@/hooks';
 
 import { AmountInput } from './amount-input';
@@ -40,10 +35,7 @@ interface WithdrawDialogProps {
   preSelectedToken?: WithdrawToken | null;
 }
 
-type WithdrawStep =
-  | 'amount-input'
-  | 'confirmation'
-  | 'processing';
+type WithdrawStep = 'amount-input' | 'confirmation' | 'processing';
 
 export function WithdrawDialog({
   open,
@@ -52,9 +44,12 @@ export function WithdrawDialog({
   preSelectedToken,
 }: WithdrawDialogProps) {
   const [step, setStep] = useState<WithdrawStep>('amount-input');
-  const [transaction, setTransaction] = useState<WithdrawTransaction | null>(null);
+  const [transaction, setTransaction] = useState<WithdrawTransaction | null>(
+    null,
+  );
   const [isProcessing, setIsProcessing] = useState(false);
-  const [withdrawStatus, setWithdrawStatus] = useState<WithdrawStatus>('processing');
+  const [withdrawStatus, setWithdrawStatus] =
+    useState<WithdrawStatus>('processing');
   const [txHash, setTxHash] = useState<string>('');
   const [error, setError] = useState<string>('');
 
@@ -102,7 +97,7 @@ export function WithdrawDialog({
         erc20Address: transaction.token.address,
         amount: transaction.amount,
         recipientAddress: transaction.receiverAddress,
-        onStatusChange: (status) => {
+        onStatusChange: status => {
           setWithdrawStatus(status.status as WithdrawStatus);
           if (status.txHash) {
             setTxHash(status.txHash);
@@ -156,9 +151,8 @@ export function WithdrawDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className='max-w-md max-h-[90vh] overflow-hidden flex flex-col'>
-
-        <div className="flex-1 overflow-y-auto min-h-0">
+      <DialogContent className='flex max-h-[90vh] max-w-md flex-col overflow-hidden'>
+        <div className='min-h-0 flex-1 overflow-y-auto'>
           {step === 'amount-input' && !isProcessing && (
             <AmountInput
               availableTokens={availableTokens}

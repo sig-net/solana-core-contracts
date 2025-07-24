@@ -14,7 +14,7 @@ export function ActivityRow({ transaction }: ActivityRowProps) {
   return (
     <div className='flex w-full'>
       <TableCell width={COLUMN_WIDTHS.activity}>
-        <div className=' font-medium text-sm leading-5 text-tundora-50'>
+        <div className='text-tundora-50 text-sm leading-5 font-medium'>
           {transaction.type}
         </div>
       </TableCell>
@@ -24,7 +24,7 @@ export function ActivityRow({ transaction }: ActivityRowProps) {
       </TableCell>
 
       <TableCell width={COLUMN_WIDTHS.timestamp}>
-        <div className=' font-medium text-sm leading-5 text-stone-700'>
+        <div className='text-sm leading-5 font-medium text-stone-700'>
           {transaction.timestamp}
         </div>
       </TableCell>
@@ -34,8 +34,8 @@ export function ActivityRow({ transaction }: ActivityRowProps) {
       </TableCell>
 
       <TableCell width={COLUMN_WIDTHS.explorer}>
-        <button className='w-5 h-5 hover:opacity-80 transition-opacity'>
-          <ExternalLink className='w-5 h-5 text-tundora-50' />
+        <button className='h-5 w-5 transition-opacity hover:opacity-80'>
+          <ExternalLink className='text-tundora-50 h-5 w-5' />
         </button>
       </TableCell>
     </div>

@@ -17,11 +17,11 @@ interface AmountInputProps {
   onProceed: (amount: string) => void;
 }
 
-export function AmountInput({ 
-  token, 
-  depositAddress, 
-  onBack, 
-  onProceed 
+export function AmountInput({
+  token,
+  depositAddress,
+  onBack,
+  onProceed,
 }: AmountInputProps) {
   const [amount, setAmount] = useState('');
   const [isValid, setIsValid] = useState(false);
@@ -40,85 +40,89 @@ export function AmountInput({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3">
+    <div className='space-y-6'>
+      <div className='flex items-center gap-3'>
         <Button
           onClick={onBack}
-          variant="ghost"
-          size="sm"
-          className="p-1.5 h-auto cursor-pointer"
+          variant='ghost'
+          size='sm'
+          className='h-auto cursor-pointer p-1.5'
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className='h-4 w-4' />
         </Button>
-        <h2 className="text-xl font-semibold text-dark-neutral-900">
+        <h2 className='text-dark-neutral-900 text-xl font-semibold'>
           Deposit {token.symbol}
         </h2>
       </div>
 
       {/* Token Info */}
-      <div className="flex items-center gap-3 p-4 bg-pastels-polar-100/30 rounded-lg border border-dark-neutral-50">
+      <div className='bg-pastels-polar-100/30 border-dark-neutral-50 flex items-center gap-3 rounded-lg border p-4'>
         <CryptoIcon
           chain={token.chain}
           token={token.symbol}
-          className="w-10 h-10"
+          className='h-10 w-10'
         />
         <div>
-          <p className="font-semibold text-dark-neutral-900">{token.symbol}</p>
-          <p className="text-sm text-dark-neutral-600">{token.name}</p>
+          <p className='text-dark-neutral-900 font-semibold'>{token.symbol}</p>
+          <p className='text-dark-neutral-600 text-sm'>{token.name}</p>
         </div>
-        <div className="ml-auto">
-          <span className="text-xs font-medium text-dark-neutral-400 bg-pastels-polar-200 px-2.5 py-1.5 rounded-sm border border-dark-neutral-50">
+        <div className='ml-auto'>
+          <span className='text-dark-neutral-400 bg-pastels-polar-200 border-dark-neutral-50 rounded-sm border px-2.5 py-1.5 text-xs font-medium'>
             {token.chainName}
           </span>
         </div>
       </div>
 
       {/* Amount Input */}
-      <div className="space-y-2">
-        <Label htmlFor="amount" className="text-sm font-medium text-dark-neutral-900">
+      <div className='space-y-2'>
+        <Label
+          htmlFor='amount'
+          className='text-dark-neutral-900 text-sm font-medium'
+        >
           Amount to deposit
         </Label>
-        <div className="relative">
+        <div className='relative'>
           <Input
-            id="amount"
-            type="number"
-            placeholder="0.00"
+            id='amount'
+            type='number'
+            placeholder='0.00'
             value={amount}
-            onChange={(e) => handleAmountChange(e.target.value)}
-            className="text-right pr-16"
-            step="any"
-            min="0"
+            onChange={e => handleAmountChange(e.target.value)}
+            className='pr-16 text-right'
+            step='any'
+            min='0'
           />
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-            <span className="text-sm font-medium text-dark-neutral-600">
+          <div className='pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3'>
+            <span className='text-dark-neutral-600 text-sm font-medium'>
               {token.symbol}
             </span>
           </div>
         </div>
-        <p className="text-xs text-dark-neutral-500">
+        <p className='text-dark-neutral-500 text-xs'>
           Enter the amount you want to bridge to Solana
         </p>
       </div>
 
       {/* Deposit Address Info */}
-      <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <h4 className="text-sm font-medium text-blue-900 mb-2">
+      <div className='rounded-lg border border-blue-200 bg-blue-50 p-4'>
+        <h4 className='mb-2 text-sm font-medium text-blue-900'>
           Your Deposit Address
         </h4>
-        <div className="bg-white p-3 rounded border break-all font-mono text-sm text-blue-800">
+        <div className='rounded border bg-white p-3 font-mono text-sm break-all text-blue-800'>
           {depositAddress}
         </div>
-        <p className="text-xs text-blue-700 mt-2">
-          You'll need to send {token.symbol} to this address first, then continue with the deposit process.
+        <p className='mt-2 text-xs text-blue-700'>
+          You'll need to send {token.symbol} to this address first, then
+          continue with the deposit process.
         </p>
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-3 pt-4">
+      <div className='flex gap-3 pt-4'>
         <Button
           onClick={onBack}
-          variant="outline"
-          className="flex-1 cursor-pointer"
+          variant='outline'
+          className='flex-1 cursor-pointer'
         >
           Back
         </Button>
@@ -126,8 +130,8 @@ export function AmountInput({
           onClick={handleProceed}
           disabled={!isValid}
           className={cn(
-            "flex-1",
-            isValid ? "cursor-pointer" : "cursor-not-allowed"
+            'flex-1',
+            isValid ? 'cursor-pointer' : 'cursor-not-allowed',
           )}
         >
           Continue

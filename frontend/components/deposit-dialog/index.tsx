@@ -23,11 +23,11 @@ interface DepositDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-type DepositStep = 
-  | 'select-token' 
-  | 'generating-address' 
-  | 'show-address' 
-  | 'amount-input' 
+type DepositStep =
+  | 'select-token'
+  | 'generating-address'
+  | 'show-address'
+  | 'amount-input'
   | 'processing';
 
 export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
@@ -35,14 +35,16 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
   const [step, setStep] = useState<DepositStep>('select-token');
   const [selectedToken, setSelectedToken] = useState<DepositToken | null>(null);
   const [depositAmount, setDepositAmount] = useState<string>('');
-  const [depositStatus, setDepositStatus] = useState<DepositStatus>('processing');
+  const [depositStatus, setDepositStatus] =
+    useState<DepositStatus>('processing');
   const [txHash, setTxHash] = useState<string>('');
   const [error, setError] = useState<string>('');
 
   // Get deposit address for selected token
-  const { data: depositAddress, isLoading: isGeneratingAddress } = useDepositAddress(
-    selectedToken?.chain === 'ethereum' && publicKey ? publicKey : null
-  );
+  const { data: depositAddress, isLoading: isGeneratingAddress } =
+    useDepositAddress(
+      selectedToken?.chain === 'ethereum' && publicKey ? publicKey : null,
+    );
 
   // Deposit mutation
   const depositMutation = useDepositErc20Mutation();
@@ -52,10 +54,10 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
       // For now, only support Ethereum tokens for bridging
       return;
     }
-    
+
     setSelectedToken(token);
     setStep('generating-address');
-    
+
     // Wait for address to be generated
     if (depositAddress) {
       setStep('show-address');
@@ -82,7 +84,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
       await depositMutation.mutateAsync({
         erc20Address: selectedToken.address,
         amount,
-        onStatusChange: (status) => {
+        onStatusChange: status => {
           setDepositStatus(status.status as DepositStatus);
           if (status.txHash) {
             setTxHash(status.txHash);

@@ -79,15 +79,15 @@ export function QRCodeComponent({
     return (
       <div
         className={cn(
-          'flex flex-col items-center justify-center bg-red-500/5 border border-red-500/20 rounded-sm p-4',
+          'flex flex-col items-center justify-center rounded-sm border border-red-500/20 bg-red-500/5 p-4',
           className,
         )}
         style={{ width: size, height: size }}
       >
-        <div className='text-red-500 text-xs font-medium text-center'>
+        <div className='text-center text-xs font-medium text-red-500'>
           QR Code Error
         </div>
-        <div className='text-red-500/70 text-xs text-center mt-1'>{error}</div>
+        <div className='mt-1 text-center text-xs text-red-500/70'>{error}</div>
       </div>
     );
   }
@@ -97,10 +97,10 @@ export function QRCodeComponent({
       {/* Loading State */}
       {isGenerating && (
         <div
-          className='absolute inset-0 flex flex-col items-center justify-center bg-pastels-polar-100 border border-dark-neutral-50 rounded-sm'
+          className='bg-pastels-polar-100 border-dark-neutral-50 absolute inset-0 flex flex-col items-center justify-center rounded-sm border'
           style={{ width: size, height: size }}
         >
-          <div className='animate-spin w-6 h-6 border-2 border-dark-neutral-300 border-t-transparent rounded-full mb-2'></div>
+          <div className='border-dark-neutral-300 mb-2 h-6 w-6 animate-spin rounded-full border-2 border-t-transparent'></div>
           <div className='text-dark-neutral-400 text-xs font-medium'>
             Generating QR
           </div>
@@ -111,7 +111,7 @@ export function QRCodeComponent({
       <canvas
         ref={canvasRef}
         className={cn(
-          'rounded-sm border border-dark-neutral-50 transition-opacity',
+          'border-dark-neutral-50 rounded-sm border transition-opacity',
           isGenerating ? 'opacity-0' : 'opacity-100',
         )}
         style={{

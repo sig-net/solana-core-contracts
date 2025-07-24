@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { ArrowDown } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 import { TokenMetadata } from '@/lib/constants/token-metadata';
+
+import { Button } from '../ui/button';
+
 import { SwapHeader } from './swap-header';
 import { TokenInputField } from './token-input-field';
-import { ArrowDown } from 'lucide-react';
-import { Button } from '../ui/button';
 
 interface SwapWidgetProps {
   className?: string;

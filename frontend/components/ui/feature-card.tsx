@@ -16,14 +16,14 @@ export function FeatureCard({
   iconBgColor,
 }: FeatureCardProps) {
   return (
-    <div className='text-center space-y-2'>
+    <div className='space-y-2 text-center'>
       <div
-        className={`w-8 h-8 ${iconBgColor} rounded-full flex items-center justify-center mx-auto`}
+        className={`h-8 w-8 ${iconBgColor} mx-auto flex items-center justify-center rounded-full`}
       >
         <Icon className={`h-4 w-4 ${iconColor}`} />
       </div>
-      <h3 className='font-medium text-sm'>{title}</h3>
-      <p className='text-xs text-muted-foreground'>{description}</p>
+      <h3 className='text-sm font-medium'>{title}</h3>
+      <p className='text-muted-foreground text-xs'>{description}</p>
     </div>
   );
 }

@@ -10,8 +10,8 @@ export function BalancesSectionHeader({
   onDepositClick,
 }: BalancesSectionHeaderProps) {
   return (
-    <div className='flex items-center justify-between py-5 w-full border-t border-dark-neutral-300'>
-      <h2 className='font-semibold text-dark-neutral-200 self-start uppercase'>
+    <div className='border-dark-neutral-300 flex w-full items-center justify-between border-t py-5'>
+      <h2 className='text-dark-neutral-200 self-start font-semibold uppercase'>
         Balances
       </h2>
       <Button

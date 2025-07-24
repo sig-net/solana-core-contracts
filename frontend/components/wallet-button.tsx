@@ -20,7 +20,7 @@ export function WalletButton() {
   if (connecting) {
     return (
       <Button disabled>
-        <Wallet className='h-4 w-4 mr-2' />
+        <Wallet className='mr-2 h-4 w-4' />
         Connecting...
       </Button>
     );
@@ -38,7 +38,7 @@ export function WalletButton() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align='end'>
           <DropdownMenuItem onClick={disconnect} className='text-red-500'>
-            <LogOut className='h-4 w-4 mr-2' />
+            <LogOut className='mr-2 h-4 w-4' />
             Disconnect
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -48,7 +48,7 @@ export function WalletButton() {
 
   return (
     <Button onClick={() => setVisible(true)} className='font-medium'>
-      <Wallet className='h-4 w-4 mr-2' />
+      <Wallet className='mr-2 h-4 w-4' />
       Connect Wallet
     </Button>
   );

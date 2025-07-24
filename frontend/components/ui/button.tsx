@@ -16,6 +16,7 @@ const buttonVariants = cva(
         ghost: 'border-transparent hover:bg-accent hover:text-stone-700',
         outline:
           'bg-pastels-polar-200 border-dark-neutral-400 text-dark-neutral-400',
+        disabled: 'bg-clam-shell-100 border-clam-shell-500 text-clam-shell-500',
       },
       size: {
         default: 'h-8 px-3 py-2',

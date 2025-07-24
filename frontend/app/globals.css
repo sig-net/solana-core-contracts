@@ -23,6 +23,10 @@
   --color-tundora-300: var(--tundora-300);
   --color-tundora-400: var(--tundora-400);
   --color-tundora-50: var(--tundora-50);
+  --color-clam-shell-100: var(--clam-shell-100);
+  --color-clam-shell-500: var(--clam-shell-500);
+  --color-pastels-swiss-coffee-200: var(--pastels-swiss-coffee-200);
+  --color-pastels-pampas-500: var(--pastels-pampas-500);
   --color-stone-100: var(--stone-100);
   --color-stone-600: var(--stone-600);
   --color-stone-700: var(--stone-700);
@@ -48,6 +52,10 @@
   --tundora-300: #6c6060;
   --tundora-400: #5c5353;
   --tundora-50: #9c8686;
+  --clam-shell-100: #f3edea;
+  --clam-shell-500: #cbb7ad;
+  --pastels-swiss-coffee-200: #f3eeee;
+  --pastels-pampas-500: #f6f4f1;
   --stone-100: #f5f0ee;
   --stone-600: #625757;
   --stone-700: #4c4646;

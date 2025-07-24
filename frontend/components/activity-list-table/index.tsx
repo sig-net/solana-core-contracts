@@ -39,7 +39,7 @@ interface ActivityListTableProps {
 export function ActivityListTable({ className }: ActivityListTableProps) {
   return (
     <div>
-      <p className='text-dark-neutral-200 font-bold uppercase mb-8'>Activity</p>
+      <p className='text-dark-neutral-200 mb-8 font-bold uppercase'>Activity</p>
       <div className={cn('w-full', className)}>
         <div className='flex flex-col'>
           {/* Headers */}

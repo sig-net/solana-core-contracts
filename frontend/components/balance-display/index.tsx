@@ -59,7 +59,7 @@ export function BalanceDisplay({
       <BalancesSectionHeader
         onDepositClick={() => setIsDepositDialogOpen(true)}
       />
-      <div className={cn('grid md:grid-cols-2 gap-10 w-full', className)}>
+      <div className={cn('grid w-full gap-10 md:grid-cols-2', className)}>
         {tokens.map((tokenData, index) => {
           const formattedBalance = formatUnits(
             tokenData.balance,
@@ -70,7 +70,11 @@ export function BalanceDisplay({
           // Calculate USD value
           const tokenPrice = tokenPrices?.[tokenData.token.toUpperCase()];
           const usdValue = tokenPrice
-            ? calculateUsdValue(tokenData.balance.toString(), tokenData.decimals, tokenPrice.usd)
+            ? calculateUsdValue(
+                tokenData.balance.toString(),
+                tokenData.decimals,
+                tokenPrice.usd,
+              )
             : 0;
           const formattedUsdValue = formatUsdValue(usdValue);
 

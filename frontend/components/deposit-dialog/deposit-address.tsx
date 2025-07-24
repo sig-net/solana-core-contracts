@@ -41,14 +41,19 @@ export function DepositAddress({
     <div className='space-y-8'>
       {/* Header */}
       <div className='flex items-center gap-3'>
-        <Button variant='ghost' size='icon' onClick={onBack} className="cursor-pointer">
+        <Button
+          variant='ghost'
+          size='icon'
+          onClick={onBack}
+          className='cursor-pointer'
+        >
           <ArrowLeft className='h-5 w-5' />
         </Button>
         <div>
           <h3 className='text-tundora-300 text-xl font-semibold'>
             Your {token.chainName} address
           </h3>
-          <p className='text-dark-neutral-400 text-sm mt-1'>
+          <p className='text-dark-neutral-400 mt-1 text-sm'>
             Deposit to 💳 Wallet
           </p>
         </div>
@@ -56,7 +61,7 @@ export function DepositAddress({
 
       {/* QR Code Container */}
       <div className='flex justify-center'>
-        <div className='bg-white rounded-2xl p-6 border border-dark-neutral-50 shadow-sm'>
+        <div className='border-dark-neutral-50 rounded-2xl border bg-white p-6 shadow-sm'>
           <QRCode
             value={depositAddress}
             size={280}
@@ -70,8 +75,8 @@ export function DepositAddress({
 
       {/* Address Display */}
       <div className='flex items-center justify-center gap-3'>
-        <div className='flex items-center gap-3 bg-pastels-polar-200 rounded-full px-6 py-3 border border-dark-neutral-50'>
-          <Eye className='h-4 w-4 text-dark-neutral-400' />
+        <div className='bg-pastels-polar-200 border-dark-neutral-50 flex items-center gap-3 rounded-full border px-6 py-3'>
+          <Eye className='text-dark-neutral-400 h-4 w-4' />
           <span className='text-tundora-300 font-mono text-sm font-medium'>
             {formatAddress(depositAddress)}
           </span>
@@ -81,7 +86,7 @@ export function DepositAddress({
           size='icon'
           onClick={handleCopy}
           className={cn(
-            'h-12 w-12 rounded-full bg-pastels-polar-200 border border-dark-neutral-50 text-dark-neutral-400 hover:bg-pastels-polar-100 hover:text-tundora-300 cursor-pointer',
+            'bg-pastels-polar-200 border-dark-neutral-50 text-dark-neutral-400 hover:bg-pastels-polar-100 hover:text-tundora-300 h-12 w-12 cursor-pointer rounded-full border',
             copied && 'text-success-500',
           )}
         >
@@ -94,31 +99,28 @@ export function DepositAddress({
       </div>
 
       {/* Description */}
-      <p className='text-center text-dark-neutral-400 text-sm leading-relaxed'>
+      <p className='text-dark-neutral-400 text-center text-sm leading-relaxed'>
         Use this address to deposit tokens and collectibles on {token.chainName}
       </p>
 
       {/* Copy Feedback */}
       {copied && (
-        <p className='text-xs text-success-500 text-center font-medium'>
+        <p className='text-success-500 text-center text-xs font-medium'>
           Address copied to clipboard
         </p>
       )}
 
       {/* Continue Button */}
       {onContinue && (
-        <div className="flex gap-3 pt-4">
+        <div className='flex gap-3 pt-4'>
           <Button
             onClick={onBack}
-            variant="outline"
-            className="flex-1 cursor-pointer"
+            variant='outline'
+            className='flex-1 cursor-pointer'
           >
             Back
           </Button>
-          <Button
-            onClick={onContinue}
-            className="flex-1 cursor-pointer"
-          >
+          <Button onClick={onContinue} className='flex-1 cursor-pointer'>
             I've sent the tokens
           </Button>
         </div>

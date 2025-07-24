@@ -15,13 +15,13 @@ export function LoadingState({ token }: LoadingStateProps) {
         <CryptoIcon
           chain={token.chain}
           token={token.symbol}
-          className='w-12 h-12'
+          className='h-12 w-12'
         />
         <div>
-          <h3 className='font-semibold text-tundora-300 text-lg mb-1'>
+          <h3 className='text-tundora-300 mb-1 text-lg font-semibold'>
             Generating Deposit Address
           </h3>
-          <p className='text-sm text-tundora-50 font-medium'>
+          <p className='text-tundora-50 text-sm font-medium'>
             {token.symbol} on {token.chainName}
           </p>
         </div>
@@ -30,20 +30,20 @@ export function LoadingState({ token }: LoadingStateProps) {
       {/* Loading Animation */}
       <div className='flex justify-center'>
         <div className='flex gap-1'>
-          <div className='w-2 h-2 bg-dark-neutral-300 rounded-full animate-bounce'></div>
+          <div className='bg-dark-neutral-300 h-2 w-2 animate-bounce rounded-full'></div>
           <div
-            className='w-2 h-2 bg-dark-neutral-300 rounded-full animate-bounce'
+            className='bg-dark-neutral-300 h-2 w-2 animate-bounce rounded-full'
             style={{ animationDelay: '0.1s' }}
           ></div>
           <div
-            className='w-2 h-2 bg-dark-neutral-300 rounded-full animate-bounce'
+            className='bg-dark-neutral-300 h-2 w-2 animate-bounce rounded-full'
             style={{ animationDelay: '0.2s' }}
           ></div>
         </div>
       </div>
 
       {/* Status Text */}
-      <p className='text-sm text-dark-neutral-400 font-medium'>
+      <p className='text-dark-neutral-400 text-sm font-medium'>
         Please wait while we generate your unique deposit address...
       </p>
     </div>

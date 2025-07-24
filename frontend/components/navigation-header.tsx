@@ -27,11 +27,11 @@ export function NavigationHeader({
   return (
     <header
       className={cn(
-        'w-full h-20 bg-stone-100 border-b border-dark-neutral-50 ',
+        'border-dark-neutral-50 h-20 w-full border-b bg-stone-100',
         className,
       )}
     >
-      <div className='flex items-center justify-between h-full container mx-auto'>
+      <div className='container mx-auto flex h-full items-center justify-between'>
         {/* Left: Logo */}
         <Image
           src='/logo.svg'
@@ -44,16 +44,16 @@ export function NavigationHeader({
 
         {/* Center: Balance */}
         <div className='flex flex-col items-center'>
-          <span className='text-dark-neutral-200 text-xs font-medium uppercase tracking-wider'>
+          <span className='text-dark-neutral-200 text-xs font-medium tracking-wider uppercase'>
             Total Balance
           </span>
-          <span className='text-stone-700 text-2xl font-light font-mono'>
+          <span className='font-mono text-2xl font-light text-stone-700'>
             {displayBalance}
           </span>
         </div>
 
         {/* Right: Settings & Wallet */}
-        <div className='space-x-4 justify-end'>
+        <div className='justify-end space-x-4'>
           <Button
             variant='ghost'
             size='icon'

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Package } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { BalanceDisplay } from '@/components/balance-display';
 import { EmptyState, LoadingState, ErrorState } from '@/components/states';

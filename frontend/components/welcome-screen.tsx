@@ -29,10 +29,10 @@ const features = [
 
 export function WelcomeScreen() {
   return (
-    <div className='flex flex-col items-center justify-center min-h-[70vh] text-center space-y-8'>
-      <div className='space-y-4 flex flex-col items-center justify-center'>
-        <div className='flex items-center justify-center w-16 h-16 bg-muted rounded-full'>
-          <Wallet className='h-8 w-8 text-muted-foreground' />
+    <div className='flex min-h-[70vh] flex-col items-center justify-center space-y-8 text-center'>
+      <div className='flex flex-col items-center justify-center space-y-4'>
+        <div className='bg-muted flex h-16 w-16 items-center justify-center rounded-full'>
+          <Wallet className='text-muted-foreground h-8 w-8' />
         </div>
         <div className='space-y-2'>
           <h2 className='text-2xl font-semibold'>Welcome to Solana dApp</h2>
@@ -45,7 +45,7 @@ export function WelcomeScreen() {
 
       <WalletButton />
 
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-2xl'>
+      <div className='grid w-full max-w-2xl grid-cols-1 gap-4 md:grid-cols-3'>
         {features.map(feature => (
           <FeatureCard key={feature.title} {...feature} />
         ))}

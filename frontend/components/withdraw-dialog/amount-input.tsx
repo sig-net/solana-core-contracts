@@ -93,24 +93,24 @@ export function AmountInput({
     <div className='space-y-4'>
       {/* Token Selection */}
       <div className='space-y-2'>
-        <Label className='text-sm font-medium text-tundora-300'>Token</Label>
+        <Label className='text-tundora-300 text-sm font-medium'>Token</Label>
         <div className='relative'>
           <button
             onClick={() => setShowTokenDropdown(!showTokenDropdown)}
-            className='w-full flex items-center justify-between p-3 bg-pastels-polar-200 border border-dark-neutral-50 rounded-sm hover:border-dark-neutral-200 hover:bg-pastels-polar-100/30 transition-all focus-visible:ring-2 focus-visible:ring-dark-neutral-200 focus-visible:ring-offset-2 cursor-pointer'
+            className='bg-pastels-polar-200 border-dark-neutral-50 hover:border-dark-neutral-200 hover:bg-pastels-polar-100/30 focus-visible:ring-dark-neutral-200 flex w-full cursor-pointer items-center justify-between rounded-sm border p-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-2'
           >
             {selectedToken ? (
               <div className='flex items-center gap-3'>
                 <CryptoIcon
                   chain={selectedToken.chain}
                   token={selectedToken.symbol}
-                  className='w-8 h-8'
+                  className='h-8 w-8'
                 />
                 <div className='text-left'>
-                  <div className='font-semibold text-tundora-300'>
+                  <div className='text-tundora-300 font-semibold'>
                     {selectedToken.symbol}
                   </div>
-                  <div className='text-sm text-dark-neutral-400'>
+                  <div className='text-dark-neutral-400 text-sm'>
                     Balance: {formatBalance(selectedToken.balance)}
                   </div>
                 </div>
@@ -120,7 +120,7 @@ export function AmountInput({
             )}
             <ChevronDown
               className={cn(
-                'h-4 w-4 text-dark-neutral-400 transition-transform',
+                'text-dark-neutral-400 h-4 w-4 transition-transform',
                 showTokenDropdown && 'rotate-180',
               )}
             />
@@ -128,7 +128,7 @@ export function AmountInput({
 
           {/* Token Dropdown */}
           {showTokenDropdown && (
-            <div className='absolute top-full left-0 right-0 mt-2 bg-white border border-dark-neutral-50 rounded-sm shadow-xl z-10 max-h-48 overflow-y-auto'>
+            <div className='border-dark-neutral-50 absolute top-full right-0 left-0 z-10 mt-2 max-h-48 overflow-y-auto rounded-sm border bg-white shadow-xl'>
               {availableTokens.map((token, index) => {
                 const isSelected =
                   selectedToken?.symbol === token.symbol &&
@@ -142,32 +142,32 @@ export function AmountInput({
                       setAmount('');
                     }}
                     className={cn(
-                      'w-full flex items-center gap-3 p-4 transition-all text-left cursor-pointer',
+                      'flex w-full cursor-pointer items-center gap-3 p-4 text-left transition-all',
                       isSelected
-                        ? 'bg-brand-100/20 border-l-2 border-brand-950'
+                        ? 'bg-brand-100/20 border-brand-950 border-l-2'
                         : 'hover:bg-pastels-polar-100/30',
                     )}
                   >
                     <CryptoIcon
                       chain={token.chain}
                       token={token.symbol}
-                      className='w-10 h-10 shrink-0'
+                      className='h-10 w-10 shrink-0'
                     />
-                    <div className='flex-1 min-w-0'>
+                    <div className='min-w-0 flex-1'>
                       <div className='flex items-center justify-between gap-3'>
                         <div>
-                          <div className='font-semibold text-tundora-300 text-base'>
+                          <div className='text-tundora-300 text-base font-semibold'>
                             {token.symbol}
                           </div>
-                          <div className='text-sm text-tundora-50 font-medium'>
+                          <div className='text-tundora-50 text-sm font-medium'>
                             {token.name}
                           </div>
                         </div>
-                        <span className='text-xs font-medium text-dark-neutral-400 bg-pastels-polar-200 px-2.5 py-1.5 rounded-sm border border-dark-neutral-50 shrink-0'>
+                        <span className='text-dark-neutral-400 bg-pastels-polar-200 border-dark-neutral-50 shrink-0 rounded-sm border px-2.5 py-1.5 text-xs font-medium'>
                           {token.chainName}
                         </span>
                       </div>
-                      <div className='text-xs text-dark-neutral-400 mt-1'>
+                      <div className='text-dark-neutral-400 mt-1 text-xs'>
                         Balance: {formatBalance(token.balance)}
                       </div>
                     </div>
@@ -181,7 +181,7 @@ export function AmountInput({
 
       {/* Amount Input */}
       <div className='space-y-3'>
-        <Label className='text-sm font-medium text-tundora-300'>Amount</Label>
+        <Label className='text-tundora-300 text-sm font-medium'>Amount</Label>
         <div className='relative'>
           <Input
             type='number'
@@ -189,7 +189,7 @@ export function AmountInput({
             value={amount}
             onChange={e => setAmount(e.target.value)}
             className={cn(
-              'pr-20 h-12 text-lg font-medium',
+              'h-12 pr-20 text-lg font-medium',
               errors.amount &&
                 'border-red-500 focus:border-red-500 focus-visible:ring-red-200',
             )}
@@ -199,23 +199,23 @@ export function AmountInput({
             variant='ghost'
             size='sm'
             onClick={handleMaxClick}
-            className='absolute right-3 top-1/2 -translate-y-1/2 h-7 px-3 text-xs font-semibold text-dark-neutral-400 hover:text-tundora-300 hover:bg-brand-100/20 rounded border border-dark-neutral-50 cursor-pointer'
+            className='text-dark-neutral-400 hover:text-tundora-300 hover:bg-brand-100/20 border-dark-neutral-50 absolute top-1/2 right-3 h-7 -translate-y-1/2 cursor-pointer rounded border px-3 text-xs font-semibold'
           >
             MAX
           </Button>
         </div>
         {errors.amount && (
-          <div className='flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-sm'>
-            <div className='w-2 h-2 bg-red-500 rounded-full shrink-0'></div>
-            <p className='text-xs text-red-800 font-medium'>{errors.amount}</p>
+          <div className='flex items-center gap-2 rounded-sm border border-red-200 bg-red-50 p-3'>
+            <div className='h-2 w-2 shrink-0 rounded-full bg-red-500'></div>
+            <p className='text-xs font-medium text-red-800'>{errors.amount}</p>
           </div>
         )}
         {selectedToken && !errors.amount && amount && (
-          <div className='flex items-center gap-2 p-3 bg-pastels-polar-100 border border-dark-neutral-50 rounded-sm'>
-            <div className='w-2 h-2 bg-success-500 rounded-full shrink-0'></div>
-            <p className='text-xs text-dark-neutral-400 font-medium'>
+          <div className='bg-pastels-polar-100 border-dark-neutral-50 flex items-center gap-2 rounded-sm border p-3'>
+            <div className='bg-success-500 h-2 w-2 shrink-0 rounded-full'></div>
+            <p className='text-dark-neutral-400 text-xs font-medium'>
               Available: {formatBalance(selectedToken.balance)}{' '}
-              <span className='font-semibold text-tundora-300'>
+              <span className='text-tundora-300 font-semibold'>
                 {selectedToken.symbol}
               </span>
             </p>
@@ -225,7 +225,7 @@ export function AmountInput({
 
       {/* Receiver Address */}
       <div className='space-y-3'>
-        <Label className='text-sm font-medium text-tundora-300'>
+        <Label className='text-tundora-300 text-sm font-medium'>
           Receiver Address
         </Label>
         <Input
@@ -233,23 +233,23 @@ export function AmountInput({
           value={receiverAddress}
           onChange={e => setReceiverAddress(e.target.value)}
           className={cn(
-            'font-mono text-sm h-12',
+            'h-12 font-mono text-sm',
             errors.receiverAddress &&
               'border-red-500 focus:border-red-500 focus-visible:ring-red-200',
           )}
         />
         {errors.receiverAddress && (
-          <div className='flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-sm'>
-            <div className='w-2 h-2 bg-red-500 rounded-full shrink-0'></div>
-            <p className='text-xs text-red-800 font-medium'>
+          <div className='flex items-center gap-2 rounded-sm border border-red-200 bg-red-50 p-3'>
+            <div className='h-2 w-2 shrink-0 rounded-full bg-red-500'></div>
+            <p className='text-xs font-medium text-red-800'>
               {errors.receiverAddress}
             </p>
           </div>
         )}
         {!errors.receiverAddress && receiverAddress && (
-          <div className='flex items-center gap-2 p-3 bg-pastels-polar-100 border border-dark-neutral-50 rounded-sm'>
-            <div className='w-2 h-2 bg-success-500 rounded-full shrink-0'></div>
-            <p className='text-xs text-dark-neutral-400 font-medium'>
+          <div className='bg-pastels-polar-100 border-dark-neutral-50 flex items-center gap-2 rounded-sm border p-3'>
+            <div className='bg-success-500 h-2 w-2 shrink-0 rounded-full'></div>
+            <p className='text-dark-neutral-400 text-xs font-medium'>
               Valid Ethereum address
             </p>
           </div>
@@ -261,10 +261,10 @@ export function AmountInput({
         onClick={handleSubmit}
         disabled={!selectedToken || !amount || !receiverAddress}
         className={cn(
-          'w-full h-12 text-base font-semibold',
-          (!selectedToken || !amount || !receiverAddress) 
-            ? 'cursor-not-allowed' 
-            : 'cursor-pointer'
+          'h-12 w-full text-base font-semibold',
+          !selectedToken || !amount || !receiverAddress
+            ? 'cursor-not-allowed'
+            : 'cursor-pointer',
         )}
         size='lg'
       >

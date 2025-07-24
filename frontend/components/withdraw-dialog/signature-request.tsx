@@ -68,14 +68,14 @@ export function SignatureRequest({
               <Button
                 variant='outline'
                 onClick={onBack}
-                className='flex-1 h-12 text-base font-semibold'
+                className='h-12 flex-1 text-base font-semibold'
                 size='lg'
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSign}
-                className='flex-1 h-12 text-base font-semibold'
+                className='h-12 flex-1 text-base font-semibold'
                 size='lg'
               >
                 Sign Transaction
@@ -90,9 +90,9 @@ export function SignatureRequest({
           description: 'Please check your wallet and approve the transaction.',
           action: (
             <div className='flex justify-center'>
-              <div className='flex items-center gap-3 text-dark-neutral-400'>
+              <div className='text-dark-neutral-400 flex items-center gap-3'>
                 <Loader2 className='h-6 w-6 animate-spin' />
-                <span className='font-semibold text-base'>
+                <span className='text-base font-semibold'>
                   Waiting for signature...
                 </span>
               </div>
@@ -107,9 +107,9 @@ export function SignatureRequest({
             'Your transaction has been signed and broadcasted to the network.',
           action: (
             <div className='flex justify-center'>
-              <div className='flex items-center gap-3 text-success-500'>
+              <div className='text-success-500 flex items-center gap-3'>
                 <Check className='h-6 w-6' />
-                <span className='font-semibold text-base'>
+                <span className='text-base font-semibold'>
                   Transaction sent successfully!
                 </span>
               </div>
@@ -126,14 +126,14 @@ export function SignatureRequest({
               <Button
                 variant='outline'
                 onClick={onBack}
-                className='flex-1 h-12 text-base font-semibold'
+                className='h-12 flex-1 text-base font-semibold'
                 size='lg'
               >
                 Back
               </Button>
               <Button
                 onClick={handleSign}
-                className='flex-1 h-12 text-base font-semibold'
+                className='h-12 flex-1 text-base font-semibold'
                 size='lg'
               >
                 Try Again
@@ -159,36 +159,36 @@ export function SignatureRequest({
           >
             <ArrowLeft className='h-5 w-5' />
           </Button>
-          <h3 className='text-xl font-semibold text-tundora-300'>
+          <h3 className='text-tundora-300 text-xl font-semibold'>
             {statusContent.title}
           </h3>
         </div>
       )}
 
       {status !== 'pending' && (
-        <div className='text-center pb-2'>
-          <h3 className='text-xl font-semibold text-tundora-300 mb-2'>
+        <div className='pb-2 text-center'>
+          <h3 className='text-tundora-300 mb-2 text-xl font-semibold'>
             {statusContent.title}
           </h3>
         </div>
       )}
 
       {/* Transaction Summary */}
-      <div className='bg-pastels-polar-200 border border-dark-neutral-50 rounded-sm p-8 text-center space-y-5'>
+      <div className='bg-pastels-polar-200 border-dark-neutral-50 space-y-5 rounded-sm border p-8 text-center'>
         <div className='flex justify-center'>
           <div className='relative'>
             <CryptoIcon
               chain={transaction.token.chain}
               token={transaction.token.symbol}
-              className='w-16 h-16'
+              className='h-16 w-16'
             />
             {status === 'signing' && (
-              <div className='absolute -top-1 -right-1 w-6 h-6 bg-brand-950 border-2 border-white rounded-full flex items-center justify-center'>
-                <Loader2 className='h-3 w-3 text-white animate-spin' />
+              <div className='bg-brand-950 absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white'>
+                <Loader2 className='h-3 w-3 animate-spin text-white' />
               </div>
             )}
             {status === 'success' && (
-              <div className='absolute -top-1 -right-1 w-6 h-6 bg-success-500 border-2 border-white rounded-full flex items-center justify-center'>
+              <div className='bg-success-500 absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full border-2 border-white'>
                 <Check className='h-3 w-3 text-white' />
               </div>
             )}
@@ -196,25 +196,25 @@ export function SignatureRequest({
         </div>
 
         <div>
-          <div className='text-3xl font-semibold text-tundora-300 mb-2'>
+          <div className='text-tundora-300 mb-2 text-3xl font-semibold'>
             {formatAmount(transaction.amount)} {transaction.token.symbol}
           </div>
-          <div className='text-sm text-dark-neutral-400 font-medium'>
+          <div className='text-dark-neutral-400 text-sm font-medium'>
             + {formatAmount(transaction.estimatedFee)}{' '}
             {transaction.token.symbol} network fee
           </div>
         </div>
 
         <div className='space-y-2'>
-          <div className='text-sm text-dark-neutral-400 font-medium'>
+          <div className='text-dark-neutral-400 text-sm font-medium'>
             <div>
               To: {transaction.receiverAddress.slice(0, 10)}...
               {transaction.receiverAddress.slice(-10)}
             </div>
           </div>
-          <div className='inline-flex items-center gap-2 bg-white border border-dark-neutral-50 rounded-sm px-3 py-1.5'>
-            <div className='w-2 h-2 bg-success-500 rounded-full'></div>
-            <span className='text-xs font-medium text-dark-neutral-400'>
+          <div className='border-dark-neutral-50 inline-flex items-center gap-2 rounded-sm border bg-white px-3 py-1.5'>
+            <div className='bg-success-500 h-2 w-2 rounded-full'></div>
+            <span className='text-dark-neutral-400 text-xs font-medium'>
               {transaction.token.chainName}
             </span>
           </div>
@@ -223,19 +223,19 @@ export function SignatureRequest({
 
       {/* Status Description */}
       <div className='text-center'>
-        <p className='text-base text-dark-neutral-400 leading-relaxed font-medium'>
+        <p className='text-dark-neutral-400 text-base leading-relaxed font-medium'>
           {statusContent.description}
         </p>
       </div>
 
       {/* Wallet Instructions (only for pending/signing) */}
       {(status === 'pending' || status === 'signing') && (
-        <div className='bg-pastels-polar-100 border border-dark-neutral-50 rounded-sm p-5'>
+        <div className='bg-pastels-polar-100 border-dark-neutral-50 rounded-sm border p-5'>
           <div className='flex items-start gap-3'>
-            <div className='w-2 h-2 bg-brand-950 rounded-full mt-2 shrink-0'></div>
-            <div className='text-sm text-tundora-300'>
-              <p className='font-semibold mb-2'>Wallet Required</p>
-              <p className='text-dark-neutral-400 font-medium leading-relaxed'>
+            <div className='bg-brand-950 mt-2 h-2 w-2 shrink-0 rounded-full'></div>
+            <div className='text-tundora-300 text-sm'>
+              <p className='mb-2 font-semibold'>Wallet Required</p>
+              <p className='text-dark-neutral-400 leading-relaxed font-medium'>
                 {transaction.token.chain === 'ethereum'
                   ? 'MetaMask or another Ethereum wallet will prompt you to sign this transaction.'
                   : 'Phantom or another Solana wallet will prompt you to sign this transaction.'}
@@ -247,12 +247,12 @@ export function SignatureRequest({
 
       {/* Error Display */}
       {status === 'error' && error && (
-        <div className='bg-red-50 border border-red-200 rounded-sm p-5'>
+        <div className='rounded-sm border border-red-200 bg-red-50 p-5'>
           <div className='flex items-start gap-3'>
-            <div className='w-2 h-2 bg-red-500 rounded-full mt-2 shrink-0'></div>
+            <div className='mt-2 h-2 w-2 shrink-0 rounded-full bg-red-500'></div>
             <div className='text-sm text-red-800'>
-              <p className='font-semibold mb-2'>Error</p>
-              <p className='font-medium leading-relaxed'>{error}</p>
+              <p className='mb-2 font-semibold'>Error</p>
+              <p className='leading-relaxed font-medium'>{error}</p>
             </div>
           </div>
         </div>

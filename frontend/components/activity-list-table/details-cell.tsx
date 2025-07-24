@@ -12,17 +12,17 @@ export function DetailsCell({ transaction }: DetailsCellProps) {
   const isSwap = transaction.type === 'Swap';
 
   return (
-    <div className='flex gap-4 items-center'>
+    <div className='flex items-center gap-4'>
       <TokenDisplay token={transaction.fromToken} />
 
-      <ArrowRight className='w-5 h-5 text-tundora-50 shrink-0' />
+      <ArrowRight className='text-tundora-50 h-5 w-5 shrink-0' />
 
       {isSwap ? (
         <TokenDisplay token={transaction.toToken} />
       ) : (
-        <div className='flex gap-2 items-center'>
-          <WalletIcon className='h-5 w-5 text-tundora-50' />
-          <div className=' font-medium text-sm leading-6 text-stone-600'>
+        <div className='flex items-center gap-2'>
+          <WalletIcon className='text-tundora-50 h-5 w-5' />
+          <div className='text-sm leading-6 font-medium text-stone-600'>
             {transaction.address}
           </div>
         </div>

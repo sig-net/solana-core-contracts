@@ -1,14 +1,20 @@
 'use client';
 
-import { CheckCircle, Clock, XCircle, Loader2, ExternalLink } from 'lucide-react';
+import {
+  CheckCircle,
+  Clock,
+  XCircle,
+  Loader2,
+  ExternalLink,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { CryptoIcon } from '@/components/balance-display/crypto-icon';
+
 import { WithdrawToken } from './index';
 
-export type WithdrawStatus = 
+export type WithdrawStatus =
   | 'processing'
-  | 'waiting_signature' 
+  | 'waiting_signature'
   | 'submitting_ethereum'
   | 'confirming_ethereum'
   | 'waiting_read_response'
@@ -90,14 +96,16 @@ const statusConfig = {
     icon: XCircle,
     iconClass: 'text-orange-500',
     title: 'Completion Failed',
-    description: 'Withdrawal succeeded but completion failed. You can retry completion.',
+    description:
+      'Withdrawal succeeded but completion failed. You can retry completion.',
     showProgress: false,
   },
   processing_interrupted: {
     icon: XCircle,
     iconClass: 'text-orange-500',
     title: 'Process Interrupted',
-    description: 'The process was interrupted but may have completed successfully.',
+    description:
+      'The process was interrupted but may have completed successfully.',
     showProgress: false,
   },
 };
@@ -120,49 +128,45 @@ export function WithdrawProcessing({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="text-center space-y-3">
+    <div className='space-y-4'>
+      <div className='space-y-3 text-center'>
         {/* Status Icon */}
-        <div className="flex justify-center">
-          <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-            <StatusIcon className={`w-6 h-6 ${config.iconClass}`} />
+        <div className='flex justify-center'>
+          <div className='flex h-12 w-12 items-center justify-center rounded-full bg-gray-100'>
+            <StatusIcon className={`h-6 w-6 ${config.iconClass}`} />
           </div>
         </div>
 
         {/* Title and Description */}
         <div>
-          <h2 className="text-lg font-semibold text-dark-neutral-900 mb-1">
+          <h2 className='text-dark-neutral-900 mb-1 text-lg font-semibold'>
             {config.title}
           </h2>
-          <p className="text-dark-neutral-600">
-            {config.description}
-          </p>
+          <p className='text-dark-neutral-600'>{config.description}</p>
           {error && (
-            <p className="text-red-600 text-sm mt-2 font-medium">
-              {error}
-            </p>
+            <p className='mt-2 text-sm font-medium text-red-600'>{error}</p>
           )}
         </div>
       </div>
 
       {/* Transaction Hash */}
       {txHash && (
-        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-medium text-blue-900">
+        <div className='rounded-lg border border-blue-200 bg-blue-50 p-3'>
+          <div className='flex items-center justify-between gap-2'>
+            <span className='text-sm font-medium text-blue-900'>
               Transaction Hash:
             </span>
             <a
               href={`https://sepolia.etherscan.io/tx/${txHash}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm cursor-pointer"
+              target='_blank'
+              rel='noopener noreferrer'
+              className='flex cursor-pointer items-center gap-1 text-sm text-blue-600 hover:text-blue-800'
             >
               View on Etherscan
-              <ExternalLink className="w-3 h-3" />
+              <ExternalLink className='h-3 w-3' />
             </a>
           </div>
-          <div className="mt-2 p-2 bg-white rounded border break-all font-mono text-xs text-blue-800">
+          <div className='mt-2 rounded border bg-white p-2 font-mono text-xs break-all text-blue-800'>
             {txHash}
           </div>
         </div>
@@ -170,8 +174,8 @@ export function WithdrawProcessing({
 
       {/* Progress Bar */}
       {config.showProgress && (
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs text-dark-neutral-600">
+        <div className='space-y-2'>
+          <div className='text-dark-neutral-600 flex justify-between text-xs'>
             <span>Progress</span>
             <span>
               {status === 'processing' && '10%'}
@@ -182,17 +186,24 @@ export function WithdrawProcessing({
               {status === 'completing_withdrawal' && '95%'}
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className='h-2 w-full rounded-full bg-gray-200'>
             <div
-              className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+              className='h-2 rounded-full bg-blue-500 transition-all duration-500'
               style={{
                 width:
-                  status === 'processing' ? '10%' :
-                  status === 'waiting_signature' ? '25%' :
-                  status === 'submitting_ethereum' ? '50%' :
-                  status === 'confirming_ethereum' ? '70%' :
-                  status === 'waiting_read_response' ? '85%' :
-                  status === 'completing_withdrawal' ? '95%' : '0%'
+                  status === 'processing'
+                    ? '10%'
+                    : status === 'waiting_signature'
+                      ? '25%'
+                      : status === 'submitting_ethereum'
+                        ? '50%'
+                        : status === 'confirming_ethereum'
+                          ? '70%'
+                          : status === 'waiting_read_response'
+                            ? '85%'
+                            : status === 'completing_withdrawal'
+                              ? '95%'
+                              : '0%',
               }}
             />
           </div>
@@ -200,12 +211,9 @@ export function WithdrawProcessing({
       )}
 
       {/* Action Buttons */}
-      <div className="flex gap-3 pt-2">
+      <div className='flex gap-3 pt-2'>
         {status === 'completed' && (
-          <Button
-            onClick={onClose}
-            className="flex-1 cursor-pointer"
-          >
+          <Button onClick={onClose} className='flex-1 cursor-pointer'>
             Done
           </Button>
         )}
@@ -214,15 +222,12 @@ export function WithdrawProcessing({
           <>
             <Button
               onClick={onClose}
-              variant="outline"
-              className="flex-1 cursor-pointer"
+              variant='outline'
+              className='flex-1 cursor-pointer'
             >
               Close
             </Button>
-            <Button
-              onClick={onRetry}
-              className="flex-1 cursor-pointer"
-            >
+            <Button onClick={onRetry} className='flex-1 cursor-pointer'>
               Retry
             </Button>
           </>
@@ -231,8 +236,8 @@ export function WithdrawProcessing({
         {status === 'processing_interrupted' && (
           <Button
             onClick={onClose}
-            variant="outline"
-            className="flex-1 cursor-pointer"
+            variant='outline'
+            className='flex-1 cursor-pointer'
           >
             Close
           </Button>
@@ -241,9 +246,9 @@ export function WithdrawProcessing({
         {config.showProgress && (
           <Button
             onClick={onClose}
-            variant="outline"
+            variant='outline'
             disabled
-            className="flex-1 cursor-not-allowed"
+            className='flex-1 cursor-not-allowed'
           >
             Processing...
           </Button>

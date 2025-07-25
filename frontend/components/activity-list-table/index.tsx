@@ -1,8 +1,18 @@
-import { cn } from '@/lib/utils';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { useMemo } from 'react';
 
-import { ACTIVITY_DATA } from './mockdata';
-import { TableHeader } from './table-header';
+import { cn } from '@/lib/utils';
+import { useIncomingTransfers } from '@/hooks/use-incoming-transfers';
+import {
+  formatTokenAmount,
+  getTokenSymbol,
+  formatUSDValue,
+} from '@/lib/utils/token-formatting';
+import { formatActivityDate } from '@/lib/utils/date-formatting';
+import { getTransactionExplorerUrl } from '@/lib/utils/network-utils';
+
 import { ActivityRow } from './activity-row';
+import { TableHeader } from './table-header';
 
 export interface ActivityTransaction {
   id: string;
@@ -21,7 +31,10 @@ export interface ActivityTransaction {
   };
   address?: string;
   timestamp: string;
+  timestampRaw?: number;
   status: 'pending' | 'completed';
+  transactionHash?: string;
+  explorerUrl?: string;
 }
 
 export const COLUMN_WIDTHS = {
@@ -37,9 +50,76 @@ interface ActivityListTableProps {
 }
 
 export function ActivityListTable({ className }: ActivityListTableProps) {
+  const { connected } = useWallet();
+  const {
+    data: incomingTransfers,
+    isLoading: isLoadingTransfers,
+    error,
+  } = useIncomingTransfers();
+
+  const realTransactions: ActivityTransaction[] = useMemo(() => {
+    if (!incomingTransfers) return [];
+
+    return incomingTransfers.map(transfer => {
+      const tokenSymbol = getTokenSymbol(transfer.tokenAddress);
+      const formattedAmount = formatTokenAmount(
+        transfer.value,
+        transfer.tokenAddress,
+        {
+          showSymbol: true,
+        },
+      );
+
+      const usdPrice = tokenSymbol === 'USDC' ? 1.0 : 0;
+      const usdValue =
+        usdPrice > 0
+          ? formatUSDValue(transfer.value, transfer.tokenAddress, usdPrice)
+          : '$0.00';
+
+      return {
+        id: `${transfer.transactionHash}-${transfer.logIndex}`,
+        type: 'Deposit' as const,
+        fromToken: {
+          symbol: 'WALLET',
+          chain: 'ethereum',
+          amount: transfer.from,
+          usdValue: '', // No USD value for address
+        },
+        toToken: {
+          symbol: tokenSymbol,
+          chain: 'ethereum',
+          amount: formattedAmount,
+          usdValue: usdValue,
+        },
+        address: transfer.from,
+        timestamp: transfer.timestamp
+          ? formatActivityDate(transfer.timestamp)
+          : 'Unknown',
+        timestampRaw: transfer.timestamp,
+        status: 'completed' as const,
+        transactionHash: transfer.transactionHash,
+        explorerUrl: getTransactionExplorerUrl(
+          transfer.transactionHash,
+          'sepolia',
+        ),
+      };
+    });
+  }, [incomingTransfers]);
+
+  // TODO: Add pagination for better UX when there are many transactions
+  // Currently showing only the last 5 transactions to keep the UI clean
+  const displayTransactions = realTransactions.slice(0, 5);
+
   return (
     <div>
-      <p className='text-dark-neutral-200 mb-8 font-bold uppercase'>Activity</p>
+      {error && (
+        <div className='mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm'>
+          <p className='text-red-800'>
+            Error loading transfers: {error.message}
+          </p>
+        </div>
+      )}
+
       <div className={cn('w-full', className)}>
         <div className='flex flex-col'>
           {/* Headers */}
@@ -53,9 +133,19 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
 
           {/* Rows */}
           <div className='flex flex-col'>
-            {ACTIVITY_DATA.map(transaction => (
-              <ActivityRow key={transaction.id} transaction={transaction} />
-            ))}
+            {displayTransactions.length > 0 ? (
+              displayTransactions.map(transaction => (
+                <ActivityRow key={transaction.id} transaction={transaction} />
+              ))
+            ) : (
+              <div className='flex items-center justify-center py-8 text-gray-500'>
+                {connected
+                  ? isLoadingTransfers
+                    ? 'Loading transactions...'
+                    : 'No transactions found. Send ERC20 tokens to your deposit address to see activity.'
+                  : 'Connect your wallet to view transaction activity.'}
+              </div>
+            )}
           </div>
         </div>
       </div>

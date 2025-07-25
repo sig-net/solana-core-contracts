@@ -16,7 +16,7 @@ export function SwapHeader({ onSettingsClick }: SwapHeaderProps) {
         className='h-8 w-8 p-0'
         onClick={onSettingsClick}
       >
-        <Settings2 className='text-dark-neutral-300 h-8 w-8' />
+        <Settings2 className='text-dark-neutral-300 h-6 w-6' />
       </Button>
     </div>
   );

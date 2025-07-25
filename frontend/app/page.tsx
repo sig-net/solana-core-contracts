@@ -41,7 +41,7 @@ export default function Home() {
           <EmptyStateWallet onDepositClick={handleDepositClick} />
         </div>
       ) : (
-        <div className='container mx-auto mt-16 flex justify-between gap-8'>
+        <div className='container mx-auto mt-16 flex justify-between gap-8 pb-16'>
           <div className='flex flex-col gap-12'>
             <BalanceSection />
             <ActivityListTable />

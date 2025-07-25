@@ -42,9 +42,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
 
   // Get deposit address for selected token
   const { data: depositAddress, isLoading: isGeneratingAddress } =
-    useDepositAddress(
-      selectedToken?.chain === 'ethereum' && publicKey ? publicKey : null,
-    );
+    useDepositAddress();
 
   // Deposit mutation
   const depositMutation = useDepositErc20Mutation();
@@ -84,6 +82,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
       await depositMutation.mutateAsync({
         erc20Address: selectedToken.address,
         amount,
+        decimals: selectedToken.decimals,
         onStatusChange: status => {
           setDepositStatus(status.status as DepositStatus);
           if (status.txHash) {

@@ -378,6 +378,30 @@ export class BridgeContract {
     }
   }
 
+  /**
+   * Fetch all pending withdrawals for a user
+   */
+  async fetchUserPendingWithdrawals(userPublicKey: PublicKey): Promise<any[]> {
+    try {
+      const program = this.getBridgeProgram();
+      
+      // Query all pendingErc20Withdrawal accounts where requester matches user
+      const pendingWithdrawals = await program.account.pendingErc20Withdrawal.all([
+        {
+          memcmp: {
+            offset: 8, // Skip the 8-byte discriminator
+            bytes: userPublicKey.toBase58(),
+          },
+        },
+      ]);
+      
+      return pendingWithdrawals;
+    } catch (error) {
+      console.error('Error fetching user pending withdrawals:', error);
+      return [];
+    }
+  }
+
   // ================================
   // Helper Methods
   // ================================

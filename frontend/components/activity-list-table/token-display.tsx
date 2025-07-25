@@ -1,6 +1,6 @@
 import { WalletIcon } from 'lucide-react';
 
-import { TruncatedAddress } from '@/components/ui/truncated-text';
+import { TruncatedText } from '@/components/ui/truncated-text';
 
 import { CryptoIcon } from '../balance-display/crypto-icon';
 
@@ -23,8 +23,10 @@ export function TokenDisplay({ token }: TokenDisplayProps) {
         <WalletIcon className='text-tundora-50 h-8 w-8' />
         <div className='flex flex-col gap-1'>
           <div className='text-sm font-medium text-stone-600'>
-            <TruncatedAddress
-              address={token.amount}
+            <TruncatedText
+              text={token.amount}
+              prefixLength={6}
+              suffixLength={4}
               copyable={true}
               className='transition-colors hover:text-blue-600'
             />

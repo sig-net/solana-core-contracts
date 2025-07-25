@@ -1,6 +1,6 @@
 import { ArrowRight, WalletIcon } from 'lucide-react';
 
-import { TruncatedAddress } from '@/components/ui/truncated-text';
+import { TruncatedText } from '@/components/ui/truncated-text';
 
 import { TokenDisplay } from './token-display';
 
@@ -27,8 +27,10 @@ export function DetailsCell({ transaction }: DetailsCellProps) {
           <WalletIcon className='text-tundora-50 h-5 w-5' />
           <div className='text-sm leading-6 font-medium text-stone-600'>
             {transaction.address ? (
-              <TruncatedAddress
-                address={transaction.address}
+              <TruncatedText
+                text={transaction.address}
+                prefixLength={6}
+                suffixLength={4}
                 copyable={true}
                 className='transition-colors hover:text-blue-600'
               />

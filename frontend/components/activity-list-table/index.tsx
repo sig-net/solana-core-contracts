@@ -1,12 +1,13 @@
 import { useWallet } from '@solana/wallet-adapter-react';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 
 import { cn } from '@/lib/utils';
 import { useIncomingTransfers } from '@/hooks/use-incoming-transfers';
+import { useOutgoingTransfers } from '@/hooks/use-outgoing-transfers';
 import {
-  formatTokenAmount,
-  getTokenSymbol,
-  formatUSDValue,
+  formatTokenAmountSync,
+  getTokenInfoSync,
+  preloadTokenInfo,
 } from '@/lib/utils/token-formatting';
 import { formatActivityDate } from '@/lib/utils/date-formatting';
 import { getTransactionExplorerUrl } from '@/lib/utils/network-utils';
@@ -16,7 +17,7 @@ import { TableHeader } from './table-header';
 
 export interface ActivityTransaction {
   id: string;
-  type: 'Send' | 'Swap' | 'Deposit';
+  type: 'Send' | 'Swap' | 'Deposit' | 'Withdraw';
   fromToken?: {
     symbol: string;
     chain: string;
@@ -40,7 +41,7 @@ export interface ActivityTransaction {
 export const COLUMN_WIDTHS = {
   activity: 'w-24',
   details: 'flex-1',
-  timestamp: 'w-50',
+  timestamp: 'w-30',
   status: 'w-32',
   explorer: 'w-25',
 } as const;
@@ -53,58 +54,145 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
   const { connected } = useWallet();
   const {
     data: incomingTransfers,
-    isLoading: isLoadingTransfers,
-    error,
+    isLoading: isLoadingIncoming,
+    error: incomingError,
   } = useIncomingTransfers();
 
-  const realTransactions: ActivityTransaction[] = useMemo(() => {
-    if (!incomingTransfers) return [];
+  const {
+    data: outgoingTransfers,
+    isLoading: isLoadingOutgoing,
+    error: outgoingError,
+  } = useOutgoingTransfers();
 
-    return incomingTransfers.map(transfer => {
-      const tokenSymbol = getTokenSymbol(transfer.tokenAddress);
-      const formattedAmount = formatTokenAmount(
-        transfer.value,
-        transfer.tokenAddress,
-        {
-          showSymbol: true,
-        },
+  const isLoadingTransfers = isLoadingIncoming || isLoadingOutgoing;
+  const error = incomingError || outgoingError;
+
+  // Preload token information when transfers are loaded
+  useEffect(() => {
+    const allTransfers = [...(incomingTransfers || []), ...(outgoingTransfers || [])];
+    if (allTransfers.length) {
+      const tokenAddresses = Array.from(
+        new Set(allTransfers.map(transfer => transfer.tokenAddress)),
       );
+      preloadTokenInfo(tokenAddresses);
+    }
+  }, [incomingTransfers, outgoingTransfers]);
 
-      const usdPrice = tokenSymbol === 'USDC' ? 1.0 : 0;
-      const usdValue =
-        usdPrice > 0
-          ? formatUSDValue(transfer.value, transfer.tokenAddress, usdPrice)
-          : '$0.00';
+  const realTransactions: ActivityTransaction[] = useMemo(() => {
+    const allTransactions: ActivityTransaction[] = [];
 
-      return {
-        id: `${transfer.transactionHash}-${transfer.logIndex}`,
-        type: 'Deposit' as const,
-        fromToken: {
-          symbol: 'WALLET',
-          chain: 'ethereum',
-          amount: transfer.from,
-          usdValue: '', // No USD value for address
-        },
-        toToken: {
-          symbol: tokenSymbol,
-          chain: 'ethereum',
-          amount: formattedAmount,
-          usdValue: usdValue,
-        },
-        address: transfer.from,
-        timestamp: transfer.timestamp
-          ? formatActivityDate(transfer.timestamp)
-          : 'Unknown',
-        timestampRaw: transfer.timestamp,
-        status: 'completed' as const,
-        transactionHash: transfer.transactionHash,
-        explorerUrl: getTransactionExplorerUrl(
-          transfer.transactionHash,
-          'sepolia',
-        ),
-      };
+    // Process incoming transfers (deposits)
+    if (incomingTransfers) {
+      const incomingTxs = incomingTransfers.map(transfer => {
+        const tokenInfo = getTokenInfoSync(transfer.tokenAddress);
+        const formattedAmount = formatTokenAmountSync(
+          transfer.value,
+          transfer.tokenAddress,
+          {
+            showSymbol: true,
+          },
+        );
+
+        const usdPrice = tokenInfo.displaySymbol === 'USDC' ? 1.0 : 0;
+        const usdValue =
+          usdPrice > 0
+            ? `$${(
+                (Number(transfer.value) /
+                  Number(BigInt(10 ** tokenInfo.decimals))) *
+                usdPrice
+              ).toFixed(2)}`
+            : '$0.00';
+
+        return {
+          id: `${transfer.transactionHash}-${transfer.logIndex}`,
+          type: 'Deposit' as const,
+          fromToken: {
+            symbol: 'WALLET',
+            chain: 'ethereum',
+            amount: transfer.from,
+            usdValue: '',
+          },
+          toToken: {
+            symbol: tokenInfo.displaySymbol,
+            chain: 'ethereum',
+            amount: formattedAmount,
+            usdValue: usdValue,
+          },
+          address: transfer.from,
+          timestamp: transfer.timestamp
+            ? formatActivityDate(transfer.timestamp)
+            : 'Unknown',
+          timestampRaw: transfer.timestamp,
+          status: 'completed' as const,
+          transactionHash: transfer.transactionHash,
+          explorerUrl: getTransactionExplorerUrl(
+            transfer.transactionHash,
+            'sepolia',
+          ),
+        };
+      });
+      allTransactions.push(...incomingTxs);
+    }
+
+    // Process outgoing transfers (withdrawals)
+    if (outgoingTransfers) {
+      const outgoingTxs = outgoingTransfers.map(transfer => {
+        const tokenInfo = getTokenInfoSync(transfer.tokenAddress);
+        const formattedAmount = formatTokenAmountSync(
+          transfer.value,
+          transfer.tokenAddress,
+          {
+            showSymbol: true,
+          },
+        );
+
+        const usdPrice = tokenInfo.displaySymbol === 'USDC' ? 1.0 : 0;
+        const usdValue =
+          usdPrice > 0
+            ? `$${(
+                (Number(transfer.value) /
+                  Number(BigInt(10 ** tokenInfo.decimals))) *
+                usdPrice
+              ).toFixed(2)}`
+            : '$0.00';
+
+        return {
+          id: `${transfer.requestId}-outgoing`,
+          type: 'Withdraw' as const,
+          fromToken: {
+            symbol: tokenInfo.displaySymbol,
+            chain: 'solana',
+            amount: formattedAmount,
+            usdValue: usdValue,
+          },
+          toToken: {
+            symbol: 'WALLET',
+            chain: 'ethereum',
+            amount: transfer.recipient,
+            usdValue: '',
+          },
+          address: transfer.recipient,
+          timestamp: transfer.timestamp
+            ? formatActivityDate(transfer.timestamp)
+            : 'Unknown',
+          timestampRaw: transfer.timestamp,
+          status: transfer.status as 'pending' | 'completed',
+          transactionHash: transfer.transactionHash,
+          explorerUrl: transfer.transactionHash
+            ? getTransactionExplorerUrl(transfer.transactionHash, 'sepolia')
+            : undefined,
+        };
+      });
+      allTransactions.push(...outgoingTxs);
+    }
+
+    // Sort all transactions by timestamp (newest first)
+    return allTransactions.sort((a, b) => {
+      const aTime = a.timestampRaw || 0;
+      const bTime = b.timestampRaw || 0;
+      return bTime - aTime;
     });
-  }, [incomingTransfers]);
+  }, [incomingTransfers, outgoingTransfers]);
 
   // TODO: Add pagination for better UX when there are many transactions
   // Currently showing only the last 5 transactions to keep the UI clean

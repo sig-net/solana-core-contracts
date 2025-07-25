@@ -30,7 +30,7 @@ export const validateTokenAmount = (value: string) => {
   const result = tokenAmountSchema.safeParse(value);
   return {
     isValid: result.success,
-    error: result.error?.errors[0]?.message,
+    error: result.error?.issues[0]?.message,
   };
 };
 

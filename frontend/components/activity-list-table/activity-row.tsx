@@ -34,9 +34,16 @@ export function ActivityRow({ transaction }: ActivityRowProps) {
       </TableCell>
 
       <TableCell width={COLUMN_WIDTHS.explorer}>
-        <button className='h-5 w-5 transition-opacity hover:opacity-80'>
-          <ExternalLink className='text-tundora-50 h-5 w-5' />
-        </button>
+        {transaction.explorerUrl ? (
+          <a
+            href={transaction.explorerUrl}
+            target='_blank'
+            rel='noopener noreferrer'
+            className='inline-block h-5 w-5 transition-opacity hover:opacity-80'
+          >
+            <ExternalLink className='text-tundora-50 h-5 w-5' />
+          </a>
+        ) : null}
       </TableCell>
     </div>
   );

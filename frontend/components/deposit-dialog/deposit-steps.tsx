@@ -9,11 +9,9 @@ import { Button } from '@/components/ui/button';
 import { Steps, Step } from '@/components/ui/steps';
 import { CryptoIcon } from '@/components/balance-display/crypto-icon';
 import { DepositToken } from '@/lib/constants/deposit-tokens';
-import { useIncomingTransfers } from '@/hooks/use-incoming-transfers';
 import { useDepositErc20Mutation } from '@/hooks/use-deposit-erc20-mutation';
 import { useSolanaService } from '@/hooks/use-solana-service';
 import { DepositStatus } from '@/lib/types/bridge.types';
-import { formatTokenAmountSync } from '@/lib/utils/token-formatting';
 
 interface DepositStepsProps {
   token: DepositToken;
@@ -23,12 +21,9 @@ interface DepositStepsProps {
 
 export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
   const { publicKey } = useWallet();
-  const { data: incomingTransfers, isLoading: isCheckingTransfers } =
-    useIncomingTransfers();
   const depositMutation = useDepositErc20Mutation();
   const solanaService = useSolanaService();
 
-  const [detectedTx, setDetectedTx] = useState<any>(null);
   const [depositStatus, setDepositStatus] =
     useState<DepositStatus>('processing');
   const [txHash, setTxHash] = useState<string>('');
@@ -37,6 +32,8 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
   const [availableBalance, setAvailableBalance] = useState<string>('');
   const [actualDecimals, setActualDecimals] = useState<number | null>(null);
   const [checkingBalance, setCheckingBalance] = useState(true);
+
+  console.log({ selectedToken: token });
 
   // Check for available balance and start auto-deposit if found
   useEffect(() => {
@@ -52,17 +49,6 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
         if (balanceResult.amount && parseFloat(balanceResult.amount) > 0) {
           setAvailableBalance(balanceResult.amount);
           setActualDecimals(balanceResult.decimals);
-
-          // Create a synthetic transaction to trigger the existing flow
-          // We need to create a raw value that matches what the detection logic expects
-          const rawValue = ethers.parseUnits(
-            balanceResult.amount,
-            balanceResult.decimals,
-          );
-          setDetectedTx({
-            value: rawValue.toString(),
-            transactionHash: 'auto-deposit',
-          });
         }
       } catch (error) {
         // No balance available, continue with normal flow
@@ -81,38 +67,16 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
     checkingBalance,
   ]);
 
-  // Check for incoming transactions
+  // Auto-start bridge process when available balance is found
   useEffect(() => {
-    if (incomingTransfers && incomingTransfers.length > 0 && !detectedTx) {
-      // Find the most recent transaction for our supported token
-      const relevantTx = incomingTransfers.find(
-        tx => tx.tokenAddress.toLowerCase() === token.address.toLowerCase(),
-      );
-
-      if (relevantTx) {
-        setDetectedTx(relevantTx);
-      }
-    }
-  }, [incomingTransfers, token.address, detectedTx]);
-
-  // Auto-start bridge process when transaction is detected and confirmed
-  useEffect(() => {
-    if (detectedTx && !hasStartedBridge && publicKey) {
+    if (availableBalance && parseFloat(availableBalance) > 0 && !hasStartedBridge && publicKey) {
       const startBridge = async () => {
         setHasStartedBridge(true);
 
         try {
-          // Use available balance if this is an auto-deposit, otherwise convert detected amount
-          const amount =
-            availableBalance ||
-            (
-              Number(detectedTx.value) /
-              Math.pow(10, actualDecimals || token.decimals)
-            ).toString();
-
           await depositMutation.mutateAsync({
             erc20Address: token.address,
-            amount,
+            amount: availableBalance,
             decimals: actualDecimals || token.decimals,
             onStatusChange: status => {
               setDepositStatus(status.status as DepositStatus);
@@ -130,16 +94,15 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
         }
       };
 
-      // Start bridge process after a short delay to let user see transaction detected
-      setTimeout(startBridge, 2000);
+      // Start bridge process immediately when balance is available
+      startBridge();
     }
   }, [
-    detectedTx,
+    availableBalance,
     hasStartedBridge,
     publicKey,
     depositMutation,
     token,
-    availableBalance,
     actualDecimals,
   ]);
 
@@ -147,33 +110,14 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
     const baseSteps: Step[] = [
       {
         id: 'send',
-        title: 'Send tokens to address',
-        description: `Send ${token.symbol} to the provided address`,
-        status: detectedTx
+        title: 'Balance detected',
+        description: `${token.symbol} available for bridging`,
+        status: availableBalance && parseFloat(availableBalance) > 0
           ? 'completed'
-          : checkingBalance || isCheckingTransfers
+          : checkingBalance
             ? 'loading'
             : 'pending',
         icon: Send,
-      },
-      {
-        id: 'detect',
-        title: 'Transaction detected',
-        description: 'Found on the blockchain',
-        status: detectedTx ? 'completed' : 'pending',
-        icon: CheckCircle,
-        details: detectedTx &&
-          detectedTx.transactionHash !== 'auto-deposit' && (
-            <a
-              href={`https://sepolia.etherscan.io/tx/${detectedTx.transactionHash}`}
-              target='_blank'
-              rel='noopener noreferrer'
-              className='flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800'
-            >
-              View transaction
-              <ExternalLink className='h-3 w-3' />
-            </a>
-          ),
       },
       {
         id: 'bridge',
@@ -237,11 +181,8 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
         />
         <div className='min-w-0 flex-1'>
           <p className='text-dark-neutral-900 truncate text-sm font-medium'>
-            {detectedTx
-              ? formatTokenAmountSync(BigInt(detectedTx.value), token.address, {
-                  showSymbol: true,
-                  precision: 6,
-                })
+            {availableBalance && parseFloat(availableBalance) > 0
+              ? `${parseFloat(availableBalance).toFixed(6)} ${token.symbol}`
               : `${token.symbol}`}
           </p>
           <p className='text-dark-neutral-600 truncate text-xs'>{token.name}</p>
@@ -261,7 +202,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
 
       {/* Compact Action Buttons */}
       <div className='flex gap-2 pt-2'>
-        {!detectedTx && !isComplete && !hasFailed && (
+        {(!availableBalance || parseFloat(availableBalance) === 0) && !isComplete && !hasFailed && (
           <Button
             onClick={onBack}
             variant='outline'
@@ -303,7 +244,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
           </>
         )}
 
-        {!isComplete && !hasFailed && detectedTx && (
+        {!isComplete && !hasFailed && availableBalance && parseFloat(availableBalance) > 0 && (
           <Button disabled variant='outline' size='sm' className='flex-1'>
             Processing...
           </Button>

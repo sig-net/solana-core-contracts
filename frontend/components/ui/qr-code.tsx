@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import QRCode from 'qrcode';
+import { useEffect, useRef, useState, ReactElement } from 'react';
+import QRCodeStyling from 'qr-code-styling';
+import React from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -9,58 +10,132 @@ interface QRCodeProps {
   value: string;
   size?: number;
   className?: string;
-  network?: string;
+  icon?: ReactElement;
+  iconUrl?: string;
   errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';
   margin?: number;
 }
 
-const getQRColors = () => {
-  return {
-    dark: '#000000',
-    light: '#ffffff',
-  };
-};
-
-export function QRCodeComponent({
+export function QRCode({
   value,
   size = 160,
   className,
-  network = 'default',
+  icon,
+  iconUrl,
   errorCorrectionLevel = 'M',
-  margin = 2,
+  margin = 16,
 }: QRCodeProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const abortController = new AbortController();
+
     const generateQR = async () => {
-      if (!canvasRef.current || !value) return;
+      if (!value || !containerRef.current) return;
 
       try {
         setIsGenerating(true);
         setError(null);
+        containerRef.current.innerHTML = '';
+        
+        let imageDataUrl: string | undefined;
+        if (iconUrl) {
+          imageDataUrl = iconUrl;
+        } else if (icon) {
+          try {
+            // Create temporary container
+            const tempDiv = document.createElement('div');
+            tempDiv.style.position = 'absolute';
+            tempDiv.style.left = '-9999px';
+            tempDiv.style.width = '64px';
+            tempDiv.style.height = '64px';
+            document.body.appendChild(tempDiv);
 
-        const colors = getQRColors();
+            // Import createRoot dynamically
+            const { createRoot } = await import('react-dom/client');
+            const root = createRoot(tempDiv);
 
-        await QRCode.toCanvas(canvasRef.current, value, {
+            // Render icon with fixed dimensions
+            const iconElement = React.cloneElement(icon, {
+              width: 64,
+              height: 64,
+            } as React.SVGProps<SVGSVGElement>);
+
+            root.render(iconElement);
+
+            // Wait for render and extract SVG
+            await new Promise(resolve => setTimeout(resolve, 50));
+            const svg = tempDiv.querySelector('svg');
+
+            if (svg) {
+              const svgString = new XMLSerializer().serializeToString(svg);
+              imageDataUrl = `data:image/svg+xml;base64,${btoa(svgString)}`;
+            }
+
+            // Cleanup
+            root.unmount();
+            document.body.removeChild(tempDiv);
+          } catch (error) {
+            console.warn('Failed to convert icon to data URL:', error);
+          }
+        }
+
+        const qrCode = new QRCodeStyling({
           width: size,
+          height: size,
+          type: 'svg',
+          data: value,
+          image: imageDataUrl,
           margin,
-          errorCorrectionLevel,
-          color: colors,
+          qrOptions: {
+            errorCorrectionLevel,
+          },
+          dotsOptions: {
+            color: '#000000',
+            type: 'dots',
+          },
+          backgroundOptions: {
+            color: '#ffffff',
+          },
+          cornersSquareOptions: {
+            color: '#000000',
+            type: 'square',
+          },
+          cornersDotOptions: {
+            color: '#000000',
+            type: 'square',
+          },
+          imageOptions: imageDataUrl ? {
+            crossOrigin: 'anonymous',
+            margin: 8,
+            imageSize: 0.4,
+            hideBackgroundDots: true,
+          } : undefined,
         });
+
+        // Single check before DOM manipulation
+        if (!abortController.signal.aborted && containerRef.current) {
+          qrCode.append(containerRef.current);
+        }
       } catch (err) {
         console.error('QR Code generation failed:', err);
-        setError(
-          err instanceof Error ? err.message : 'Failed to generate QR code',
-        );
+        if (!abortController.signal.aborted) {
+          setError(
+            err instanceof Error ? err.message : 'Failed to generate QR code',
+          );
+        }
       } finally {
-        setIsGenerating(false);
+        if (!abortController.signal.aborted) {
+          setIsGenerating(false);
+        }
       }
     };
 
     generateQR();
-  }, [value, size, network, errorCorrectionLevel, margin]);
+    return () => abortController.abort();
+  }, [value, size, icon, iconUrl, errorCorrectionLevel, margin]);
 
   if (error) {
     return (
@@ -94,9 +169,9 @@ export function QRCodeComponent({
         </div>
       )}
 
-      {/* QR Code Canvas */}
-      <canvas
-        ref={canvasRef}
+      {/* QR Code Container */}
+      <div
+        ref={containerRef}
         className={cn(
           'transition-opacity',
           isGenerating ? 'opacity-0' : 'opacity-100',
@@ -110,5 +185,3 @@ export function QRCodeComponent({
     </div>
   );
 }
-
-export { QRCodeComponent as QRCode };

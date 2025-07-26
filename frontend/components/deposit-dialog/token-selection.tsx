@@ -1,6 +1,7 @@
 'use client';
 
 import { DEPOSIT_TOKENS, DepositToken } from '@/lib/constants/deposit-tokens';
+
 import { TokenListItem } from './token-list-item';
 
 interface TokenSelectionProps {

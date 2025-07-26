@@ -6,3 +6,16 @@ export interface PendingErc20Deposit {
   requester: string;
   pda: string;
 }
+
+// Deposit Status Types
+export type DepositStatus =
+  | 'processing'
+  | 'waiting_signature'
+  | 'submitting_ethereum'
+  | 'confirming_ethereum'
+  | 'waiting_read_response'
+  | 'auto_claiming'
+  | 'completed'
+  | 'failed'
+  | 'claim_failed'
+  | 'processing_interrupted';

@@ -1,3 +1,5 @@
+import { Buffer } from 'buffer';
+
 import {
   Connection,
   PublicKey,
@@ -5,7 +7,6 @@ import {
 } from '@solana/web3.js';
 import { Program, AnchorProvider, BN, Wallet } from '@coral-xyz/anchor';
 import type { ProgramAccount } from '@coral-xyz/anchor';
-import { Buffer } from 'buffer';
 
 import { IDL, type SolanaCoreContracts } from '@/lib/program/idl';
 import {
@@ -479,47 +480,80 @@ export class BridgeContract {
             if (!tx || !tx.meta || tx.meta.err) continue;
 
             // Check if this transaction involves the bridge program
-            const accountKeys = tx.transaction.message.version === 'legacy' 
-              ? tx.transaction.message.accountKeys 
-              : tx.transaction.message.staticAccountKeys;
+            const accountKeys =
+              tx.transaction.message.version === 'legacy'
+                ? tx.transaction.message.accountKeys
+                : tx.transaction.message.staticAccountKeys;
 
             // Find instructions for our program
-            const instructions = tx.transaction.message.version === 'legacy'
-              ? tx.transaction.message.instructions
-              : tx.transaction.message.compiledInstructions;
-            
+            const instructions =
+              tx.transaction.message.version === 'legacy'
+                ? tx.transaction.message.instructions
+                : tx.transaction.message.compiledInstructions;
+
             for (const ix of instructions) {
               const programId = accountKeys[ix.programIdIndex];
-              
+
               if (programId.equals(BRIDGE_PROGRAM_ID)) {
                 try {
                   // Decode the instruction data
-                  const ixData = typeof ix.data === 'string' ? ix.data : Buffer.from(ix.data).toString('base64');
+                  const ixData =
+                    typeof ix.data === 'string'
+                      ? ix.data
+                      : Buffer.from(ix.data).toString('base64');
                   const instructionDataBuf = Buffer.from(ixData, 'base64');
-                  
+
                   // Get discriminator to identify instruction type
                   const discriminator = instructionDataBuf.slice(0, 8);
-                  
+
                   let instructionName: string | null = null;
                   let decodedData: any = null;
-                  
+
                   // Check against known discriminators
-                  if (discriminator.equals(Buffer.from([19, 124, 28, 31, 171, 187, 87, 70]))) {
+                  if (
+                    discriminator.equals(
+                      Buffer.from([19, 124, 28, 31, 171, 187, 87, 70]),
+                    )
+                  ) {
                     instructionName = 'withdrawErc20';
                     // Parse withdrawErc20 args according to IDL
                     const dataOffset = 8;
                     decodedData = {
-                      requestId: Array.from(instructionDataBuf.slice(dataOffset, dataOffset + 32)),
-                      erc20Address: Array.from(instructionDataBuf.slice(dataOffset + 32, dataOffset + 52)),
-                      amount: new BN(instructionDataBuf.slice(dataOffset + 52, dataOffset + 68), 'le'),
-                      recipientAddress: Array.from(instructionDataBuf.slice(dataOffset + 68, dataOffset + 88)),
+                      requestId: Array.from(
+                        instructionDataBuf.slice(dataOffset, dataOffset + 32),
+                      ),
+                      erc20Address: Array.from(
+                        instructionDataBuf.slice(
+                          dataOffset + 32,
+                          dataOffset + 52,
+                        ),
+                      ),
+                      amount: new BN(
+                        instructionDataBuf.slice(
+                          dataOffset + 52,
+                          dataOffset + 68,
+                        ),
+                        'le',
+                      ),
+                      recipientAddress: Array.from(
+                        instructionDataBuf.slice(
+                          dataOffset + 68,
+                          dataOffset + 88,
+                        ),
+                      ),
                     };
-                  } else if (discriminator.equals(Buffer.from([108, 220, 227, 17, 212, 248, 163, 74]))) {
+                  } else if (
+                    discriminator.equals(
+                      Buffer.from([108, 220, 227, 17, 212, 248, 163, 74]),
+                    )
+                  ) {
                     instructionName = 'completeWithdrawErc20';
                     // Parse completeWithdrawErc20 args
                     const dataOffset = 8;
                     decodedData = {
-                      requestId: Array.from(instructionDataBuf.slice(dataOffset, dataOffset + 32)),
+                      requestId: Array.from(
+                        instructionDataBuf.slice(dataOffset, dataOffset + 32),
+                      ),
                     };
                   }
 
@@ -528,22 +562,30 @@ export class BridgeContract {
                   // Handle withdrawErc20 instruction
                   if (instructionName === 'withdrawErc20') {
                     const args = decodedData;
-                    
+
                     // Extract withdrawal data from decoded instruction
-                    const requestId = Buffer.from(args.requestId).toString('hex');
-                    const erc20Address = '0x' + Buffer.from(args.erc20Address).toString('hex');
+                    const requestId = Buffer.from(args.requestId).toString(
+                      'hex',
+                    );
+                    const erc20Address =
+                      '0x' + Buffer.from(args.erc20Address).toString('hex');
                     const amount = args.amount.toString();
-                    const recipient = '0x' + Buffer.from(args.recipientAddress).toString('hex');
+                    const recipient =
+                      '0x' + Buffer.from(args.recipientAddress).toString('hex');
 
                     // Check if this withdrawal is for the current user
-                    const userAccountIndex = accountKeys.findIndex(
-                      key => key.equals(userPublicKey)
+                    const userAccountIndex = accountKeys.findIndex(key =>
+                      key.equals(userPublicKey),
                     );
-                    
+
                     // Get instruction accounts
-                    const ixAccounts = 'accounts' in ix ? ix.accounts : ix.accountIdxs || [];
-                    
-                    if (userAccountIndex !== -1 && ixAccounts.includes(userAccountIndex)) {
+                    const ixAccounts =
+                      'accounts' in ix ? ix.accounts : ix.accountIdxs || [];
+
+                    if (
+                      userAccountIndex !== -1 &&
+                      ixAccounts.includes(userAccountIndex)
+                    ) {
                       const withdrawalRecord = {
                         requestId,
                         amount,
@@ -557,7 +599,7 @@ export class BridgeContract {
 
                       // Only add if not already in withdrawals list
                       const exists = withdrawals.some(
-                        w => w.requestId === requestId
+                        w => w.requestId === requestId,
                       );
                       if (!exists) {
                         withdrawals.push(withdrawalRecord);
@@ -567,11 +609,13 @@ export class BridgeContract {
                   // Handle completeWithdrawErc20 instruction
                   else if (instructionName === 'completeWithdrawErc20') {
                     const args = decodedData;
-                    const requestId = Buffer.from(args.requestId).toString('hex');
+                    const requestId = Buffer.from(args.requestId).toString(
+                      'hex',
+                    );
 
                     // Update existing withdrawal to completed status if found
                     const existingIndex = withdrawals.findIndex(
-                      w => w.requestId === requestId
+                      w => w.requestId === requestId,
                     );
                     if (existingIndex !== -1) {
                       withdrawals[existingIndex].status = 'completed';

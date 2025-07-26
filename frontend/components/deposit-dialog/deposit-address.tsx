@@ -1,6 +1,7 @@
 'use client';
 
-import { Copy, Check, ArrowLeft, Eye, Info } from 'lucide-react';
+import { Copy, Check, Info } from 'lucide-react';
+import { NetworkIcon } from '@web3icons/react';
 
 import { Button } from '@/components/ui/button';
 import { QRCode } from '@/components/ui/qr-code';
@@ -42,9 +43,10 @@ export function DepositAddress({
         <QRCode
           value={depositAddress}
           size={242}
-          network={token.chain}
+          icon={<NetworkIcon name={token.chain} />}
           className='mx-auto border-none bg-white'
           errorCorrectionLevel='M'
+          margin={16}
         />
 
         {/* Address Display */}

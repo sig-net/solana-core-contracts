@@ -6,29 +6,18 @@ import QRCode from 'qrcode';
 import { cn } from '@/lib/utils';
 
 interface QRCodeProps {
-  /** The value to encode in the QR code */
   value: string;
-  /** Size of the QR code in pixels */
   size?: number;
-  /** Additional CSS classes */
   className?: string;
-  /** Network/chain type (no longer used for colors) */
   network?: string;
-  /** Error correction level */
   errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';
-  /** Margin around the QR code */
   margin?: number;
-  /** Show network icon in center */
-  showNetworkIcon?: boolean;
-  /** Token symbol for network icon */
-  tokenSymbol?: string;
 }
 
-// QR code colors - always black for better scanning
 const getQRColors = () => {
   return {
-    dark: '#000000', // Pure black for better scanning
-    light: '#ffffff', // Pure white background
+    dark: '#000000',
+    light: '#ffffff',
   };
 };
 
@@ -39,8 +28,6 @@ export function QRCodeComponent({
   network = 'default',
   errorCorrectionLevel = 'M',
   margin = 2,
-  showNetworkIcon = false,
-  tokenSymbol,
 }: QRCodeProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isGenerating, setIsGenerating] = useState(true);
@@ -124,5 +111,4 @@ export function QRCodeComponent({
   );
 }
 
-// Export with a more semantic name for the deposit context
 export { QRCodeComponent as QRCode };

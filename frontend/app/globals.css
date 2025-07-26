@@ -21,6 +21,7 @@
   --color-pastels-polar-100: var(--pastels-polar-100);
   --color-pastels-green-white-300: var(--pastels-green-white-300);
   --color-pastels-mercury-400: var(--pastels-mercury-400);
+  --color-pastels-swiss-coffee-50: var(--pastels-swiss-coffee-50);
   --color-pastels-swiss-coffee-400: var(--pastels-swiss-coffee-400);
   --color-success-500: var(--success-500);
   --color-tundora-300: var(--tundora-300);
@@ -53,6 +54,7 @@
   --pastels-polar-100: #f6fdfd;
   --pastels-green-white-300: #ebf0ea;
   --pastels-mercury-400: #eae7e7;
+  --pastels-swiss-coffee-50: #fdfcfc;
   --pastels-swiss-coffee-400: #eae1e0;
   --success-500: #17b26a;
   --tundora-300: #6c6060;

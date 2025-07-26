@@ -2,13 +2,25 @@
 
 import { useState } from 'react';
 
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { useWithdrawMutation } from '@/hooks';
 
 import { AmountInput } from './amount-input';
-import { TransactionConfirmation } from './transaction-confirmation';
 import { LoadingState } from './loading-state';
-import { WithdrawProcessing, WithdrawStatus } from './withdraw-processing';
+import { WithdrawSteps } from './withdraw-steps';
+
+// Define WithdrawStatus type locally
+export type WithdrawStatus =
+  | 'processing'
+  | 'waiting_signature'
+  | 'submitting_ethereum'
+  | 'confirming_ethereum'
+  | 'waiting_read_response'
+  | 'completing_withdrawal'
+  | 'completed'
+  | 'failed'
+  | 'complete_failed'
+  | 'processing_interrupted';
 
 export interface WithdrawToken {
   symbol: string;
@@ -35,7 +47,7 @@ interface WithdrawDialogProps {
   preSelectedToken?: WithdrawToken | null;
 }
 
-type WithdrawStep = 'amount-input' | 'confirmation' | 'processing';
+type WithdrawStep = 'amount-input' | 'steps';
 
 export function WithdrawDialog({
   open,
@@ -78,25 +90,17 @@ export function WithdrawDialog({
     });
 
     setIsProcessing(false);
-    setStep('confirmation');
-  };
+    setStep('steps');
 
-  const handleConfirmTransaction = () => {
-    setStep('processing');
-    initiateWithdrawal();
-  };
-
-  const initiateWithdrawal = async () => {
-    if (!transaction) return;
-
+    // Start withdrawal immediately
     try {
       setError('');
       setWithdrawStatus('processing');
 
-      await withdrawMutation.mutateAsync({
-        erc20Address: transaction.token.address,
-        amount: transaction.amount,
-        recipientAddress: transaction.receiverAddress,
+      withdrawMutation.mutate({
+        erc20Address: data.token.address,
+        amount: data.amount,
+        recipientAddress: data.receiverAddress,
         onStatusChange: status => {
           setWithdrawStatus(status.status as WithdrawStatus);
           if (status.txHash) {
@@ -115,13 +119,23 @@ export function WithdrawDialog({
 
   const handleRetryWithdrawal = () => {
     if (transaction) {
-      initiateWithdrawal();
-    }
-  };
+      setError('');
+      setWithdrawStatus('processing');
 
-  const handleBack = () => {
-    if (step === 'confirmation') {
-      setStep('amount-input');
+      withdrawMutation.mutate({
+        erc20Address: transaction.token.address,
+        amount: transaction.amount,
+        recipientAddress: transaction.receiverAddress,
+        onStatusChange: status => {
+          setWithdrawStatus(status.status as WithdrawStatus);
+          if (status.txHash) {
+            setTxHash(status.txHash);
+          }
+          if (status.error) {
+            setError(status.error);
+          }
+        },
+      });
     }
   };
 
@@ -136,22 +150,10 @@ export function WithdrawDialog({
     onOpenChange(false);
   };
 
-  const getDialogTitle = () => {
-    switch (step) {
-      case 'amount-input':
-        return 'Withdraw Tokens';
-      case 'confirmation':
-        return 'Confirm Withdrawal';
-      case 'processing':
-        return 'Processing Withdrawal';
-      default:
-        return 'Withdraw';
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className='flex max-h-[90vh] max-w-md flex-col overflow-hidden'>
+        <DialogTitle>Send</DialogTitle>
         <div className='min-h-0 flex-1 overflow-y-auto'>
           {step === 'amount-input' && !isProcessing && (
             <AmountInput
@@ -163,16 +165,8 @@ export function WithdrawDialog({
 
           {isProcessing && <LoadingState message='Calculating fees...' />}
 
-          {step === 'confirmation' && transaction && (
-            <TransactionConfirmation
-              transaction={transaction}
-              onConfirm={handleConfirmTransaction}
-              onBack={handleBack}
-            />
-          )}
-
-          {step === 'processing' && transaction && (
-            <WithdrawProcessing
+          {step === 'steps' && transaction && (
+            <WithdrawSteps
               token={transaction.token}
               amount={transaction.amount}
               recipientAddress={transaction.receiverAddress}
@@ -181,6 +175,7 @@ export function WithdrawDialog({
               error={error}
               onRetry={handleRetryWithdrawal}
               onClose={handleClose}
+              onBack={() => setStep('amount-input')}
             />
           )}
         </div>

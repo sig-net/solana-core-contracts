@@ -94,7 +94,9 @@ export function useOutgoingTransfers() {
       );
     },
     enabled: !!publicKey,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    staleTime: 30000,
+    refetchInterval: 45000,
+    refetchIntervalInBackground: false,
     retry: 3,
     retryDelay: 1000,
   });

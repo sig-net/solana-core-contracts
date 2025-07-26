@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { RATE_LIMITERS } from '@/lib/utils/rpc-utils';
 
 // CoinGecko API for token prices
 const COINGECKO_API = 'https://api.coingecko.com/api/v3';
@@ -29,6 +30,15 @@ async function fetchTokenPrices(
     .filter(Boolean);
 
   if (coinIds.length === 0) return {};
+
+  // Rate limit CoinGecko API calls
+  if (!RATE_LIMITERS.coingecko.tryConsume()) {
+    const retryAfter = RATE_LIMITERS.coingecko.getRetryAfter();
+    if (retryAfter > 0) {
+      console.warn(`CoinGecko rate limit reached, waiting ${retryAfter}ms`);
+      await new Promise(resolve => setTimeout(resolve, retryAfter));
+    }
+  }
 
   const response = await fetch(
     `${COINGECKO_API}/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd&include_24hr_change=true`,
@@ -59,8 +69,9 @@ export function useTokenPrices(symbols: string[] = []) {
   return useQuery({
     queryKey: ['tokenPrices', symbols.sort()],
     queryFn: () => fetchTokenPrices(symbols),
-    staleTime: 60000, // 1 minute
-    refetchInterval: 60000, // Refetch every minute
+    staleTime: 120000,
+    refetchInterval: 300000,
+    refetchIntervalInBackground: false,
     enabled: symbols.length > 0,
   });
 }

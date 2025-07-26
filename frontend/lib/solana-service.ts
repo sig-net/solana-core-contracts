@@ -17,6 +17,7 @@ import { getAutomatedProvider } from '@/lib/viem/providers';
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { ChainSignaturesContract } from '@/lib/contracts/chain-signatures-contract';
 import { getTokenMetadata } from '@/lib/constants/token-metadata';
+import { RATE_LIMITERS, REQUEST_DEDUPLICATOR } from '@/lib/utils/rpc-utils';
 
 import type { EventPromises } from './types/chain-signatures.types';
 import { CHAIN_SIGNATURES_CONFIG } from './constants/chain-signatures.constants';
@@ -84,6 +85,9 @@ function derivePublicKey(
 export class SolanaService {
   private bridgeContract: BridgeContract;
   private chainSignaturesContract: ChainSignaturesContract;
+  private decimalsCache = new Map<string, number>();
+  private decimalsCacheExpiry = new Map<string, number>();
+  private readonly DECIMALS_CACHE_TTL = 300000; // 5 minutes
 
   constructor(
     connection: Connection,
@@ -97,6 +101,17 @@ export class SolanaService {
   }
 
   async getTokenDecimals(erc20Address: string): Promise<number> {
+    const cacheKey = erc20Address.toLowerCase();
+    const now = Date.now();
+
+    // Check cache first
+    if (this.decimalsCache.has(cacheKey)) {
+      const expiry = this.decimalsCacheExpiry.get(cacheKey) || 0;
+      if (now < expiry) {
+        return this.decimalsCache.get(cacheKey)!;
+      }
+    }
+
     const provider = getAutomatedProvider();
     try {
       const contractDecimals = await provider.readContract({
@@ -104,10 +119,22 @@ export class SolanaService {
         abi: erc20Abi,
         functionName: 'decimals',
       });
-      return Number(contractDecimals);
+      const decimals = Number(contractDecimals);
+
+      // Cache the result
+      this.decimalsCache.set(cacheKey, decimals);
+      this.decimalsCacheExpiry.set(cacheKey, now + this.DECIMALS_CACHE_TTL);
+
+      return decimals;
     } catch {
       const tokenMetadata = getTokenMetadata(erc20Address);
-      return tokenMetadata?.decimals || 18;
+      const decimals = tokenMetadata?.decimals || 18; // Default to 18 if unknown
+
+      // Cache fallback result for shorter duration
+      this.decimalsCache.set(cacheKey, decimals);
+      this.decimalsCacheExpiry.set(cacheKey, now + 60000); // 1 minute for fallback
+
+      return decimals;
     }
   }
 
@@ -127,44 +154,103 @@ export class SolanaService {
     return derivedAddress;
   }
 
+  /**
+   * Batch fetch ERC20 balances for multiple tokens with rate limiting and deduplication
+   */
+  private async batchFetchErc20Balances(
+    address: string,
+    tokenAddresses: string[],
+  ): Promise<Array<{ address: string; balance: bigint; decimals: number }>> {
+    const requestKey = `balances:${address}:${tokenAddresses.join(',')}`;
+
+    return REQUEST_DEDUPLICATOR.execute(requestKey, async () => {
+      const provider = getAutomatedProvider();
+
+      // Rate limit balance requests
+      const balancePromises = tokenAddresses.map(async tokenAddress => {
+        return this.rateLimitedRequest(async () => {
+          try {
+            const balance = await provider.readContract({
+              address: tokenAddress as `0x${string}`,
+              abi: erc20Abi,
+              functionName: 'balanceOf',
+              args: [address as `0x${string}`],
+            });
+            return { address: tokenAddress, balance: balance as bigint };
+          } catch (error) {
+            console.error(`Error fetching balance for ${tokenAddress}:`, error);
+            return { address: tokenAddress, balance: BigInt(0) };
+          }
+        });
+      });
+
+      const balanceResults = await Promise.all(balancePromises);
+
+      // Only fetch decimals for tokens with non-zero balances (cached method)
+      const nonZeroBalances = balanceResults.filter(
+        result => result.balance > BigInt(0),
+      );
+      const decimalsPromises = nonZeroBalances.map(async result => {
+        const decimals = await this.getTokenDecimals(result.address);
+        return { ...result, decimals };
+      });
+
+      const finalResults = await Promise.all(decimalsPromises);
+
+      // Include zero balances with default decimals for completeness
+      const zeroBalances = balanceResults
+        .filter(result => result.balance === BigInt(0))
+        .map(result => ({ ...result, decimals: 18 })); // Default decimals for zero balances
+
+      return [...finalResults, ...zeroBalances];
+    });
+  }
+
+  /**
+   * Rate limited request wrapper for Alchemy calls
+   */
+  private async rateLimitedRequest<T>(requestFn: () => Promise<T>): Promise<T> {
+    // Check rate limit
+    if (!RATE_LIMITERS.alchemy.tryConsume()) {
+      const retryAfter = RATE_LIMITERS.alchemy.getRetryAfter();
+      if (retryAfter > 0) {
+        console.warn(`Rate limit reached, waiting ${retryAfter}ms`);
+        await new Promise(resolve => setTimeout(resolve, retryAfter));
+      }
+    }
+
+    return requestFn();
+  }
+
   async fetchUnclaimedBalances(
     publicKey: PublicKey,
   ): Promise<UnclaimedTokenBalance[]> {
     try {
       const derivedAddress = await this.deriveDepositAddress(publicKey);
-      const provider = getAutomatedProvider();
       const commonErc20Addresses = [...COMMON_ERC20_ADDRESSES] as string[];
 
-      const balancesPromises = commonErc20Addresses.map(async erc20Address => {
-        try {
-          const balance = await provider.readContract({
-            address: erc20Address as `0x${string}`,
-            abi: erc20Abi,
-            functionName: 'balanceOf',
-            args: [derivedAddress as `0x${string}`],
+      // Use batch fetching to reduce RPC calls
+      const batchResults = await this.batchFetchErc20Balances(
+        derivedAddress,
+        commonErc20Addresses,
+      );
+
+      const results: UnclaimedTokenBalance[] = [];
+
+      for (const result of batchResults) {
+        if (result.balance > BigInt(0)) {
+          const tokenMetadata = getTokenMetadata(result.address);
+          results.push({
+            erc20Address: result.address,
+            amount: result.balance.toString(),
+            symbol: tokenMetadata?.symbol || 'Unknown',
+            name: tokenMetadata?.name || 'Unknown Token',
+            decimals: result.decimals,
           });
-
-          if (balance && balance > BigInt(0)) {
-            // Fetch actual decimals from the token contract
-            const actualDecimals = await this.getTokenDecimals(erc20Address);
-
-            const tokenMetadata = getTokenMetadata(erc20Address);
-            return {
-              erc20Address,
-              amount: balance.toString(),
-              symbol: tokenMetadata?.symbol || 'Unknown',
-              name: tokenMetadata?.name || 'Unknown Token',
-              decimals: actualDecimals,
-            };
-          }
-        } catch (error) {
-          console.error(`Error fetching balance for ${erc20Address}:`, error);
         }
-        return null;
-      });
+      }
 
-      const results = await Promise.all(balancesPromises);
-      return results.filter(Boolean) as UnclaimedTokenBalance[];
+      return results;
     } catch (error) {
       console.error('Error fetching unclaimed balances:', error);
       return [];
@@ -437,6 +523,12 @@ export class SolanaService {
       eventPromises =
         this.chainSignaturesContract.setupEventListeners(requestId);
 
+      // Step 7.5: Wait briefly to ensure event listeners are properly registered
+      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log(
+        'Event listeners set up, proceeding with withdrawal transaction',
+      );
+
       // Step 8: Call withdrawErc20 on Solana
       await this.bridgeContract.withdrawErc20({
         authority: publicKey,
@@ -447,17 +539,34 @@ export class SolanaService {
         evmParams,
       });
 
-      // Step 9: Process the withdrawal flow
+      console.log(
+        'Withdrawal transaction submitted to Solana, request ID:',
+        requestId,
+      );
+
+      // Step 9: Process the withdrawal flow with overall timeout
       onStatusChange?.({ status: 'processing' });
 
-      this.processWithdrawFlow(
-        requestId,
-        erc20Address,
-        eventPromises!,
-        provider,
-        tempTx,
-        onStatusChange,
-      ).catch(error => {
+      // Add overall timeout to prevent infinite hanging
+      Promise.race([
+        this.processWithdrawFlow(
+          requestId,
+          erc20Address,
+          eventPromises!,
+          provider,
+          tempTx,
+          onStatusChange,
+        ),
+        new Promise((_, reject) =>
+          setTimeout(
+            () =>
+              reject(
+                new Error('Withdrawal process timed out after 10 minutes'),
+              ),
+            600000,
+          ),
+        ),
+      ]).catch(error => {
         console.error('Withdraw flow failed:', error);
         if (
           error instanceof Error &&
@@ -760,7 +869,26 @@ export class SolanaService {
         txHash,
       });
 
-      await eventPromises.readRespond;
+      try {
+        await Promise.race([
+          eventPromises.readRespond,
+          this.waitWithFallback(requestId, 'readRespond'),
+        ]);
+      } catch (readError) {
+        console.error('Read respond event failed:', readError);
+        // Try to find read response in logs as fallback
+        console.log('Attempting to find read response in transaction logs...');
+        const logReadResponse =
+          await this.chainSignaturesContract.findReadResponseEventInLogs(
+            requestId,
+          );
+        if (!logReadResponse) {
+          throw new Error(
+            'MPC read response not found - the transaction monitoring may have failed',
+          );
+        }
+        console.log('Found read response in logs as fallback');
+      }
 
       // Step 6: Complete the withdrawal
       onStatusChange?.({ status: 'completing_withdrawal' });
@@ -815,6 +943,66 @@ export class SolanaService {
    */
   async fetchAllUserWithdrawals(publicKey: PublicKey) {
     return this.bridgeContract.fetchAllUserWithdrawals(publicKey);
+  }
+
+  /**
+   * Fallback method that waits and periodically checks transaction logs for events
+   */
+  private async waitWithFallback(
+    requestId: string,
+    eventType: 'signature' | 'readRespond',
+    maxWaitTime = 180000, // 3 minutes
+    checkInterval = 10000, // 10 seconds
+  ): Promise<never> {
+    const startTime = Date.now();
+
+    return new Promise((_, reject) => {
+      const checkLogs = async () => {
+        try {
+          if (eventType === 'signature') {
+            const signature =
+              await this.chainSignaturesContract.findSignatureEventInLogs(
+                requestId,
+              );
+            if (signature) {
+              // Don't resolve here, let the main event listener handle it
+              console.log('Found signature in periodic log check');
+              return;
+            }
+          } else if (eventType === 'readRespond') {
+            const readResponse =
+              await this.chainSignaturesContract.findReadResponseEventInLogs(
+                requestId,
+              );
+            if (readResponse) {
+              // Don't resolve here, let the main event listener handle it
+              console.log('Found read response in periodic log check');
+              return;
+            }
+          }
+
+          // Check if we've exceeded max wait time
+          if (Date.now() - startTime > maxWaitTime) {
+            reject(
+              new Error(
+                `${eventType} event not found within ${maxWaitTime / 1000} seconds`,
+              ),
+            );
+            return;
+          }
+
+          // Schedule next check
+          setTimeout(checkLogs, checkInterval);
+        } catch (error) {
+          console.error(`Error checking logs for ${eventType}:`, error);
+          // Continue checking despite errors
+          setTimeout(checkLogs, checkInterval);
+        }
+      };
+
+      // Start periodic checking
+      setTimeout(checkLogs, checkInterval);
+    });
   }
 
   /**

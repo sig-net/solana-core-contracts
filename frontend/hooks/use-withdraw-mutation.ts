@@ -47,8 +47,15 @@ export function useWithdrawMutation() {
         });
       }
     },
-    onError: error => {
+    onError: (error, variables) => {
       console.error('Withdraw mutation failed:', error);
+      // Call onStatusChange to notify the UI of the error
+      if (variables.onStatusChange) {
+        variables.onStatusChange({
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Withdrawal failed',
+        });
+      }
     },
   });
 }

@@ -109,7 +109,9 @@ export function useIncomingTransfers() {
       );
     },
     enabled: !!publicKey && !!depositAddress,
-    refetchInterval: 30000,
+    staleTime: 30000,
+    refetchInterval: 45000,
+    refetchIntervalInBackground: false,
   });
 
   return query;

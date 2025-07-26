@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { ChevronDown } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -10,6 +11,11 @@ import { CryptoIcon } from '@/components/balance-display/crypto-icon';
 import { cn } from '@/lib/utils';
 
 import { WithdrawToken } from './index';
+
+interface FormData {
+  amount: string;
+  receiverAddress: string;
+}
 
 interface AmountInputProps {
   availableTokens: WithdrawToken[];
@@ -29,13 +35,18 @@ export function AmountInput({
   const [selectedToken, setSelectedToken] = useState<WithdrawToken | null>(
     preSelectedToken || availableTokens[0] || null,
   );
-  const [amount, setAmount] = useState('');
-  const [receiverAddress, setReceiverAddress] = useState('');
   const [showTokenDropdown, setShowTokenDropdown] = useState(false);
-  const [errors, setErrors] = useState<{
-    amount?: string;
-    receiverAddress?: string;
-  }>({});
+  const [error, setError] = useState<string>('');
+
+  const { register, handleSubmit, setValue, watch } = useForm<FormData>({
+    defaultValues: {
+      amount: '',
+      receiverAddress: '',
+    },
+  });
+
+  const watchedAmount = watch('amount');
+  const watchedAddress = watch('receiverAddress');
 
   // Update selected token when preSelectedToken changes
   useEffect(() => {
@@ -44,41 +55,23 @@ export function AmountInput({
     }
   }, [preSelectedToken]);
 
-  const validateForm = () => {
-    const newErrors: typeof errors = {};
-
-    if (!amount || parseFloat(amount) <= 0) {
-      newErrors.amount = 'Enter a valid amount';
-    } else if (
-      selectedToken &&
-      parseFloat(amount) > parseFloat(selectedToken.balance)
-    ) {
-      newErrors.amount = 'Insufficient balance';
+  const onFormSubmit = (data: FormData) => {
+    if (!selectedToken) {
+      setError('Please select a token');
+      return;
     }
 
-    if (!receiverAddress.trim()) {
-      newErrors.receiverAddress = 'Enter receiver address';
-    } else if (!receiverAddress.match(/^0x[a-fA-F0-9]{40}$/)) {
-      newErrors.receiverAddress = 'Must be a valid Ethereum address';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = () => {
-    if (!selectedToken || !validateForm()) return;
-
+    setError('');
     onSubmit({
       token: selectedToken,
-      amount,
-      receiverAddress,
+      amount: data.amount,
+      receiverAddress: data.receiverAddress,
     });
   };
 
   const handleMaxClick = () => {
     if (selectedToken) {
-      setAmount(selectedToken.balance);
+      setValue('amount', selectedToken.balance);
     }
   };
 
@@ -90,93 +83,93 @@ export function AmountInput({
   };
 
   return (
-    <div className='space-y-4'>
+    <form onSubmit={handleSubmit(onFormSubmit)} className='space-y-4'>
       {/* Token Selection */}
-      <div className='space-y-2'>
-        <Label className='text-tundora-300 text-sm font-medium'>Token</Label>
-        <div className='relative'>
-          <button
-            onClick={() => setShowTokenDropdown(!showTokenDropdown)}
-            className='bg-pastels-polar-200 border-dark-neutral-50 hover:border-dark-neutral-200 hover:bg-pastels-polar-100/30 focus-visible:ring-dark-neutral-200 flex w-full cursor-pointer items-center justify-between rounded-sm border p-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-2'
-          >
-            {selectedToken ? (
-              <div className='flex items-center gap-3'>
-                <CryptoIcon
-                  chain={selectedToken.chain}
-                  token={selectedToken.symbol}
-                  className='h-8 w-8'
-                />
-                <div className='text-left'>
-                  <div className='text-tundora-300 font-semibold'>
-                    {selectedToken.symbol}
-                  </div>
-                  <div className='text-dark-neutral-400 text-sm'>
-                    Balance: {formatBalance(selectedToken.balance)}
-                  </div>
+      <div className='relative'>
+        <button
+          type='button'
+          onClick={() => setShowTokenDropdown(!showTokenDropdown)}
+          className='bg-pastels-polar-200 border-dark-neutral-50 hover:border-dark-neutral-200 hover:bg-pastels-polar-100/30 focus-visible:ring-dark-neutral-200 flex w-full cursor-pointer items-center justify-between rounded-sm border p-3 transition-all focus-visible:ring-2 focus-visible:ring-offset-2'
+        >
+          {selectedToken ? (
+            <div className='flex items-center gap-3'>
+              <CryptoIcon
+                chain={selectedToken.chain}
+                token={selectedToken.symbol}
+                className='h-8 w-8'
+              />
+              <div className='text-left'>
+                <div className='text-tundora-300 font-semibold'>
+                  {selectedToken.symbol}
+                </div>
+                <div className='text-dark-neutral-400 text-sm'>
+                  Balance: {formatBalance(selectedToken.balance)}
                 </div>
               </div>
-            ) : (
-              <span className='text-dark-neutral-400'>Select token</span>
-            )}
-            <ChevronDown
-              className={cn(
-                'text-dark-neutral-400 h-4 w-4 transition-transform',
-                showTokenDropdown && 'rotate-180',
-              )}
-            />
-          </button>
-
-          {/* Token Dropdown */}
-          {showTokenDropdown && (
-            <div className='border-dark-neutral-50 absolute top-full right-0 left-0 z-10 mt-2 max-h-48 overflow-y-auto rounded-sm border bg-white shadow-xl'>
-              {availableTokens.map((token, index) => {
-                const isSelected =
-                  selectedToken?.symbol === token.symbol &&
-                  selectedToken?.chain === token.chain;
-                return (
-                  <button
-                    key={`${token.chain}-${token.address}-${index}`}
-                    onClick={() => {
-                      setSelectedToken(token);
-                      setShowTokenDropdown(false);
-                      setAmount('');
-                    }}
-                    className={cn(
-                      'flex w-full cursor-pointer items-center gap-3 p-4 text-left transition-all',
-                      isSelected
-                        ? 'bg-brand-100/20 border-brand-950 border-l-2'
-                        : 'hover:bg-pastels-polar-100/30',
-                    )}
-                  >
-                    <CryptoIcon
-                      chain={token.chain}
-                      token={token.symbol}
-                      className='h-10 w-10 shrink-0'
-                    />
-                    <div className='min-w-0 flex-1'>
-                      <div className='flex items-center justify-between gap-3'>
-                        <div>
-                          <div className='text-tundora-300 text-base font-semibold'>
-                            {token.symbol}
-                          </div>
-                          <div className='text-tundora-50 text-sm font-medium'>
-                            {token.name}
-                          </div>
-                        </div>
-                        <span className='text-dark-neutral-400 bg-pastels-polar-200 border-dark-neutral-50 shrink-0 rounded-sm border px-2.5 py-1.5 text-xs font-medium'>
-                          {token.chainName}
-                        </span>
-                      </div>
-                      <div className='text-dark-neutral-400 mt-1 text-xs'>
-                        Balance: {formatBalance(token.balance)}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
             </div>
+          ) : (
+            <span className='text-dark-neutral-400'>Select token</span>
           )}
-        </div>
+          <ChevronDown
+            className={cn(
+              'text-dark-neutral-400 h-4 w-4 transition-transform',
+              showTokenDropdown && 'rotate-180',
+            )}
+          />
+        </button>
+
+        {/* Token Dropdown */}
+        {showTokenDropdown && (
+          <div className='border-dark-neutral-50 absolute top-full right-0 left-0 z-10 mt-2 max-h-48 overflow-y-auto rounded-sm border bg-white shadow-xl'>
+            {availableTokens.map((token, index) => {
+              const isSelected =
+                selectedToken?.symbol === token.symbol &&
+                selectedToken?.chain === token.chain;
+              return (
+                <button
+                  key={`${token.chain}-${token.address}-${index}`}
+                  type='button'
+                  onClick={() => {
+                    setSelectedToken(token);
+                    setShowTokenDropdown(false);
+                    setValue('amount', '');
+                    setError('');
+                  }}
+                  className={cn(
+                    'flex w-full cursor-pointer items-center gap-3 p-4 text-left transition-all',
+                    isSelected
+                      ? 'bg-brand-100/20 border-brand-950 border-l-2'
+                      : 'hover:bg-pastels-polar-100/30',
+                  )}
+                >
+                  <CryptoIcon
+                    chain={token.chain}
+                    token={token.symbol}
+                    className='h-10 w-10 shrink-0'
+                  />
+                  <div className='min-w-0 flex-1'>
+                    <div className='flex items-center justify-between gap-3'>
+                      <div>
+                        <div className='text-tundora-300 text-base font-semibold'>
+                          {token.symbol}
+                        </div>
+                        <div className='text-tundora-50 text-sm font-medium'>
+                          {token.name}
+                        </div>
+                      </div>
+                      <span className='text-dark-neutral-400 bg-pastels-polar-200 border-dark-neutral-50 shrink-0 rounded-sm border px-2.5 py-1.5 text-xs font-medium'>
+                        {token.chainName}
+                      </span>
+                    </div>
+                    <div className='text-dark-neutral-400 mt-1 text-xs'>
+                      Balance: {formatBalance(token.balance)}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Amount Input */}
@@ -184,15 +177,9 @@ export function AmountInput({
         <Label className='text-tundora-300 text-sm font-medium'>Amount</Label>
         <div className='relative'>
           <Input
-            type='number'
             placeholder='0.00'
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
-            className={cn(
-              'h-12 pr-20 text-lg font-medium',
-              errors.amount &&
-                'border-red-500 focus:border-red-500 focus-visible:ring-red-200',
-            )}
+            {...register('amount')}
+            className='h-12 pr-20 text-lg font-medium'
           />
           <Button
             type='button'
@@ -204,13 +191,7 @@ export function AmountInput({
             MAX
           </Button>
         </div>
-        {errors.amount && (
-          <div className='flex items-center gap-2 rounded-sm border border-red-200 bg-red-50 p-3'>
-            <div className='h-2 w-2 shrink-0 rounded-full bg-red-500'></div>
-            <p className='text-xs font-medium text-red-800'>{errors.amount}</p>
-          </div>
-        )}
-        {selectedToken && !errors.amount && amount && (
+        {selectedToken && watchedAmount && (
           <div className='bg-pastels-polar-100 border-dark-neutral-50 flex items-center gap-2 rounded-sm border p-3'>
             <div className='bg-success-500 h-2 w-2 shrink-0 rounded-full'></div>
             <p className='text-dark-neutral-400 text-xs font-medium'>
@@ -230,39 +211,34 @@ export function AmountInput({
         </Label>
         <Input
           placeholder='0x1234567890abcdef1234567890abcdef12345678'
-          value={receiverAddress}
-          onChange={e => setReceiverAddress(e.target.value)}
-          className={cn(
-            'h-12 font-mono text-sm',
-            errors.receiverAddress &&
-              'border-red-500 focus:border-red-500 focus-visible:ring-red-200',
-          )}
+          {...register('receiverAddress')}
+          className='h-12 font-mono text-sm'
         />
-        {errors.receiverAddress && (
-          <div className='flex items-center gap-2 rounded-sm border border-red-200 bg-red-50 p-3'>
-            <div className='h-2 w-2 shrink-0 rounded-full bg-red-500'></div>
-            <p className='text-xs font-medium text-red-800'>
-              {errors.receiverAddress}
-            </p>
-          </div>
-        )}
-        {!errors.receiverAddress && receiverAddress && (
+        {watchedAddress && (
           <div className='bg-pastels-polar-100 border-dark-neutral-50 flex items-center gap-2 rounded-sm border p-3'>
             <div className='bg-success-500 h-2 w-2 shrink-0 rounded-full'></div>
             <p className='text-dark-neutral-400 text-xs font-medium'>
-              Valid Ethereum address
+              Ethereum address entered
             </p>
           </div>
         )}
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className='flex items-center gap-2 rounded-sm border border-red-200 bg-red-50 p-3'>
+          <div className='h-2 w-2 shrink-0 rounded-full bg-red-500'></div>
+          <p className='text-xs font-medium text-red-800'>{error}</p>
+        </div>
+      )}
+
       {/* Continue Button */}
       <Button
-        onClick={handleSubmit}
-        disabled={!selectedToken || !amount || !receiverAddress}
+        type='submit'
+        disabled={!selectedToken || !watchedAmount || !watchedAddress}
         className={cn(
           'h-12 w-full text-base font-semibold',
-          !selectedToken || !amount || !receiverAddress
+          !selectedToken || !watchedAmount || !watchedAddress
             ? 'cursor-not-allowed'
             : 'cursor-pointer',
         )}
@@ -270,6 +246,6 @@ export function AmountInput({
       >
         Continue
       </Button>
-    </div>
+    </form>
   );
 }

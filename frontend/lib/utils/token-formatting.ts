@@ -1,4 +1,5 @@
 import { erc20Abi } from 'viem';
+
 import { getAutomatedProvider } from '@/lib/viem/providers';
 
 export interface TokenInfo {
@@ -317,50 +318,9 @@ export function formatTokenAmountSync(
     : formattedAmount;
 }
 
-export async function formatUSDValue(
-  tokenAmount: bigint,
-  tokenAddress: string,
-  usdPrice: number,
-): Promise<string> {
-  const tokenInfo = await getTokenInfo(tokenAddress);
-  const divisor = BigInt(10 ** tokenInfo.decimals);
-  const amount = Number(tokenAmount) / Number(divisor);
-  const usdValue = amount * usdPrice;
-
-  if (usdValue < 0.01) {
-    return '<$0.01';
-  } else if (usdValue < 1) {
-    return `$${usdValue.toFixed(3)}`;
-  } else if (usdValue < 1000) {
-    return `$${usdValue.toFixed(2)}`;
-  } else if (usdValue < 1_000_000) {
-    return `$${(usdValue / 1000).toFixed(2)}K`;
-  } else {
-    return `$${(usdValue / 1_000_000).toFixed(2)}M`;
-  }
-}
-
 export async function getTokenSymbol(tokenAddress: string): Promise<string> {
   const tokenInfo = await getTokenInfo(tokenAddress);
   return tokenInfo.symbol;
-}
-
-/**
- * Get the display symbol for icon purposes
- */
-export async function getTokenDisplaySymbol(
-  tokenAddress: string,
-): Promise<string> {
-  const tokenInfo = await getTokenInfo(tokenAddress);
-  return tokenInfo.displaySymbol;
-}
-
-/**
- * Get the display symbol for icon purposes (synchronous)
- */
-export function getTokenDisplaySymbolSync(tokenAddress: string): string {
-  const tokenInfo = getTokenInfoSync(tokenAddress);
-  return tokenInfo.displaySymbol;
 }
 
 export { formatActivityDate } from './date-formatting';

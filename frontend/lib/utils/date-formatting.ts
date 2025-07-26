@@ -1,4 +1,4 @@
-import { formatDistanceToNow, format, isToday, isThisYear } from 'date-fns';
+import { format, isThisYear } from 'date-fns';
 
 // Format for activity table - balance between brevity and clarity
 export function formatActivityDate(timestamp: number): string {

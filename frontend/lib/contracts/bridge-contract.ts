@@ -4,6 +4,8 @@ import {
   SYSVAR_INSTRUCTIONS_PUBKEY,
 } from '@solana/web3.js';
 import { Program, AnchorProvider, BN, Wallet } from '@coral-xyz/anchor';
+import type { ProgramAccount } from '@coral-xyz/anchor';
+import { Buffer } from 'buffer';
 
 import { IDL, type SolanaCoreContracts } from '@/lib/program/idl';
 import {
@@ -381,23 +383,220 @@ export class BridgeContract {
   /**
    * Fetch all pending withdrawals for a user
    */
-  async fetchUserPendingWithdrawals(userPublicKey: PublicKey): Promise<any[]> {
+  async fetchUserPendingWithdrawals(userPublicKey: PublicKey): Promise<
+    ProgramAccount<{
+      requester: PublicKey;
+      amount: BN;
+      erc20Address: number[];
+      recipientAddress: number[];
+      path: string;
+      requestId: number[];
+    }>[]
+  > {
     try {
       const program = this.getBridgeProgram();
-      
+
       // Query all pendingErc20Withdrawal accounts where requester matches user
-      const pendingWithdrawals = await program.account.pendingErc20Withdrawal.all([
-        {
-          memcmp: {
-            offset: 8, // Skip the 8-byte discriminator
-            bytes: userPublicKey.toBase58(),
+      const pendingWithdrawals =
+        await program.account.pendingErc20Withdrawal.all([
+          {
+            memcmp: {
+              offset: 8, // Skip the 8-byte discriminator
+              bytes: userPublicKey.toBase58(),
+            },
           },
-        },
-      ]);
-      
+        ]);
+
       return pendingWithdrawals;
     } catch (error) {
       console.error('Error fetching user pending withdrawals:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Fetch comprehensive user withdrawal data by combining multiple sources
+   */
+  async fetchAllUserWithdrawals(userPublicKey: PublicKey): Promise<
+    {
+      requestId: string;
+      amount: string;
+      erc20Address: string;
+      recipient: string;
+      status: 'pending' | 'completed';
+      timestamp: number;
+      signature?: string;
+      ethereumTxHash?: string;
+    }[]
+  > {
+    try {
+      const withdrawals: {
+        requestId: string;
+        amount: string;
+        erc20Address: string;
+        recipient: string;
+        status: 'pending' | 'completed';
+        timestamp: number;
+        signature?: string;
+        ethereumTxHash?: string;
+      }[] = [];
+
+      // 1. Get current pending withdrawals
+      const pendingWithdrawals =
+        await this.fetchUserPendingWithdrawals(userPublicKey);
+
+      // Convert pending withdrawals to common format
+      for (const withdrawal of pendingWithdrawals) {
+        const data = withdrawal.account;
+        withdrawals.push({
+          requestId: Buffer.from(data.requestId).toString('hex'),
+          amount: data.amount.toString(),
+          erc20Address: '0x' + Buffer.from(data.erc20Address).toString('hex'),
+          recipient: '0x' + Buffer.from(data.recipientAddress).toString('hex'),
+          status: 'pending',
+          timestamp: Date.now() / 1000, // Current time for pending
+          signature: undefined,
+          ethereumTxHash: undefined,
+        });
+      }
+
+      // 2. Get historical transactions by parsing user's transaction history
+      try {
+        const signatures = await this.connection.getSignaturesForAddress(
+          userPublicKey,
+          { limit: 50 }, // Get last 50 transactions
+        );
+
+        const program = this.getBridgeProgram();
+        const coder = program.coder;
+
+        for (const sig of signatures) {
+          try {
+            const tx = await this.connection.getTransaction(sig.signature, {
+              maxSupportedTransactionVersion: 0,
+            });
+
+            if (!tx || !tx.meta || tx.meta.err) continue;
+
+            // Check if this transaction involves the bridge program
+            const accountKeys = tx.transaction.message.version === 'legacy' 
+              ? tx.transaction.message.accountKeys 
+              : tx.transaction.message.staticAccountKeys;
+
+            // Find instructions for our program
+            const instructions = tx.transaction.message.version === 'legacy'
+              ? tx.transaction.message.instructions
+              : tx.transaction.message.compiledInstructions;
+            
+            for (const ix of instructions) {
+              const programId = accountKeys[ix.programIdIndex];
+              
+              if (programId.equals(BRIDGE_PROGRAM_ID)) {
+                try {
+                  // Decode the instruction data
+                  const ixData = typeof ix.data === 'string' ? ix.data : Buffer.from(ix.data).toString('base64');
+                  const instructionDataBuf = Buffer.from(ixData, 'base64');
+                  
+                  // Get discriminator to identify instruction type
+                  const discriminator = instructionDataBuf.slice(0, 8);
+                  
+                  let instructionName: string | null = null;
+                  let decodedData: any = null;
+                  
+                  // Check against known discriminators
+                  if (discriminator.equals(Buffer.from([19, 124, 28, 31, 171, 187, 87, 70]))) {
+                    instructionName = 'withdrawErc20';
+                    // Parse withdrawErc20 args according to IDL
+                    const dataOffset = 8;
+                    decodedData = {
+                      requestId: Array.from(instructionDataBuf.slice(dataOffset, dataOffset + 32)),
+                      erc20Address: Array.from(instructionDataBuf.slice(dataOffset + 32, dataOffset + 52)),
+                      amount: new BN(instructionDataBuf.slice(dataOffset + 52, dataOffset + 68), 'le'),
+                      recipientAddress: Array.from(instructionDataBuf.slice(dataOffset + 68, dataOffset + 88)),
+                    };
+                  } else if (discriminator.equals(Buffer.from([108, 220, 227, 17, 212, 248, 163, 74]))) {
+                    instructionName = 'completeWithdrawErc20';
+                    // Parse completeWithdrawErc20 args
+                    const dataOffset = 8;
+                    decodedData = {
+                      requestId: Array.from(instructionDataBuf.slice(dataOffset, dataOffset + 32)),
+                    };
+                  }
+
+                  if (!instructionName || !decodedData) continue;
+
+                  // Handle withdrawErc20 instruction
+                  if (instructionName === 'withdrawErc20') {
+                    const args = decodedData;
+                    
+                    // Extract withdrawal data from decoded instruction
+                    const requestId = Buffer.from(args.requestId).toString('hex');
+                    const erc20Address = '0x' + Buffer.from(args.erc20Address).toString('hex');
+                    const amount = args.amount.toString();
+                    const recipient = '0x' + Buffer.from(args.recipientAddress).toString('hex');
+
+                    // Check if this withdrawal is for the current user
+                    const userAccountIndex = accountKeys.findIndex(
+                      key => key.equals(userPublicKey)
+                    );
+                    
+                    // Get instruction accounts
+                    const ixAccounts = 'accounts' in ix ? ix.accounts : ix.accountIdxs || [];
+                    
+                    if (userAccountIndex !== -1 && ixAccounts.includes(userAccountIndex)) {
+                      const withdrawalRecord = {
+                        requestId,
+                        amount,
+                        erc20Address,
+                        recipient,
+                        status: 'pending' as const,
+                        timestamp: sig.blockTime || Date.now() / 1000,
+                        signature: sig.signature,
+                        ethereumTxHash: undefined,
+                      };
+
+                      // Only add if not already in withdrawals list
+                      const exists = withdrawals.some(
+                        w => w.requestId === requestId
+                      );
+                      if (!exists) {
+                        withdrawals.push(withdrawalRecord);
+                      }
+                    }
+                  }
+                  // Handle completeWithdrawErc20 instruction
+                  else if (instructionName === 'completeWithdrawErc20') {
+                    const args = decodedData;
+                    const requestId = Buffer.from(args.requestId).toString('hex');
+
+                    // Update existing withdrawal to completed status if found
+                    const existingIndex = withdrawals.findIndex(
+                      w => w.requestId === requestId
+                    );
+                    if (existingIndex !== -1) {
+                      withdrawals[existingIndex].status = 'completed';
+                    }
+                  }
+                } catch (decodeError) {
+                  // Skip instructions we can't decode
+                  continue;
+                }
+              }
+            }
+          } catch (error) {
+            // Skip failed transaction parsing
+            console.error('Error parsing transaction:', error);
+            continue;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching transaction history:', error);
+      }
+
+      // Sort by timestamp (newest first)
+      return withdrawals.sort((a, b) => b.timestamp - a.timestamp);
+    } catch (error) {
+      console.error('Error fetching all user withdrawals:', error);
       return [];
     }
   }

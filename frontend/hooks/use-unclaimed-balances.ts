@@ -19,6 +19,8 @@ export function useUnclaimedBalances() {
       return solanaService.fetchUnclaimedBalances(publicKey);
     },
     enabled: !!publicKey,
-    refetchInterval: 1000,
+    staleTime: 15000,
+    refetchInterval: 15000,
+    refetchIntervalInBackground: false,
   });
 }

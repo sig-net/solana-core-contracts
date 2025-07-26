@@ -43,7 +43,7 @@ export const COLUMN_WIDTHS = {
   details: 'flex-1',
   timestamp: 'w-30',
   status: 'w-32',
-  explorer: 'w-25',
+  explorer: 'w-20',
 } as const;
 
 interface ActivityListTableProps {

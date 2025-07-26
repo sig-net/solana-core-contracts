@@ -74,13 +74,17 @@ export class ChainSignaturesContract {
     );
 
     const chainSignaturesProgram = this.getProgram();
+
     const signatureListener = chainSignaturesProgram.addEventListener(
       'signatureRespondedEvent',
       (event: SignatureRespondedEvent) => {
         const eventRequestId =
           '0x' + Buffer.from(event.requestId).toString('hex');
+
         if (eventRequestId === requestId) {
           signatureResolve(event);
+        } else {
+          throw new Error('Signature event request ID mismatch');
         }
       },
     );
@@ -90,8 +94,11 @@ export class ChainSignaturesContract {
       (event: ReadRespondedEvent) => {
         const eventRequestId =
           '0x' + Buffer.from(event.requestId).toString('hex');
+
         if (eventRequestId === requestId) {
           readRespondResolve(event);
+        } else {
+          throw new Error('Signature event request ID mismatch');
         }
       },
     );

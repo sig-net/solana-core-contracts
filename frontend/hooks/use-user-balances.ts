@@ -19,6 +19,8 @@ export function useUserBalances() {
       return solanaService.fetchUserBalances(publicKey);
     },
     enabled: !!publicKey,
-    refetchInterval: 1000,
+    staleTime: 30000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
   });
 }

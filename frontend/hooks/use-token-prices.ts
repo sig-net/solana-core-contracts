@@ -19,7 +19,9 @@ export interface TokenPrice {
   change24h?: number;
 }
 
-async function fetchTokenPrices(symbols: string[]): Promise<Record<string, TokenPrice>> {
+async function fetchTokenPrices(
+  symbols: string[],
+): Promise<Record<string, TokenPrice>> {
   if (symbols.length === 0) return {};
 
   const coinIds = symbols
@@ -29,7 +31,7 @@ async function fetchTokenPrices(symbols: string[]): Promise<Record<string, Token
   if (coinIds.length === 0) return {};
 
   const response = await fetch(
-    `${COINGECKO_API}/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd&include_24hr_change=true`
+    `${COINGECKO_API}/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd&include_24hr_change=true`,
   );
 
   if (!response.ok) {
@@ -37,9 +39,9 @@ async function fetchTokenPrices(symbols: string[]): Promise<Record<string, Token
   }
 
   const data = await response.json();
-  
+
   const prices: Record<string, TokenPrice> = {};
-  
+
   Object.entries(TOKEN_ID_MAP).forEach(([symbol, coinId]) => {
     if (data[coinId]) {
       prices[symbol] = {
@@ -65,7 +67,7 @@ export function useTokenPrices(symbols: string[] = []) {
 
 export function useTokenPrice(symbol: string) {
   const { data: prices, ...rest } = useTokenPrices([symbol]);
-  
+
   return {
     ...rest,
     data: prices?.[symbol.toUpperCase()],

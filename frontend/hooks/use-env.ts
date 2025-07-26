@@ -24,7 +24,7 @@ export function useEnv(): Env {
     } catch (error) {
       if (error instanceof z.ZodError) {
         const missingVars = error.issues
-          .map((err) => `${err.path.join('.')}: ${err.message}`)
+          .map(err => `${err.path.join('.')}: ${err.message}`)
           .join(', ');
         throw new Error(`Environment validation failed: ${missingVars}`);
       }

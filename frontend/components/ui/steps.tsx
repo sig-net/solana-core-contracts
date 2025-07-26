@@ -1,6 +1,7 @@
 'use client';
 
 import { CheckCircle, Loader2, XCircle } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 
 export interface Step {
@@ -19,25 +20,51 @@ interface StepsProps {
   className?: string;
 }
 
-export function Steps({ 
-  steps, 
-  compact = false, 
-  showConnector = true, 
-  className 
+export function Steps({
+  steps,
+  compact = false,
+  showConnector = true,
+  className,
 }: StepsProps) {
   const getStepIcon = (step: Step) => {
     const IconComponent = step.icon;
 
     if (step.status === 'completed') {
-      return <CheckCircle className={cn('text-green-500', compact ? 'h-4 w-4' : 'h-5 w-5')} />;
+      return (
+        <CheckCircle
+          className={cn('text-green-500', compact ? 'h-4 w-4' : 'h-5 w-5')}
+        />
+      );
     } else if (step.status === 'loading') {
-      return <Loader2 className={cn('animate-spin text-blue-500', compact ? 'h-4 w-4' : 'h-5 w-5')} />;
+      return (
+        <Loader2
+          className={cn(
+            'animate-spin text-blue-500',
+            compact ? 'h-4 w-4' : 'h-5 w-5',
+          )}
+        />
+      );
     } else if (step.status === 'failed') {
-      return <XCircle className={cn('text-red-500', compact ? 'h-4 w-4' : 'h-5 w-5')} />;
+      return (
+        <XCircle
+          className={cn('text-red-500', compact ? 'h-4 w-4' : 'h-5 w-5')}
+        />
+      );
     } else if (IconComponent) {
-      return <IconComponent className={cn('text-gray-400', compact ? 'h-4 w-4' : 'h-5 w-5')} />;
+      return (
+        <IconComponent
+          className={cn('text-gray-400', compact ? 'h-4 w-4' : 'h-5 w-5')}
+        />
+      );
     } else {
-      return <div className={cn('rounded-full bg-gray-300', compact ? 'h-2 w-2' : 'h-3 w-3')} />;
+      return (
+        <div
+          className={cn(
+            'rounded-full bg-gray-300',
+            compact ? 'h-2 w-2' : 'h-3 w-3',
+          )}
+        />
+      );
     }
   };
 
@@ -61,12 +88,12 @@ export function Steps({
         >
           {/* Connector Line */}
           {showConnector && index < steps.length - 1 && (
-            <div className={cn(
-              'absolute bg-gray-300 w-0.5',
-              compact 
-                ? 'top-6 left-3 h-3' 
-                : 'top-8 left-4 h-6'
-            )} />
+            <div
+              className={cn(
+                'absolute w-0.5 bg-gray-300',
+                compact ? 'top-6 left-3 h-3' : 'top-8 left-4 h-6',
+              )}
+            />
           )}
 
           {/* Step Icon */}
@@ -89,11 +116,13 @@ export function Steps({
           {/* Step Content */}
           <div className={cn('min-w-0 flex-1', compact ? 'pt-0.5' : 'pt-1')}>
             <div className='flex items-center gap-2'>
-              <h3 className={cn(
-                'font-semibold',
-                compact ? 'text-sm' : 'text-base',
-                getStepStatusClass(step)
-              )}>
+              <h3
+                className={cn(
+                  'font-semibold',
+                  compact ? 'text-sm' : 'text-base',
+                  getStepStatusClass(step),
+                )}
+              >
                 {step.title}
               </h3>
               {step.status === 'loading' && (
@@ -104,12 +133,14 @@ export function Steps({
                 </div>
               )}
             </div>
-            
+
             {step.description && (
-              <p className={cn(
-                'text-gray-600 mt-0.5',
-                compact ? 'text-xs' : 'text-sm'
-              )}>
+              <p
+                className={cn(
+                  'mt-0.5 text-gray-600',
+                  compact ? 'text-xs' : 'text-sm',
+                )}
+              >
                 {step.description}
               </p>
             )}

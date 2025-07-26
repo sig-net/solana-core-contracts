@@ -31,7 +31,7 @@ export function useCopyToClipboard(resetDelay = 2000): CopyToClipboardReturn {
         setIsCopied(false);
       }
     },
-    [resetDelay]
+    [resetDelay],
   );
 
   return { isCopied, copyToClipboard, error };

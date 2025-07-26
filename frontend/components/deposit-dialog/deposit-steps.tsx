@@ -1,14 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  ArrowLeft,
-  ExternalLink,
-  Send,
-  Zap,
-  CheckCircle,
-} from 'lucide-react';
+import { ArrowLeft, ExternalLink, Send, Zap, CheckCircle } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { ethers } from 'ethers';
 
 import { Button } from '@/components/ui/button';
 import { Steps, Step } from '@/components/ui/steps';
@@ -16,7 +11,9 @@ import { CryptoIcon } from '@/components/balance-display/crypto-icon';
 import { DepositToken } from '@/lib/constants/deposit-tokens';
 import { useIncomingTransfers } from '@/hooks/use-incoming-transfers';
 import { useDepositErc20Mutation } from '@/hooks/use-deposit-erc20-mutation';
+import { useSolanaService } from '@/hooks/use-solana-service';
 import { DepositStatus } from '@/lib/types/bridge.types';
+import { formatTokenAmountSync } from '@/lib/utils/token-formatting';
 
 interface DepositStepsProps {
   token: DepositToken;
@@ -24,12 +21,12 @@ interface DepositStepsProps {
   onClose: () => void;
 }
 
-
 export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
   const { publicKey } = useWallet();
   const { data: incomingTransfers, isLoading: isCheckingTransfers } =
     useIncomingTransfers();
   const depositMutation = useDepositErc20Mutation();
+  const solanaService = useSolanaService();
 
   const [detectedTx, setDetectedTx] = useState<any>(null);
   const [depositStatus, setDepositStatus] =
@@ -37,6 +34,52 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
   const [txHash, setTxHash] = useState<string>('');
   const [error, setError] = useState<string>('');
   const [hasStartedBridge, setHasStartedBridge] = useState(false);
+  const [availableBalance, setAvailableBalance] = useState<string>('');
+  const [actualDecimals, setActualDecimals] = useState<number | null>(null);
+  const [checkingBalance, setCheckingBalance] = useState(true);
+
+  // Check for available balance and start auto-deposit if found
+  useEffect(() => {
+    const checkAvailableBalance = async () => {
+      if (!publicKey || !checkingBalance) return;
+
+      try {
+        const balanceResult = await solanaService.getAdjustedAvailableBalance(
+          publicKey,
+          token.address,
+        );
+
+        if (balanceResult.amount && parseFloat(balanceResult.amount) > 0) {
+          setAvailableBalance(balanceResult.amount);
+          setActualDecimals(balanceResult.decimals);
+
+          // Create a synthetic transaction to trigger the existing flow
+          // We need to create a raw value that matches what the detection logic expects
+          const rawValue = ethers.parseUnits(
+            balanceResult.amount,
+            balanceResult.decimals,
+          );
+          setDetectedTx({
+            value: rawValue.toString(),
+            transactionHash: 'auto-deposit',
+          });
+        }
+      } catch (error) {
+        // No balance available, continue with normal flow
+        console.log('No available balance, using normal deposit flow');
+      } finally {
+        setCheckingBalance(false);
+      }
+    };
+
+    checkAvailableBalance();
+  }, [
+    publicKey,
+    token.address,
+    token.decimals,
+    solanaService,
+    checkingBalance,
+  ]);
 
   // Check for incoming transactions
   useEffect(() => {
@@ -59,16 +102,18 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
         setHasStartedBridge(true);
 
         try {
-          // Convert the detected amount back to human readable format
-          const decimals = token.decimals;
-          const amount = (
-            Number(detectedTx.value) / Math.pow(10, decimals)
-          ).toString();
+          // Use available balance if this is an auto-deposit, otherwise convert detected amount
+          const amount =
+            availableBalance ||
+            (
+              Number(detectedTx.value) /
+              Math.pow(10, actualDecimals || token.decimals)
+            ).toString();
 
           await depositMutation.mutateAsync({
             erc20Address: token.address,
             amount,
-            decimals: token.decimals,
+            decimals: actualDecimals || token.decimals,
             onStatusChange: status => {
               setDepositStatus(status.status as DepositStatus);
               if (status.txHash) {
@@ -88,7 +133,15 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
       // Start bridge process after a short delay to let user see transaction detected
       setTimeout(startBridge, 2000);
     }
-  }, [detectedTx, hasStartedBridge, publicKey, depositMutation, token]);
+  }, [
+    detectedTx,
+    hasStartedBridge,
+    publicKey,
+    depositMutation,
+    token,
+    availableBalance,
+    actualDecimals,
+  ]);
 
   const getSteps = (): Step[] => {
     const baseSteps: Step[] = [
@@ -98,7 +151,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
         description: `Send ${token.symbol} to the provided address`,
         status: detectedTx
           ? 'completed'
-          : isCheckingTransfers
+          : checkingBalance || isCheckingTransfers
             ? 'loading'
             : 'pending',
         icon: Send,
@@ -109,17 +162,18 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
         description: 'Found on the blockchain',
         status: detectedTx ? 'completed' : 'pending',
         icon: CheckCircle,
-        details: detectedTx && (
-          <a
-            href={`https://sepolia.etherscan.io/tx/${detectedTx.transactionHash}`}
-            target='_blank'
-            rel='noopener noreferrer'
-            className='flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800'
-          >
-            View transaction
-            <ExternalLink className='h-3 w-3' />
-          </a>
-        ),
+        details: detectedTx &&
+          detectedTx.transactionHash !== 'auto-deposit' && (
+            <a
+              href={`https://sepolia.etherscan.io/tx/${detectedTx.transactionHash}`}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800'
+            >
+              View transaction
+              <ExternalLink className='h-3 w-3' />
+            </a>
+          ),
       },
       {
         id: 'bridge',
@@ -181,13 +235,16 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
           token={token.symbol}
           className='h-6 w-6'
         />
-        <div className='flex-1 min-w-0'>
-          <p className='text-dark-neutral-900 font-medium text-sm truncate'>
+        <div className='min-w-0 flex-1'>
+          <p className='text-dark-neutral-900 truncate text-sm font-medium'>
             {detectedTx
-              ? `${(Number(detectedTx.value) / Math.pow(10, token.decimals)).toFixed(6)} ${token.symbol}`
+              ? formatTokenAmountSync(BigInt(detectedTx.value), token.address, {
+                  showSymbol: true,
+                  precision: 6,
+                })
               : `${token.symbol}`}
           </p>
-          <p className='text-dark-neutral-600 text-xs truncate'>{token.name}</p>
+          <p className='text-dark-neutral-600 truncate text-xs'>{token.name}</p>
         </div>
       </div>
 
@@ -247,12 +304,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
         )}
 
         {!isComplete && !hasFailed && detectedTx && (
-          <Button
-            disabled
-            variant='outline'
-            size='sm'
-            className='flex-1'
-          >
+          <Button disabled variant='outline' size='sm' className='flex-1'>
             Processing...
           </Button>
         )}

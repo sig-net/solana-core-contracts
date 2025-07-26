@@ -11,21 +11,25 @@ import { cn } from '@/lib/utils';
 
 interface DepositAddressProps {
   token: DepositToken;
-  onBack: () => void;
   depositAddress: string;
   onContinue?: () => void;
 }
 
 export function DepositAddress({
   token,
-  onBack,
   depositAddress,
   onContinue,
 }: DepositAddressProps) {
-  const { isCopied, copyToClipboard, error } = useCopyToClipboard();
+  const { isCopied, copyToClipboard } = useCopyToClipboard();
 
   const handleCopy = () => {
     copyToClipboard(depositAddress);
+  };
+
+  const handleContinueToSteps = () => {
+    if (onContinue) {
+      onContinue();
+    }
   };
 
   const formatAddress = (address: string) => {
@@ -33,7 +37,7 @@ export function DepositAddress({
   };
 
   return (
-    <div className='gradient-popover space-y-5'>
+    <div className='gradient-popover w-full space-y-5'>
       <p className='text-dark-neutral-400 font-semibold capitalize'>
         {token.chainName} Address
       </p>
@@ -73,22 +77,19 @@ export function DepositAddress({
       <div className='flex items-center justify-center gap-2'>
         <Info className='h-4 w-4' />
         <p className='text-dark-neutral-400 text-center text-sm leading-relaxed'>
-          Use this address to deposit {token.chainName}
+          Use this address to deposit Ethereum
         </p>
       </div>
 
-      {/* Continue Button */}
+      {/* Continue Buttons */}
       {onContinue && (
-        <div className='flex gap-3'>
+        <div className='flex w-full justify-center'>
           <Button
-            onClick={onBack}
-            variant='outline'
-            className='flex-1 cursor-pointer'
+            onClick={handleContinueToSteps}
+            variant='secondary'
+            className='cursor-pointer'
           >
-            Back
-          </Button>
-          <Button onClick={onContinue} className='flex-1 cursor-pointer'>
-            I've sent the tokens
+            I&apos;ve sent the tokens
           </Button>
         </div>
       )}

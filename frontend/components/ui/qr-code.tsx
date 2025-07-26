@@ -39,7 +39,7 @@ export function QRCode({
         setIsGenerating(true);
         setError(null);
         containerRef.current.innerHTML = '';
-        
+
         let imageDataUrl: string | undefined;
         if (iconUrl) {
           imageDataUrl = iconUrl;
@@ -107,12 +107,14 @@ export function QRCode({
             color: '#000000',
             type: 'square',
           },
-          imageOptions: imageDataUrl ? {
-            crossOrigin: 'anonymous',
-            margin: 8,
-            imageSize: 0.4,
-            hideBackgroundDots: true,
-          } : undefined,
+          imageOptions: imageDataUrl
+            ? {
+                crossOrigin: 'anonymous',
+                margin: 8,
+                imageSize: 0.4,
+                hideBackgroundDots: true,
+              }
+            : undefined,
         });
 
         // Single check before DOM manipulation

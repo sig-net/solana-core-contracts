@@ -816,4 +816,51 @@ export class SolanaService {
   async fetchAllUserWithdrawals(publicKey: PublicKey) {
     return this.bridgeContract.fetchAllUserWithdrawals(publicKey);
   }
+
+  /**
+   * Get available balance for a specific token, adjusted for contract bug
+   * Returns both the formatted amount and the actual decimals used
+   */
+  async getAdjustedAvailableBalance(
+    publicKey: PublicKey,
+    erc20Address: string,
+  ): Promise<{ amount: string; decimals: number }> {
+    const unclaimedBalances = await this.fetchUnclaimedBalances(publicKey);
+
+    const tokenBalance = unclaimedBalances.find(
+      balance =>
+        balance.erc20Address.toLowerCase() === erc20Address.toLowerCase(),
+    );
+
+    if (!tokenBalance || !tokenBalance.amount || tokenBalance.amount === '0') {
+      throw new Error(
+        `No ${erc20Address} tokens available in the derived address`,
+      );
+    }
+
+    // Apply random subtraction to work around contract bug
+    const balance = BigInt(tokenBalance.amount);
+    const randomSubtraction = BigInt(Math.floor(Math.random() * 1000) + 1);
+    const adjustedBalance = balance - randomSubtraction;
+
+    // Ensure we don't go negative
+    const finalBalance =
+      adjustedBalance > BigInt(0) ? adjustedBalance : BigInt(1);
+
+    // Convert to decimal format using the actual contract decimals
+    const balanceInUnits = ethers.formatUnits(
+      finalBalance,
+      tokenBalance.decimals,
+    );
+
+    console.log('Original balance:', tokenBalance.amount);
+    console.log('Adjusted balance:', finalBalance.toString());
+    console.log('Balance in units:', balanceInUnits);
+    console.log('Contract decimals:', tokenBalance.decimals);
+
+    return {
+      amount: balanceInUnits,
+      decimals: tokenBalance.decimals,
+    };
+  }
 }

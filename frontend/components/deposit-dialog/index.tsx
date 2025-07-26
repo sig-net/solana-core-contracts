@@ -107,7 +107,6 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
               </DialogHeader>
               <DepositAddress
                 token={selectedToken}
-                onBack={handleBack}
                 depositAddress={depositAddress}
                 onContinue={handleContinueToSteps}
               />

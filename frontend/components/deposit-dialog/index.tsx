@@ -134,7 +134,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className='gradient-popover max-w-xl p-10'>
+      <DialogContent className='gradient-popover max-w-md p-10'>
         {step === DepositStep.SELECT_TOKEN && (
           <>
             <DialogHeader>

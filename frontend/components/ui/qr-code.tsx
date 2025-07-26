@@ -111,19 +111,13 @@ export function QRCodeComponent({
       <canvas
         ref={canvasRef}
         className={cn(
-          'border-dark-neutral-50 rounded-sm border transition-opacity',
+          'transition-opacity',
           isGenerating ? 'opacity-0' : 'opacity-100',
         )}
         style={{
           display: isGenerating ? 'none' : 'block',
           maxWidth: '100%',
           height: 'auto',
-        }}
-        onClick={() => {
-          // Optional: Add click to copy functionality
-          if (navigator.clipboard && value) {
-            navigator.clipboard.writeText(value);
-          }
         }}
       />
     </div>

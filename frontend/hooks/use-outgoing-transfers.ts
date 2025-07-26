@@ -6,9 +6,7 @@ import { PublicKey } from '@solana/web3.js';
 
 import { queryKeys } from '@/lib/query-client';
 import { useSolanaService } from './use-solana-service';
-import { formatActivityDate } from '@/lib/utils/date-formatting';
-import { ERC20_ADDRESSES } from '@/lib/constants/ethereum.constants';
-import { getTransactionExplorerUrl } from '@/lib/utils/network-utils';
+import type { SolanaService } from '@/lib/solana-service';
 
 export interface OutgoingTransfer {
   requestId: string;
@@ -36,35 +34,23 @@ export interface WithdrawalRequest {
 
 async function fetchUserWithdrawals(
   publicKey: PublicKey,
-  solanaService: any,
+  solanaService: SolanaService,
 ): Promise<WithdrawalRequest[]> {
   try {
-    const withdrawals: WithdrawalRequest[] = [];
-    
-    // Use the new method to fetch user's pending withdrawals
-    const pendingWithdrawals = await solanaService.bridgeContract.fetchUserPendingWithdrawals(publicKey);
-    
-    // Transform the pending withdrawals to our format
-    for (const withdrawal of pendingWithdrawals) {
-      const data = withdrawal.account;
-      
-      // Convert byte arrays to hex strings
-      const erc20Address = '0x' + Buffer.from(data.erc20Address).toString('hex');
-      const recipientAddress = '0x' + Buffer.from(data.recipientAddress).toString('hex');
-      const requestId = Buffer.from(data.requestId).toString('hex');
-      
-      withdrawals.push({
-        requestId,
-        erc20Address,
-        amount: data.amount.toString(),
-        recipient: recipientAddress,
-        timestamp: Date.now() / 1000, // Approximate timestamp
-        status: 'pending', // All queried withdrawals are pending by default
-        ethereumTxHash: undefined, // Would need additional lookup
-      });
-    }
-    
-    return withdrawals;
+    // Use the comprehensive method that fetches both pending and historical withdrawals
+    const allWithdrawals =
+      await solanaService.fetchAllUserWithdrawals(publicKey);
+
+    // Transform to our format
+    return allWithdrawals.map(withdrawal => ({
+      requestId: withdrawal.requestId,
+      erc20Address: withdrawal.erc20Address,
+      amount: withdrawal.amount,
+      recipient: withdrawal.recipient,
+      timestamp: withdrawal.timestamp,
+      status: withdrawal.status,
+      ethereumTxHash: withdrawal.ethereumTxHash,
+    }));
   } catch (error) {
     console.error('Error fetching user withdrawals:', error);
     return [];
@@ -76,29 +62,36 @@ export function useOutgoingTransfers() {
   const solanaService = useSolanaService();
 
   const query = useQuery({
-    queryKey: publicKey 
+    queryKey: publicKey
       ? queryKeys.solana.outgoingTransfers(publicKey.toString())
       : [],
     queryFn: async (): Promise<OutgoingTransfer[]> => {
       if (!publicKey) throw new Error('No public key available');
-      
+
       // Fetch user's withdrawal requests from Solana
-      const withdrawalRequests = await fetchUserWithdrawals(publicKey, solanaService);
-      
+      const withdrawalRequests = await fetchUserWithdrawals(
+        publicKey,
+        solanaService,
+      );
+
+      console.log('withdrawalRequests', withdrawalRequests);
+
       // Transform withdrawal requests to OutgoingTransfer format
-      return withdrawalRequests.map((request): OutgoingTransfer => ({
-        requestId: request.requestId,
-        transactionHash: request.ethereumTxHash,
-        blockNumber: undefined,
-        logIndex: 0,
-        from: '0x041477de8ecbcf633cb13ea10aa86cdf4d437c29', // Main vault address
-        to: request.recipient,
-        value: BigInt(request.amount),
-        tokenAddress: request.erc20Address,
-        recipient: request.recipient,
-        timestamp: request.timestamp,
-        status: request.status,
-      }));
+      return withdrawalRequests.map(
+        (request): OutgoingTransfer => ({
+          requestId: request.requestId,
+          transactionHash: request.ethereumTxHash,
+          blockNumber: undefined,
+          logIndex: 0,
+          from: '0x041477de8ecbcf633cb13ea10aa86cdf4d437c29', // Main vault address
+          to: request.recipient,
+          value: BigInt(request.amount),
+          tokenAddress: request.erc20Address,
+          recipient: request.recipient,
+          timestamp: request.timestamp,
+          status: request.status,
+        }),
+      );
     },
     enabled: !!publicKey,
     refetchInterval: 30000, // Refetch every 30 seconds

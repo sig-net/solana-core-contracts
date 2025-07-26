@@ -69,7 +69,10 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
 
   // Preload token information when transfers are loaded
   useEffect(() => {
-    const allTransfers = [...(incomingTransfers || []), ...(outgoingTransfers || [])];
+    const allTransfers = [
+      ...(incomingTransfers || []),
+      ...(outgoingTransfers || []),
+    ];
     if (allTransfers.length) {
       const tokenAddresses = Array.from(
         new Set(allTransfers.map(transfer => transfer.tokenAddress)),

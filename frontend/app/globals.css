@@ -19,6 +19,9 @@
   --color-dark-neutral-400: var(--dark-neutral-400);
   --color-dark-neutral-500: var(--dark-neutral-500);
   --color-pastels-polar-100: var(--pastels-polar-100);
+  --color-pastels-green-white-300: var(--pastels-green-white-300);
+  --color-pastels-mercury-400: var(--pastels-mercury-400);
+  --color-pastels-swiss-coffee-400: var(--pastels-swiss-coffee-400);
   --color-success-500: var(--success-500);
   --color-tundora-300: var(--tundora-300);
   --color-tundora-400: var(--tundora-400);
@@ -48,6 +51,9 @@
   --dark-neutral-400: #786767;
   --dark-neutral-500: #625757;
   --pastels-polar-100: #f6fdfd;
+  --pastels-green-white-300: #ebf0ea;
+  --pastels-mercury-400: #eae7e7;
+  --pastels-swiss-coffee-400: #eae1e0;
   --success-500: #17b26a;
   --tundora-300: #6c6060;
   --tundora-400: #5c5353;
@@ -95,6 +101,15 @@
       180deg,
       var(--pastels-green-white-200) 0%,
       var(--pastels-mercury-100) 100%
+    );
+  }
+
+  .gradient-popover {
+    background: linear-gradient(
+      200deg,
+      var(--pastels-green-white-300, #ebf0ea) 2.62%,
+      var(--pastels-mercury-400, #eae7e7) 62.3%,
+      var(--pastels-swiss-coffee-400, #eae1e0) 97.38%
     );
   }
 }

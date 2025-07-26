@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
 import { Copy, Check, ArrowLeft, Eye } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { QRCode } from '@/components/ui/qr-code';
 import { DepositToken } from '@/lib/constants/deposit-tokens';
+import { useCopyToClipboard } from '@/hooks';
 import { cn } from '@/lib/utils';
 
 interface DepositAddressProps {
@@ -21,16 +21,10 @@ export function DepositAddress({
   depositAddress,
   onContinue,
 }: DepositAddressProps) {
-  const [copied, setCopied] = useState(false);
+  const { isCopied, copyToClipboard, error } = useCopyToClipboard();
 
-  const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(depositAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy address:', err);
-    }
+  const handleCopy = () => {
+    copyToClipboard(depositAddress);
   };
 
   const formatAddress = (address: string) => {
@@ -38,77 +32,50 @@ export function DepositAddress({
   };
 
   return (
-    <div className='space-y-8'>
-      {/* Header */}
-      <div className='flex items-center gap-3'>
-        <Button
-          variant='ghost'
-          size='icon'
-          onClick={onBack}
-          className='cursor-pointer'
-        >
-          <ArrowLeft className='h-5 w-5' />
-        </Button>
-        <div>
-          <h3 className='text-tundora-300 text-xl font-semibold'>
-            Your {token.chainName} address
-          </h3>
-          <p className='text-dark-neutral-400 mt-1 text-sm'>
-            Deposit to 💳 Wallet
-          </p>
-        </div>
-      </div>
+    <div className='gradient-popover space-y-8'>
+      <p className='text-dark-neutral-400 font-semibold capitalize'>
+        {token.chainName} Address
+      </p>
 
       {/* QR Code Container */}
-      <div className='flex justify-center'>
-        <div className='border-dark-neutral-50 rounded-2xl border bg-white p-6 shadow-sm'>
-          <QRCode
-            value={depositAddress}
-            size={280}
-            network={token.chain}
-            tokenSymbol={token.symbol}
-            className='mx-auto'
-            errorCorrectionLevel='M'
-          />
+      <div className='border-dark-neutral-400/80 gradient-bg-main flex flex-col justify-center gap-5 rounded-xs border p-5'>
+        <QRCode
+          value={depositAddress}
+          size={320}
+          network={token.chain}
+          tokenSymbol={token.symbol}
+          className='mx-auto border-none bg-white'
+          errorCorrectionLevel='M'
+        />
+        {/* Address Display */}
+        <div className='flex items-center justify-center gap-3'>
+          <div className='bg-pastels-polar-200 border-dark-neutral-50 flex items-center gap-3 rounded-full border px-6 py-3'>
+            <span className='text-tundora-300 font-mono text-sm font-medium'>
+              {formatAddress(depositAddress)}
+            </span>
+          </div>
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={handleCopy}
+            className={cn(
+              'bg-pastels-polar-200 border-dark-neutral-50 text-dark-neutral-400 hover:bg-pastels-polar-100 hover:text-tundora-300 h-12 w-12 cursor-pointer rounded-full border',
+              isCopied && 'text-success-500',
+            )}
+          >
+            {isCopied ? (
+              <Check className='h-5 w-5' />
+            ) : (
+              <Copy className='h-5 w-5' />
+            )}
+          </Button>
         </div>
-      </div>
-
-      {/* Address Display */}
-      <div className='flex items-center justify-center gap-3'>
-        <div className='bg-pastels-polar-200 border-dark-neutral-50 flex items-center gap-3 rounded-full border px-6 py-3'>
-          <Eye className='text-dark-neutral-400 h-4 w-4' />
-          <span className='text-tundora-300 font-mono text-sm font-medium'>
-            {formatAddress(depositAddress)}
-          </span>
-        </div>
-        <Button
-          variant='ghost'
-          size='icon'
-          onClick={handleCopy}
-          className={cn(
-            'bg-pastels-polar-200 border-dark-neutral-50 text-dark-neutral-400 hover:bg-pastels-polar-100 hover:text-tundora-300 h-12 w-12 cursor-pointer rounded-full border',
-            copied && 'text-success-500',
-          )}
-        >
-          {copied ? (
-            <Check className='h-5 w-5' />
-          ) : (
-            <Copy className='h-5 w-5' />
-          )}
-        </Button>
       </div>
 
       {/* Description */}
       <p className='text-dark-neutral-400 text-center text-sm leading-relaxed'>
-        Use this address to deposit tokens and collectibles on {token.chainName}
+        Use this address to deposit {token.chainName}
       </p>
-
-      {/* Copy Feedback */}
-      {copied && (
-        <p className='text-success-500 text-center text-xs font-medium'>
-          Address copied to clipboard
-        </p>
-      )}
 
       {/* Continue Button */}
       {onContinue && (

@@ -18,7 +18,6 @@ import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { ChainSignaturesContract } from '@/lib/contracts/chain-signatures-contract';
 import { getTokenMetadata } from '@/lib/constants/token-metadata';
 
-// Import types and constants from organized files
 import type { EventPromises } from './types/chain-signatures.types';
 import { CHAIN_SIGNATURES_CONFIG } from './constants/chain-signatures.constants';
 import {
@@ -26,8 +25,6 @@ import {
   HARDCODED_RECIPIENT_ADDRESS,
   ETHEREUM_CONFIG,
 } from './constants/ethereum.constants';
-
-// Using imported constants from constants file
 
 function deriveEpsilon(requester: string, path: string): bigint {
   const derivationPath = `${CHAIN_SIGNATURES_CONFIG.EPSILON_DERIVATION_PREFIX},${CHAIN_SIGNATURES_CONFIG.SOLANA_CHAIN_ID},${requester},${path}`;
@@ -811,5 +808,12 @@ export class SolanaService {
     } finally {
       eventPromises.cleanup();
     }
+  }
+
+  /**
+   * Fetch all user withdrawals (pending + historical)
+   */
+  async fetchAllUserWithdrawals(publicKey: PublicKey) {
+    return this.bridgeContract.fetchAllUserWithdrawals(publicKey);
   }
 }

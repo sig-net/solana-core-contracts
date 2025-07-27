@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ExternalLink, Send, Zap, CheckCircle } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { ethers } from 'ethers';
 
 import { Button } from '@/components/ui/button';
 import { Steps, Step } from '@/components/ui/steps';
@@ -50,7 +49,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
         }
       } catch (error) {
         // No balance available, continue with normal flow
-        console.error('No available balance, using normal deposit flow');
+        // No available balance to auto-claim, proceed with normal deposit flow
       } finally {
         setCheckingBalance(false);
       }

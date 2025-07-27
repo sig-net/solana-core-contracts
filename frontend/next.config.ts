@@ -30,7 +30,6 @@ const nextConfig: NextConfig = {
       'lucide-react',
       '@radix-ui/react-dialog',
       '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-select',
       '@tanstack/react-query',
       '@web3icons/react',
     ],

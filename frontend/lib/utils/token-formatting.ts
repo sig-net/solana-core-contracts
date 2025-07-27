@@ -1,6 +1,6 @@
 import { erc20Abi } from 'viem';
 
-import { getAutomatedProvider } from '@/lib/viem/providers';
+import { getPublicClient } from '@/lib/viem/providers';
 
 // This file handles token metadata fetching and caching
 // For balance formatting, use @/lib/utils/balance-formatter instead
@@ -90,7 +90,7 @@ const DEFAULT_TOKEN_INFO: TokenInfo = {
 async function fetchTokenInfoFromContract(
   tokenAddress: string,
 ): Promise<TokenInfo> {
-  const provider = getAutomatedProvider();
+  const provider = getPublicClient();
 
   try {
     const [symbol, name, decimals] = await Promise.all([

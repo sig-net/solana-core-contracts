@@ -93,7 +93,9 @@ export function SwapWidget({ className }: Pick<SwapWidgetProps, 'className'>) {
         className,
       )}
     >
-      <SwapHeader onSettingsClick={() => console.log('Settings clicked')} />
+      <SwapHeader onSettingsClick={() => {
+        // TODO: Implement settings functionality
+      }} />
 
       <div className='flex flex-col gap-4'>
         <TokenAmountDisplay

@@ -3,10 +3,10 @@
 import { useState } from 'react';
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
+import { LoadingState } from '@/components/states';
 import { useWithdrawMutation } from '@/hooks';
 
 import { AmountInput } from './amount-input';
-import { LoadingState } from './loading-state';
 import { WithdrawSteps } from './withdraw-steps';
 
 // Define WithdrawStatus type locally

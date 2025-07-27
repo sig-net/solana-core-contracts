@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+
 import { cn } from '@/lib/utils';
 import { formatTokenBalanceSync } from '@/lib/utils/balance-formatter';
 import { DepositDialog } from '@/components/deposit-dialog';
@@ -112,7 +113,6 @@ export function BalanceDisplay({
               onSendClick={handleSendClick}
               onSwapClick={() => {
                 // TODO: Implement swap functionality
-                console.log('Swap clicked for', tokenData.token);
               }}
             />
           );

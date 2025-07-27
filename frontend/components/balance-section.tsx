@@ -5,7 +5,7 @@ import { Package } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { BalanceDisplay } from '@/components/balance-display';
-import { EmptyState, LoadingState, ErrorState } from '@/components/states';
+import { EmptyState, ErrorState } from '@/components/states';
 import { DepositDialog } from '@/components/deposit-dialog';
 import { useUserBalances } from '@/hooks';
 import { convertTokenBalancesToDisplayTokens } from '@/lib/utils';

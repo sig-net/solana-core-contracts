@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 import { useSolanaService } from './use-solana-service';

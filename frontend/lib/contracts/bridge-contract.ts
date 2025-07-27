@@ -367,53 +367,6 @@ export class BridgeContract {
     );
   }
 
-  /**
-   * Check if pending withdrawal exists
-   */
-  async checkPendingWithdrawalExists(
-    pendingWithdrawalPda: PublicKey,
-  ): Promise<boolean> {
-    try {
-      await this.fetchPendingWithdrawal(pendingWithdrawalPda);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Fetch all pending withdrawals for a user
-   */
-  async fetchUserPendingWithdrawals(userPublicKey: PublicKey): Promise<
-    ProgramAccount<{
-      requester: PublicKey;
-      amount: BN;
-      erc20Address: number[];
-      recipientAddress: number[];
-      path: string;
-      requestId: number[];
-    }>[]
-  > {
-    try {
-      const program = this.getBridgeProgram();
-
-      // Query all pendingErc20Withdrawal accounts where requester matches user
-      const pendingWithdrawals =
-        await program.account.pendingErc20Withdrawal.all([
-          {
-            memcmp: {
-              offset: 8, // Skip the 8-byte discriminator
-              bytes: userPublicKey.toBase58(),
-            },
-          },
-        ]);
-
-      return pendingWithdrawals;
-    } catch (error) {
-      console.error('Error fetching user pending withdrawals:', error);
-      return [];
-    }
-  }
 
   /**
    * Fetch comprehensive user withdrawal data by combining multiple sources
@@ -442,26 +395,7 @@ export class BridgeContract {
         ethereumTxHash?: string;
       }[] = [];
 
-      // 1. Get current pending withdrawals
-      const pendingWithdrawals =
-        await this.fetchUserPendingWithdrawals(userPublicKey);
-
-      // Convert pending withdrawals to common format
-      for (const withdrawal of pendingWithdrawals) {
-        const data = withdrawal.account;
-        withdrawals.push({
-          requestId: Buffer.from(data.requestId).toString('hex'),
-          amount: data.amount.toString(),
-          erc20Address: '0x' + Buffer.from(data.erc20Address).toString('hex'),
-          recipient: '0x' + Buffer.from(data.recipientAddress).toString('hex'),
-          status: 'pending',
-          timestamp: Date.now() / 1000, // Current time for pending
-          signature: undefined,
-          ethereumTxHash: undefined,
-        });
-      }
-
-      // 2. Get historical transactions by parsing user's transaction history
+      // Get historical transactions by parsing user's transaction history
       try {
         const signatures = await this.connection.getSignaturesForAddress(
           userPublicKey,
@@ -480,98 +414,51 @@ export class BridgeContract {
             if (!tx || !tx.meta || tx.meta.err) continue;
 
             // Check if this transaction involves the bridge program
-            const accountKeys =
-              tx.transaction.message.version === 'legacy'
-                ? tx.transaction.message.accountKeys
-                : tx.transaction.message.staticAccountKeys;
+            const accountKeys = tx.transaction.message.staticAccountKeys;
 
             // Find instructions for our program
-            const instructions =
-              tx.transaction.message.version === 'legacy'
-                ? tx.transaction.message.instructions
-                : tx.transaction.message.compiledInstructions;
+            const instructions = tx.transaction.message.compiledInstructions;
 
             for (const ix of instructions) {
               const programId = accountKeys[ix.programIdIndex];
 
               if (programId.equals(BRIDGE_PROGRAM_ID)) {
                 try {
-                  // Decode the instruction data
-                  const ixData =
-                    typeof ix.data === 'string'
-                      ? ix.data
-                      : Buffer.from(ix.data).toString('base64');
-                  const instructionDataBuf = Buffer.from(ixData, 'base64');
+                  // Get instruction data as Buffer
+                  const instructionDataBuf = Buffer.from(ix.data, 'base64');
 
-                  // Get discriminator to identify instruction type
-                  const discriminator = instructionDataBuf.slice(0, 8);
+                  // Use Anchor's coder to decode the instruction
+                  let decodedInstruction: {
+                    name: string;
+                    data: any;
+                  } | null = null;
 
-                  let instructionName: string | null = null;
-                  let decodedData: any = null;
-
-                  // Check against known discriminators
-                  if (
-                    discriminator.equals(
-                      Buffer.from([19, 124, 28, 31, 171, 187, 87, 70]),
-                    )
-                  ) {
-                    instructionName = 'withdrawErc20';
-                    // Parse withdrawErc20 args according to IDL
-                    const dataOffset = 8;
-                    decodedData = {
-                      requestId: Array.from(
-                        instructionDataBuf.slice(dataOffset, dataOffset + 32),
-                      ),
-                      erc20Address: Array.from(
-                        instructionDataBuf.slice(
-                          dataOffset + 32,
-                          dataOffset + 52,
-                        ),
-                      ),
-                      amount: new BN(
-                        instructionDataBuf.slice(
-                          dataOffset + 52,
-                          dataOffset + 68,
-                        ),
-                        'le',
-                      ),
-                      recipientAddress: Array.from(
-                        instructionDataBuf.slice(
-                          dataOffset + 68,
-                          dataOffset + 88,
-                        ),
-                      ),
-                    };
-                  } else if (
-                    discriminator.equals(
-                      Buffer.from([108, 220, 227, 17, 212, 248, 163, 74]),
-                    )
-                  ) {
-                    instructionName = 'completeWithdrawErc20';
-                    // Parse completeWithdrawErc20 args
-                    const dataOffset = 8;
-                    decodedData = {
-                      requestId: Array.from(
-                        instructionDataBuf.slice(dataOffset, dataOffset + 32),
-                      ),
-                    };
+                  try {
+                    decodedInstruction = coder.instruction.decode(
+                      instructionDataBuf,
+                    );
+                  } catch (decodeError) {
+                    // Skip instructions we can't decode
+                    continue;
                   }
 
-                  if (!instructionName || !decodedData) continue;
+                  if (!decodedInstruction) continue;
+
+                  const { name: instructionName, data: decodedData } =
+                    decodedInstruction;
 
                   // Handle withdrawErc20 instruction
                   if (instructionName === 'withdrawErc20') {
-                    const args = decodedData;
-
-                    // Extract withdrawal data from decoded instruction
-                    const requestId = Buffer.from(args.requestId).toString(
+                    // Extract withdrawal data using IDL-decoded structure
+                    const requestId = Buffer.from(decodedData.requestId).toString(
                       'hex',
                     );
                     const erc20Address =
-                      '0x' + Buffer.from(args.erc20Address).toString('hex');
-                    const amount = args.amount.toString();
+                      '0x' + Buffer.from(decodedData.erc20Address).toString('hex');
+                    const amount = decodedData.amount.toString();
                     const recipient =
-                      '0x' + Buffer.from(args.recipientAddress).toString('hex');
+                      '0x' +
+                      Buffer.from(decodedData.recipientAddress).toString('hex');
 
                     // Check if this withdrawal is for the current user
                     const userAccountIndex = accountKeys.findIndex(key =>
@@ -579,8 +466,7 @@ export class BridgeContract {
                     );
 
                     // Get instruction accounts
-                    const ixAccounts =
-                      'accounts' in ix ? ix.accounts : ix.accountIdxs || [];
+                    const ixAccounts = ix.accountKeyIndexes;
 
                     if (
                       userAccountIndex !== -1 &&
@@ -608,10 +494,9 @@ export class BridgeContract {
                   }
                   // Handle completeWithdrawErc20 instruction
                   else if (instructionName === 'completeWithdrawErc20') {
-                    const args = decodedData;
-                    const requestId = Buffer.from(args.requestId).toString(
-                      'hex',
-                    );
+                    const requestId = Buffer.from(
+                      decodedData.requestId,
+                    ).toString('hex');
 
                     // Update existing withdrawal to completed status if found
                     const existingIndex = withdrawals.findIndex(

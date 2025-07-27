@@ -10,6 +10,7 @@ import { TokenAmountDisplay } from '@/components/ui/token-amount-display';
 import { cn } from '@/lib/utils';
 
 import { WithdrawToken } from './index';
+import { SendIcon } from 'lucide-react';
 
 interface FormData {
   amount: string;
@@ -31,8 +32,8 @@ export function AmountInput({
   onSubmit,
   preSelectedToken,
 }: AmountInputProps) {
-  const [selectedToken, setSelectedToken] = useState<WithdrawToken | null>(
-    preSelectedToken || availableTokens[0] || null,
+  const [selectedToken, setSelectedToken] = useState<WithdrawToken | undefined>(
+    preSelectedToken || availableTokens[0] || undefined,
   );
   const [error, setError] = useState<string>('');
 
@@ -67,31 +68,27 @@ export function AmountInput({
     });
   };
 
-
-
-
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className='space-y-4'>
       {/* Token Selection */}
       <div>
         <TokenAmountDisplay
           value={watchedAmount}
-          onChange={(value) => setValue('amount', value)}
+          onChange={value => setValue('amount', value)}
           tokens={availableTokens}
           selectedToken={selectedToken}
-          onTokenSelect={(token) => {
-            setSelectedToken(token);
+          onTokenSelect={token => {
+            setSelectedToken(token as WithdrawToken);
             setValue('amount', '');
             setError('');
           }}
           usdValue={`≈ $${watchedAmount ? (parseFloat(watchedAmount) * 113718.77).toFixed(2) : '0.00'}`}
-          placeholder="0.00"
+          placeholder='0.00'
         />
       </div>
 
-
       {/* Receiver Address */}
-      <div className='space-y-3'>
+      <div className='space-y-2'>
         <Label className='text-tundora-300 text-sm font-medium'>
           Receiver Address
         </Label>
@@ -100,14 +97,6 @@ export function AmountInput({
           {...register('receiverAddress')}
           className='h-12 font-mono text-sm'
         />
-        {watchedAddress && (
-          <div className='bg-pastels-polar-100 border-dark-neutral-50 flex items-center gap-2 rounded-sm border p-3'>
-            <div className='bg-success-500 h-2 w-2 shrink-0 rounded-full'></div>
-            <p className='text-dark-neutral-400 text-xs font-medium'>
-              Ethereum address entered
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Error Message */}
@@ -121,6 +110,7 @@ export function AmountInput({
       {/* Continue Button */}
       <Button
         type='submit'
+        variant='secondary'
         disabled={!selectedToken || !watchedAmount || !watchedAddress}
         className={cn(
           'h-12 w-full text-base font-semibold',
@@ -130,7 +120,8 @@ export function AmountInput({
         )}
         size='lg'
       >
-        Continue
+        <SendIcon className='size-4' />
+        Send
       </Button>
     </form>
   );

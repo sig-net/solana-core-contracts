@@ -1,7 +1,7 @@
 'use client';
 
 import { Settings } from 'lucide-react';
-import { formatUnits } from 'viem';
+import { formatTokenBalanceSync } from '@/lib/utils/balance-formatter';
 import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
@@ -21,8 +21,13 @@ export function NavigationHeader({
   balanceDecimals = 9,
   onSettingsClick,
 }: NavigationHeaderProps) {
-  const formattedBalance = formatUnits(totalBalance, balanceDecimals);
-  const displayBalance = `$${parseFloat(formattedBalance).toFixed(2)}`;
+  // Format as USD value (assuming totalBalance is already in USD units)
+  const displayBalance = `$${formatTokenBalanceSync(
+    totalBalance,
+    balanceDecimals,
+    undefined,
+    { precision: 2 },
+  )}`;
 
   return (
     <header

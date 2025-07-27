@@ -6,10 +6,10 @@ import { cn } from '@/lib/utils';
 import { useIncomingTransfers } from '@/hooks/use-incoming-transfers';
 import { useOutgoingTransfers } from '@/hooks/use-outgoing-transfers';
 import {
-  formatTokenAmountSync,
   getTokenInfoSync,
   preloadTokenInfo,
 } from '@/lib/utils/token-formatting';
+import { formatTokenBalanceSync } from '@/lib/utils/balance-formatter';
 import { formatActivityDate } from '@/lib/utils/date-formatting';
 import { getTransactionExplorerUrl } from '@/lib/utils/network-utils';
 import {
@@ -89,22 +89,23 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
     if (incomingTransfers) {
       const incomingTxs = incomingTransfers.map(transfer => {
         const tokenInfo = getTokenInfoSync(transfer.tokenAddress);
-        const formattedAmount = formatTokenAmountSync(
+        const formattedAmount = formatTokenBalanceSync(
           transfer.value,
-          transfer.tokenAddress,
-          {
-            showSymbol: true,
-          },
+          tokenInfo.decimals,
+          tokenInfo.displaySymbol,
+          { showSymbol: true },
         );
 
+        // Calculate USD value for USDC (1:1 ratio)
         const usdPrice = tokenInfo.displaySymbol === 'USDC' ? 1.0 : 0;
         const usdValue =
           usdPrice > 0
-            ? `$${(
-                (Number(transfer.value) /
-                  Number(BigInt(10 ** tokenInfo.decimals))) *
-                usdPrice
-              ).toFixed(2)}`
+            ? formatTokenBalanceSync(
+                transfer.value,
+                tokenInfo.decimals,
+                undefined,
+                { showUsd: true, usdPrice },
+              )
             : '$0.00';
 
         return {
@@ -142,22 +143,23 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
     if (outgoingTransfers) {
       const outgoingTxs = outgoingTransfers.map(transfer => {
         const tokenInfo = getTokenInfoSync(transfer.tokenAddress);
-        const formattedAmount = formatTokenAmountSync(
+        const formattedAmount = formatTokenBalanceSync(
           transfer.value,
-          transfer.tokenAddress,
-          {
-            showSymbol: true,
-          },
+          tokenInfo.decimals,
+          tokenInfo.displaySymbol,
+          { showSymbol: true },
         );
 
+        // Calculate USD value for USDC (1:1 ratio)
         const usdPrice = tokenInfo.displaySymbol === 'USDC' ? 1.0 : 0;
         const usdValue =
           usdPrice > 0
-            ? `$${(
-                (Number(transfer.value) /
-                  Number(BigInt(10 ** tokenInfo.decimals))) *
-                usdPrice
-              ).toFixed(2)}`
+            ? formatTokenBalanceSync(
+                transfer.value,
+                tokenInfo.decimals,
+                undefined,
+                { showUsd: true, usdPrice },
+              )
             : '$0.00';
 
         return {

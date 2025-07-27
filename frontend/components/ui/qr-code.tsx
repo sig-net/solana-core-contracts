@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, ReactElement } from 'react';
+import { useEffect, useRef, useState, ReactElement, useMemo, useCallback } from 'react';
 import QRCodeStyling from 'qr-code-styling';
 import React from 'react';
 
@@ -26,8 +26,66 @@ export function QRCode({
   margin = 16,
 }: QRCodeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const qrCodeRef = useRef<QRCodeStyling | null>(null);
   const [isGenerating, setIsGenerating] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastConfig, setLastConfig] = useState<string>('');
+
+  // Memoize the configuration to detect actual changes
+  const qrConfig = useMemo(() => {
+    return JSON.stringify({
+      value,
+      size,
+      iconUrl,
+      errorCorrectionLevel,
+      margin,
+      iconProps: icon?.props,
+    });
+  }, [value, size, iconUrl, errorCorrectionLevel, margin, icon?.props]);
+
+  // Memoize icon conversion to prevent unnecessary re-renders
+  const convertIconToDataUrl = useCallback(async (iconElement: ReactElement): Promise<string | undefined> => {
+    try {
+      // Create temporary container
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.width = '64px';
+      tempDiv.style.height = '64px';
+      document.body.appendChild(tempDiv);
+
+      // Import createRoot dynamically
+      const { createRoot } = await import('react-dom/client');
+      const root = createRoot(tempDiv);
+
+      // Render icon with fixed dimensions
+      const clonedIcon = React.cloneElement(iconElement, {
+        width: 64,
+        height: 64,
+      } as React.SVGProps<SVGSVGElement>);
+
+      root.render(clonedIcon);
+
+      // Wait for render and extract SVG
+      await new Promise(resolve => setTimeout(resolve, 50));
+      const svg = tempDiv.querySelector('svg');
+
+      let imageDataUrl: string | undefined;
+      if (svg) {
+        const svgString = new XMLSerializer().serializeToString(svg);
+        imageDataUrl = `data:image/svg+xml;base64,${btoa(svgString)}`;
+      }
+
+      // Cleanup
+      root.unmount();
+      document.body.removeChild(tempDiv);
+      
+      return imageDataUrl;
+    } catch (error) {
+      console.warn('Failed to convert icon to data URL:', error);
+      return undefined;
+    }
+  }, []);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -35,51 +93,26 @@ export function QRCode({
     const generateQR = async () => {
       if (!value || !containerRef.current) return;
 
+      // Skip regeneration if config hasn't changed
+      if (qrConfig === lastConfig && qrCodeRef.current) {
+        setIsGenerating(false);
+        return;
+      }
+
       try {
         setIsGenerating(true);
         setError(null);
-        containerRef.current.innerHTML = '';
+        
+        // Only clear container if we're actually regenerating
+        if (qrConfig !== lastConfig) {
+          containerRef.current.innerHTML = '';
+        }
 
         let imageDataUrl: string | undefined;
         if (iconUrl) {
           imageDataUrl = iconUrl;
         } else if (icon) {
-          try {
-            // Create temporary container
-            const tempDiv = document.createElement('div');
-            tempDiv.style.position = 'absolute';
-            tempDiv.style.left = '-9999px';
-            tempDiv.style.width = '64px';
-            tempDiv.style.height = '64px';
-            document.body.appendChild(tempDiv);
-
-            // Import createRoot dynamically
-            const { createRoot } = await import('react-dom/client');
-            const root = createRoot(tempDiv);
-
-            // Render icon with fixed dimensions
-            const iconElement = React.cloneElement(icon, {
-              width: 64,
-              height: 64,
-            } as React.SVGProps<SVGSVGElement>);
-
-            root.render(iconElement);
-
-            // Wait for render and extract SVG
-            await new Promise(resolve => setTimeout(resolve, 50));
-            const svg = tempDiv.querySelector('svg');
-
-            if (svg) {
-              const svgString = new XMLSerializer().serializeToString(svg);
-              imageDataUrl = `data:image/svg+xml;base64,${btoa(svgString)}`;
-            }
-
-            // Cleanup
-            root.unmount();
-            document.body.removeChild(tempDiv);
-          } catch (error) {
-            console.warn('Failed to convert icon to data URL:', error);
-          }
+          imageDataUrl = await convertIconToDataUrl(icon);
         }
 
         const qrCode = new QRCodeStyling({
@@ -117,6 +150,10 @@ export function QRCode({
             : undefined,
         });
 
+        // Store reference and update config
+        qrCodeRef.current = qrCode;
+        setLastConfig(qrConfig);
+
         // Single check before DOM manipulation
         if (!abortController.signal.aborted && containerRef.current) {
           qrCode.append(containerRef.current);
@@ -137,7 +174,7 @@ export function QRCode({
 
     generateQR();
     return () => abortController.abort();
-  }, [value, size, icon, iconUrl, errorCorrectionLevel, margin]);
+  }, [qrConfig, lastConfig, value, size, icon, iconUrl, errorCorrectionLevel, margin, convertIconToDataUrl]);
 
   if (error) {
     return (
@@ -157,13 +194,13 @@ export function QRCode({
   }
 
   return (
-    <div className={cn('relative', className)}>
+    <div 
+      className={cn('relative', className)} 
+      style={{ width: size, height: size }}
+    >
       {/* Loading State */}
       {isGenerating && (
-        <div
-          className='bg-pastels-polar-100 border-dark-neutral-50 absolute inset-0 flex flex-col items-center justify-center rounded-sm border'
-          style={{ width: size, height: size }}
-        >
+        <div className='bg-pastels-polar-100 border-dark-neutral-50 absolute inset-0 flex flex-col items-center justify-center rounded-sm border'>
           <div className='border-dark-neutral-300 mb-2 h-6 w-6 animate-spin rounded-full border-2 border-t-transparent'></div>
           <div className='text-dark-neutral-400 text-xs font-medium'>
             Generating QR
@@ -175,11 +212,11 @@ export function QRCode({
       <div
         ref={containerRef}
         className={cn(
-          'transition-opacity',
+          'transition-opacity duration-200',
           isGenerating ? 'opacity-0' : 'opacity-100',
         )}
         style={{
-          display: isGenerating ? 'none' : 'block',
+          visibility: isGenerating ? 'hidden' : 'visible',
           maxWidth: '100%',
           height: 'auto',
         }}

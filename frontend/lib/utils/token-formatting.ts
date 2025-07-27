@@ -2,6 +2,9 @@ import { erc20Abi } from 'viem';
 
 import { getAutomatedProvider } from '@/lib/viem/providers';
 
+// This file handles token metadata fetching and caching
+// For balance formatting, use @/lib/utils/balance-formatter instead
+
 export interface TokenInfo {
   symbol: string;
   decimals: number;
@@ -172,151 +175,6 @@ export async function preloadTokenInfo(
   await Promise.allSettled(promises);
 }
 
-/**
- * Format token amount with automatic token info fetching
- */
-export async function formatTokenAmount(
-  value: bigint,
-  tokenAddress: string,
-  options: {
-    showSymbol?: boolean;
-    precision?: number;
-    compact?: boolean;
-  } = {},
-): Promise<string> {
-  const { showSymbol = true, precision, compact = false } = options;
-  const tokenInfo = await getTokenInfo(tokenAddress);
-
-  const divisor = BigInt(10 ** tokenInfo.decimals);
-  const wholePart = value / divisor;
-  const fractionalPart = value % divisor;
-
-  let formattedAmount: string;
-
-  if (fractionalPart === BigInt(0)) {
-    formattedAmount = wholePart.toString();
-  } else {
-    const fractionalStr = fractionalPart
-      .toString()
-      .padStart(tokenInfo.decimals, '0');
-
-    let actualPrecision = precision;
-    if (actualPrecision === undefined) {
-      if (wholePart > BigInt(1000)) {
-        actualPrecision = Math.min(2, tokenInfo.decimals);
-      } else if (wholePart > BigInt(1)) {
-        actualPrecision = Math.min(4, tokenInfo.decimals);
-      } else {
-        actualPrecision = Math.min(6, tokenInfo.decimals);
-      }
-    } else {
-      actualPrecision = Math.min(precision!, tokenInfo.decimals);
-    }
-
-    const trimmedFractional = fractionalStr
-      .slice(0, actualPrecision)
-      .replace(/0+$/, '');
-
-    if (trimmedFractional) {
-      formattedAmount = `${wholePart}.${trimmedFractional}`;
-    } else {
-      formattedAmount = wholePart.toString();
-    }
-  }
-
-  if (compact) {
-    const num = parseFloat(formattedAmount);
-    if (num >= 1_000_000) {
-      formattedAmount = `${(num / 1_000_000).toFixed(2)}M`;
-    } else if (num >= 1_000) {
-      formattedAmount = `${(num / 1_000).toFixed(2)}K`;
-    }
-  }
-
-  if (!compact && !formattedAmount.includes('.')) {
-    const num = parseInt(formattedAmount);
-    if (num >= 1000) {
-      formattedAmount = num.toLocaleString();
-    }
-  }
-
-  return showSymbol
-    ? `${formattedAmount} ${tokenInfo.symbol}`
-    : formattedAmount;
-}
-
-/**
- * Synchronous version of formatTokenAmount using cached data
- */
-export function formatTokenAmountSync(
-  value: bigint,
-  tokenAddress: string,
-  options: {
-    showSymbol?: boolean;
-    precision?: number;
-    compact?: boolean;
-  } = {},
-): string {
-  const { showSymbol = true, precision, compact = false } = options;
-  const tokenInfo = getTokenInfoSync(tokenAddress);
-
-  const divisor = BigInt(10 ** tokenInfo.decimals);
-  const wholePart = value / divisor;
-  const fractionalPart = value % divisor;
-
-  let formattedAmount: string;
-
-  if (fractionalPart === BigInt(0)) {
-    formattedAmount = wholePart.toString();
-  } else {
-    const fractionalStr = fractionalPart
-      .toString()
-      .padStart(tokenInfo.decimals, '0');
-
-    let actualPrecision = precision;
-    if (actualPrecision === undefined) {
-      if (wholePart > BigInt(1000)) {
-        actualPrecision = Math.min(2, tokenInfo.decimals);
-      } else if (wholePart > BigInt(1)) {
-        actualPrecision = Math.min(4, tokenInfo.decimals);
-      } else {
-        actualPrecision = Math.min(6, tokenInfo.decimals);
-      }
-    } else {
-      actualPrecision = Math.min(precision!, tokenInfo.decimals);
-    }
-
-    const trimmedFractional = fractionalStr
-      .slice(0, actualPrecision)
-      .replace(/0+$/, '');
-
-    if (trimmedFractional) {
-      formattedAmount = `${wholePart}.${trimmedFractional}`;
-    } else {
-      formattedAmount = wholePart.toString();
-    }
-  }
-
-  if (compact) {
-    const num = parseFloat(formattedAmount);
-    if (num >= 1_000_000) {
-      formattedAmount = `${(num / 1_000_000).toFixed(2)}M`;
-    } else if (num >= 1_000) {
-      formattedAmount = `${(num / 1_000).toFixed(2)}K`;
-    }
-  }
-
-  if (!compact && !formattedAmount.includes('.')) {
-    const num = parseInt(formattedAmount);
-    if (num >= 1000) {
-      formattedAmount = num.toLocaleString();
-    }
-  }
-
-  return showSymbol
-    ? `${formattedAmount} ${tokenInfo.symbol}`
-    : formattedAmount;
-}
 
 export async function getTokenSymbol(tokenAddress: string): Promise<string> {
   const tokenInfo = await getTokenInfo(tokenAddress);

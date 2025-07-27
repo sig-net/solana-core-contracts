@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { formatUnits } from 'viem';
-
-import { cn, calculateUsdValue, formatUsdValue } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+import { formatTokenBalanceSync } from '@/lib/utils/balance-formatter';
 import { DepositDialog } from '@/components/deposit-dialog';
 import { WithdrawDialog, WithdrawToken } from '@/components/withdraw-dialog';
 import { useTokenPrices } from '@/hooks/use-token-prices';
@@ -40,7 +39,11 @@ export function BalanceDisplay({
 
   // Convert tokens to withdraw format
   const withdrawTokens: WithdrawToken[] = tokens.map(token => {
-    const formattedBalance = formatUnits(token.balance, token.decimals);
+    const formattedBalance = formatTokenBalanceSync(
+      token.balance,
+      token.decimals,
+      token.token,
+    );
 
     return {
       symbol: token.token,
@@ -66,22 +69,24 @@ export function BalanceDisplay({
         )}
       >
         {tokens.map((tokenData, index) => {
-          const formattedBalance = formatUnits(
+          // Format balance amount with smart precision
+          const displayAmount = formatTokenBalanceSync(
             tokenData.balance,
             tokenData.decimals,
+            tokenData.token,
+            { precision: 1 },
           );
-          const displayAmount = parseFloat(formattedBalance).toFixed(1);
 
-          // Calculate USD value
+          // Calculate USD value using unified formatter
           const tokenPrice = tokenPrices?.[tokenData.token.toUpperCase()];
-          const usdValue = tokenPrice
-            ? calculateUsdValue(
-                tokenData.balance.toString(),
+          const formattedUsdValue = tokenPrice
+            ? formatTokenBalanceSync(
+                tokenData.balance,
                 tokenData.decimals,
-                tokenPrice.usd,
+                tokenData.token,
+                { showUsd: true, usdPrice: tokenPrice.usd },
               )
-            : 0;
-          const formattedUsdValue = formatUsdValue(usdValue);
+            : '$0.00';
 
           // Find corresponding withdraw token
           const withdrawToken = withdrawTokens.find(

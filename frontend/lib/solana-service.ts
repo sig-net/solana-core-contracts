@@ -1041,11 +1041,6 @@ export class SolanaService {
       tokenBalance.decimals,
     );
 
-    console.log('Original balance:', tokenBalance.amount);
-    console.log('Adjusted balance:', finalBalance.toString());
-    console.log('Balance in units:', balanceInUnits);
-    console.log('Contract decimals:', tokenBalance.decimals);
-
     return {
       amount: balanceInUnits,
       decimals: tokenBalance.decimals,

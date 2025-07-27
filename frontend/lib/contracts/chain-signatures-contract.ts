@@ -55,23 +55,15 @@ export class ChainSignaturesContract {
    */
   setupEventListeners(requestId: string): EventPromises {
     let signatureResolve: (value: SignatureRespondedEvent) => void;
-    let signatureReject: (reason?: any) => void;
     let readRespondResolve: (value: ReadRespondedEvent) => void;
-    let readRespondReject: (reason?: any) => void;
 
-    const signaturePromise = new Promise<SignatureRespondedEvent>(
-      (resolve, reject) => {
-        signatureResolve = resolve;
-        signatureReject = reject;
-      },
-    );
+    const signaturePromise = new Promise<SignatureRespondedEvent>(resolve => {
+      signatureResolve = resolve;
+    });
 
-    const readRespondPromise = new Promise<ReadRespondedEvent>(
-      (resolve, reject) => {
-        readRespondResolve = resolve;
-        readRespondReject = reject;
-      },
-    );
+    const readRespondPromise = new Promise<ReadRespondedEvent>(resolve => {
+      readRespondResolve = resolve;
+    });
 
     const chainSignaturesProgram = this.getProgram();
 
@@ -103,17 +95,7 @@ export class ChainSignaturesContract {
       },
     );
 
-    const signatureTimeout = setTimeout(() => {
-      signatureReject(new Error('Signature timeout'));
-    }, CHAIN_SIGNATURES_TIMEOUTS.SIGNATURE_TIMEOUT);
-
-    const readRespondTimeout = setTimeout(() => {
-      readRespondReject(new Error('Read response timeout'));
-    }, CHAIN_SIGNATURES_TIMEOUTS.READ_RESPONSE_TIMEOUT);
-
     const cleanup = () => {
-      clearTimeout(signatureTimeout);
-      clearTimeout(readRespondTimeout);
       chainSignaturesProgram.removeEventListener(signatureListener);
       chainSignaturesProgram.removeEventListener(readRespondListener);
     };

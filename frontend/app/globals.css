@@ -76,6 +76,10 @@
   body {
     @apply bg-white text-stone-700;
   }
+  html,
+  body {
+    @apply overflow-x-hidden;
+  }
 
   /* Base typography styles */
   h1,
@@ -113,5 +117,28 @@
       var(--pastels-mercury-400, #eae7e7) 62.3%,
       var(--pastels-swiss-coffee-400, #eae1e0) 97.38%
     );
+  }
+
+  /* Custom scrollbar for better table scrolling */
+  .scroll-smooth-table {
+    scroll-behavior: smooth;
+  }
+
+  .scroll-smooth-table::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  .scroll-smooth-table::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+  }
+
+  .scroll-smooth-table::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+  }
+
+  .scroll-smooth-table::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
   }
 }

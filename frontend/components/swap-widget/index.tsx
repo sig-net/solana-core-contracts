@@ -89,13 +89,13 @@ export function SwapWidget({ className }: Pick<SwapWidgetProps, 'className'>) {
   return (
     <div
       className={cn(
-        'border-dark-neutral-50 gradient-bg-swap relative w-full shrink-0 space-y-4 self-start border p-8 md:w-fit',
+        'border-dark-neutral-50 gradient-bg-swap relative w-full max-w-full shrink-0 space-y-6 self-start border p-4 sm:p-6 lg:max-w-sm lg:p-8',
         className,
       )}
     >
       <SwapHeader onSettingsClick={() => console.log('Settings clicked')} />
 
-      <div className='flex flex-col items-center gap-4'>
+      <div className='flex flex-col gap-4'>
         <TokenAmountDisplay
           value={swapState.fromAmount}
           onChange={handleFromAmountChange}
@@ -107,11 +107,13 @@ export function SwapWidget({ className }: Pick<SwapWidgetProps, 'className'>) {
           }
           onTokenSelect={handleFromTokenSelect}
           placeholder='0'
-          width='w-40'
+          width='w-full'
           disabled={true}
         />
 
-        <ArrowDown className='text-dark-neutral-300 h-5 w-5' />
+        <div className='flex justify-center'>
+          <ArrowDown className='text-dark-neutral-300 h-5 w-5' />
+        </div>
 
         <TokenAmountDisplay
           value={swapState.toAmount}
@@ -124,7 +126,7 @@ export function SwapWidget({ className }: Pick<SwapWidgetProps, 'className'>) {
           }
           onTokenSelect={handleToTokenSelect}
           placeholder='0'
-          width='w-40'
+          width='w-full'
           disabled={true}
         />
       </div>

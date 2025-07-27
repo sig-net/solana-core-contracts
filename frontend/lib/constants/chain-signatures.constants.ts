@@ -15,6 +15,6 @@ export const CHAIN_SIGNATURES_PROGRAM_ID = new PublicKey(
 
 // Timeout Configuration for Chain Signatures Events
 export const CHAIN_SIGNATURES_TIMEOUTS = {
-  SIGNATURE_TIMEOUT: 120000, // 2 minutes
+  SIGNATURE_TIMEOUT: 300000, // 2 minutes
   READ_RESPONSE_TIMEOUT: 300000, // 5 minutes
 } as const;

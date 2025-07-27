@@ -21,7 +21,40 @@ export function BalanceSection() {
   const displayTokens = convertTokenBalancesToDisplayTokens(userBalances);
 
   if (isLoading) {
-    return <LoadingState message='Loading balances...' />;
+    return (
+      <div className='flex w-full max-w-full flex-col gap-5'>
+        {/* Balance section header skeleton */}
+        <div className='flex items-center justify-between'>
+          <div className='h-6 w-24 bg-gray-200 rounded animate-pulse'></div>
+          <div className='h-9 w-20 bg-gray-200 rounded animate-pulse'></div>
+        </div>
+        
+        {/* Balance boxes skeleton */}
+        <div className='grid w-full max-w-full gap-4 sm:gap-6 md:grid-cols-2 md:gap-8 lg:gap-10'>
+          {Array.from({ length: 2 }).map((_, index) => (
+            <div
+              key={`loading-balance-${index}`}
+              className='border-colors-dark-neutral-200 flex w-full max-w-full flex-col gap-4 border-t py-4 sm:flex-row sm:items-center sm:justify-between sm:py-5'
+            >
+              <div className='flex min-w-0 flex-1 gap-4 sm:gap-8'>
+                <div className='flex min-w-0 flex-col gap-1 sm:gap-2'>
+                  <div className='h-8 w-16 bg-gray-200 rounded animate-pulse sm:h-9 sm:w-20'></div>
+                  <div className='h-4 w-12 bg-gray-200 rounded animate-pulse'></div>
+                </div>
+                <div className='flex flex-shrink-0 items-center gap-3 sm:gap-4'>
+                  <div className='h-7 w-7 bg-gray-200 rounded-full animate-pulse'></div>
+                  <div className='h-4 w-10 bg-gray-200 rounded animate-pulse'></div>
+                </div>
+              </div>
+              <div className='flex justify-end sm:justify-start gap-2'>
+                <div className='h-8 w-16 bg-gray-200 rounded animate-pulse'></div>
+                <div className='h-8 w-12 bg-gray-200 rounded animate-pulse'></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   if (error) {

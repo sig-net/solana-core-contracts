@@ -74,8 +74,6 @@ export function useOutgoingTransfers() {
         solanaService,
       );
 
-      console.log('withdrawalRequests', withdrawalRequests);
-
       // Transform withdrawal requests to OutgoingTransfer format
       return withdrawalRequests.map(
         (request): OutgoingTransfer => ({

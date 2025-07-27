@@ -8,7 +8,6 @@ import { useSolanaService } from './use-solana-service';
 export function useDepositErc20Mutation() {
   const { publicKey } = useWallet();
   const solanaService = useSolanaService();
-  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({

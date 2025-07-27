@@ -55,11 +55,16 @@ export function BalanceDisplay({
   });
 
   return (
-    <div className='flex flex-col gap-5'>
+    <div className='flex w-full max-w-full flex-col gap-5'>
       <BalancesSectionHeader
         onDepositClick={() => setIsDepositDialogOpen(true)}
       />
-      <div className={cn('grid w-full gap-10 md:grid-cols-2', className)}>
+      <div
+        className={cn(
+          'grid w-full max-w-full gap-4 sm:gap-6 md:grid-cols-2 md:gap-8 lg:gap-10',
+          className,
+        )}
+      >
         {tokens.map((tokenData, index) => {
           const formattedBalance = formatUnits(
             tokenData.balance,

@@ -29,7 +29,7 @@ export default function Home() {
   const isWalletConnected = !!publicKey;
 
   return (
-    <div className='gradient-bg-main min-h-screen'>
+    <div className='gradient-bg-main min-h-screen w-full overflow-x-hidden'>
       <NavigationHeader
         totalBalance={totalBalance}
         balanceDecimals={6}
@@ -37,16 +37,24 @@ export default function Home() {
       />
 
       {!isWalletConnected ? (
-        <div className='container mx-auto mt-16'>
+        <div className='container mx-auto mt-16 p-4 md:p-0'>
           <EmptyStateWallet onDepositClick={handleDepositClick} />
         </div>
       ) : (
-        <div className='container mx-auto mt-16 flex justify-between gap-8 pb-16'>
-          <div className='flex flex-col gap-12'>
-            <BalanceSection />
-            <ActivityListTable />
+        <div className='container mx-auto mt-8 p-4 pb-16 md:p-0 lg:mt-16'>
+          {/* Mobile: Swap widget at top, Desktop: Swap widget on right */}
+          <div className='flex flex-col gap-6 lg:flex-row lg:gap-8'>
+            {/* Swap widget - shows first on mobile, last on desktop */}
+            <div className='order-1 w-full lg:order-2 lg:w-auto lg:shrink-0'>
+              <SwapWidget />
+            </div>
+
+            {/* Main content - shows second on mobile, first on desktop */}
+            <div className='order-2 flex w-full flex-col gap-8 lg:order-1 lg:flex-1 lg:gap-12'>
+              <BalanceSection />
+              <ActivityListTable />
+            </div>
           </div>
-          <SwapWidget />
         </div>
       )}
     </div>

@@ -19,7 +19,6 @@ export interface EventSubscriptionOptions {
  */
 export class EventOrchestrator {
   private subscriptions = new Map<string, EventSubscription>();
-  private readonly DEFAULT_TIMEOUT = SERVICE_CONFIG.TIMEOUTS.DEPOSIT_TIMEOUT;
   private readonly CLEANUP_INTERVAL = SERVICE_CONFIG.TIMEOUTS.CLEANUP_INTERVAL;
 
   constructor(private chainSignaturesContract: ChainSignaturesContract) {
@@ -105,44 +104,15 @@ export class EventOrchestrator {
   }
 
   /**
-   * Create event subscription with timeout handling
+   * Create event subscription without timeout handling
    */
   private createEventSubscription(
     requestId: string,
     options: EventSubscriptionOptions,
   ): EventPromises {
-    const timeout = options.timeout || this.DEFAULT_TIMEOUT;
-
-    // Setup event listeners
+    // Setup event listeners without any timeouts
     const eventPromises =
       this.chainSignaturesContract.setupEventListeners(requestId);
-
-    // Add timeout to promises
-    const signatureWithTimeout = Promise.race([
-      eventPromises.signature,
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(`Signature event timeout for request ${requestId}`),
-            ),
-          timeout,
-        ),
-      ),
-    ]);
-
-    const readRespondWithTimeout = Promise.race([
-      eventPromises.readRespond,
-      new Promise<never>((_, reject) =>
-        setTimeout(
-          () =>
-            reject(
-              new Error(`Read respond event timeout for request ${requestId}`),
-            ),
-          timeout,
-        ),
-      ),
-    ]);
 
     const enhancedCleanup = () => {
       try {
@@ -153,8 +123,8 @@ export class EventOrchestrator {
     };
 
     return {
-      signature: signatureWithTimeout,
-      readRespond: readRespondWithTimeout,
+      signature: eventPromises.signature,
+      readRespond: eventPromises.readRespond,
       cleanup: enhancedCleanup,
     };
   }
@@ -189,7 +159,7 @@ export class EventOrchestrator {
       const expiredRequestIds: string[] = [];
 
       for (const [requestId, subscription] of this.subscriptions) {
-        // Clean up subscriptions older than 10 minutes
+        // Clean up subscriptions older than 2 hours
         if (
           now - subscription.createdAt >
           SERVICE_CONFIG.TIMEOUTS.MAX_SUBSCRIPTION_AGE

@@ -45,6 +45,9 @@ export function useWithdrawMutation() {
         queryClient.invalidateQueries({
           queryKey: queryKeys.solana.unclaimedBalances(publicKey.toString()),
         });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.solana.outgoingTransfers(publicKey.toString()),
+        });
       }
     },
     onError: (error, variables) => {

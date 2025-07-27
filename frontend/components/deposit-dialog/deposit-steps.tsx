@@ -33,8 +33,6 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
   const [actualDecimals, setActualDecimals] = useState<number | null>(null);
   const [checkingBalance, setCheckingBalance] = useState(true);
 
-  console.log({ selectedToken: token });
-
   // Check for available balance and start auto-deposit if found
   useEffect(() => {
     const checkAvailableBalance = async () => {
@@ -52,7 +50,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
         }
       } catch (error) {
         // No balance available, continue with normal flow
-        console.log('No available balance, using normal deposit flow');
+        console.error('No available balance, using normal deposit flow');
       } finally {
         setCheckingBalance(false);
       }
@@ -69,7 +67,12 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
 
   // Auto-start bridge process when available balance is found
   useEffect(() => {
-    if (availableBalance && parseFloat(availableBalance) > 0 && !hasStartedBridge && publicKey) {
+    if (
+      availableBalance &&
+      parseFloat(availableBalance) > 0 &&
+      !hasStartedBridge &&
+      publicKey
+    ) {
       const startBridge = async () => {
         setHasStartedBridge(true);
 
@@ -112,11 +115,12 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
         id: 'send',
         title: 'Balance detected',
         description: `${token.symbol} available for bridging`,
-        status: availableBalance && parseFloat(availableBalance) > 0
-          ? 'completed'
-          : checkingBalance
-            ? 'loading'
-            : 'pending',
+        status:
+          availableBalance && parseFloat(availableBalance) > 0
+            ? 'completed'
+            : checkingBalance
+              ? 'loading'
+              : 'pending',
         icon: Send,
       },
       {
@@ -202,17 +206,19 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
 
       {/* Compact Action Buttons */}
       <div className='flex gap-2 pt-2'>
-        {(!availableBalance || parseFloat(availableBalance) === 0) && !isComplete && !hasFailed && (
-          <Button
-            onClick={onBack}
-            variant='outline'
-            size='sm'
-            className='flex-1'
-          >
-            <ArrowLeft className='mr-1 h-3 w-3' />
-            Back
-          </Button>
-        )}
+        {(!availableBalance || parseFloat(availableBalance) === 0) &&
+          !isComplete &&
+          !hasFailed && (
+            <Button
+              onClick={onBack}
+              variant='outline'
+              size='sm'
+              className='flex-1'
+            >
+              <ArrowLeft className='mr-1 h-3 w-3' />
+              Back
+            </Button>
+          )}
 
         {isComplete && (
           <Button onClick={onClose} size='sm' className='flex-1'>
@@ -244,11 +250,14 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
           </>
         )}
 
-        {!isComplete && !hasFailed && availableBalance && parseFloat(availableBalance) > 0 && (
-          <Button disabled variant='outline' size='sm' className='flex-1'>
-            Processing...
-          </Button>
-        )}
+        {!isComplete &&
+          !hasFailed &&
+          availableBalance &&
+          parseFloat(availableBalance) > 0 && (
+            <Button disabled variant='outline' size='sm' className='flex-1'>
+              Processing...
+            </Button>
+          )}
       </div>
     </div>
   );

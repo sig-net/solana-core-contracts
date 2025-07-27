@@ -1,5 +1,6 @@
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useMemo, useEffect } from 'react';
+import { ExternalLink } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useIncomingTransfers } from '@/hooks/use-incoming-transfers';
@@ -11,9 +12,17 @@ import {
 } from '@/lib/utils/token-formatting';
 import { formatActivityDate } from '@/lib/utils/date-formatting';
 import { getTransactionExplorerUrl } from '@/lib/utils/network-utils';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '@/components/ui/table';
 
-import { ActivityRow } from './activity-row';
-import { TableHeader } from './table-header';
+import { DetailsCell } from './details-cell';
+import { StatusBadge } from './status-badge';
 
 export interface ActivityTransaction {
   id: string;
@@ -37,14 +46,6 @@ export interface ActivityTransaction {
   transactionHash?: string;
   explorerUrl?: string;
 }
-
-export const COLUMN_WIDTHS = {
-  activity: 'w-24',
-  details: 'flex-1',
-  timestamp: 'w-30',
-  status: 'w-32',
-  explorer: 'w-20',
-} as const;
 
 interface ActivityListTableProps {
   className?: string;
@@ -164,7 +165,7 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
           type: 'Withdraw' as const,
           fromToken: {
             symbol: tokenInfo.displaySymbol,
-            chain: 'solana',
+            chain: 'ethereum',
             amount: formattedAmount,
             usdValue: usdValue,
           },
@@ -202,7 +203,13 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
   const displayTransactions = realTransactions.slice(0, 5);
 
   return (
-    <div>
+    <div className={cn('w-full', className)}>
+      <div className='mb-6'>
+        <h2 className='text-dark-neutral-200 self-start font-semibold uppercase'>
+          Activity
+        </h2>
+      </div>
+
       {error && (
         <div className='mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm'>
           <p className='text-red-800'>
@@ -211,35 +218,93 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
         </div>
       )}
 
-      <div className={cn('w-full', className)}>
-        <div className='flex flex-col'>
-          {/* Headers */}
-          <div className='flex w-full'>
-            <TableHeader width={COLUMN_WIDTHS.activity}>Activity</TableHeader>
-            <TableHeader width={COLUMN_WIDTHS.details}>Details</TableHeader>
-            <TableHeader width={COLUMN_WIDTHS.timestamp}>Timestamp</TableHeader>
-            <TableHeader width={COLUMN_WIDTHS.status}>Status</TableHeader>
-            <TableHeader width={COLUMN_WIDTHS.explorer}>Explorer</TableHeader>
-          </div>
-
-          {/* Rows */}
-          <div className='flex flex-col'>
-            {displayTransactions.length > 0 ? (
-              displayTransactions.map(transaction => (
-                <ActivityRow key={transaction.id} transaction={transaction} />
-              ))
-            ) : (
-              <div className='flex items-center justify-center py-8 text-gray-500'>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className='w-20 sm:w-24'>Activity</TableHead>
+            <TableHead>Details</TableHead>
+            <TableHead className='w-20 sm:w-28'>
+              <span className='hidden sm:inline'>Timestamp</span>
+              <span className='sm:hidden'>Time</span>
+            </TableHead>
+            <TableHead className='w-20 sm:w-24'>Status</TableHead>
+            <TableHead className='w-12 sm:w-16'>
+              <span className='sr-only sm:not-sr-only'>Explorer</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {isLoadingTransfers ? (
+            // Loading skeleton with proper column structure
+            Array.from({ length: 3 }).map((_, index) => (
+              <TableRow key={`loading-${index}`}>
+                <TableCell>
+                  <div className='h-4 w-12 animate-pulse rounded bg-gray-200'></div>
+                </TableCell>
+                <TableCell>
+                  <div className='flex items-center gap-2'>
+                    <div className='h-8 w-8 animate-pulse rounded-full bg-gray-200'></div>
+                    <div className='space-y-1'>
+                      <div className='h-3 w-16 animate-pulse rounded bg-gray-200'></div>
+                      <div className='h-3 w-20 animate-pulse rounded bg-gray-200'></div>
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className='h-4 w-12 animate-pulse rounded bg-gray-200'></div>
+                </TableCell>
+                <TableCell>
+                  <div className='h-6 w-16 animate-pulse rounded-full bg-gray-200'></div>
+                </TableCell>
+                <TableCell>
+                  <div className='h-4 w-4 animate-pulse rounded bg-gray-200'></div>
+                </TableCell>
+              </TableRow>
+            ))
+          ) : displayTransactions.length > 0 ? (
+            displayTransactions.map(transaction => (
+              <TableRow key={transaction.id}>
+                <TableCell>
+                  <div className='text-tundora-50 text-xs font-medium sm:text-sm'>
+                    {transaction.type}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <DetailsCell transaction={transaction} />
+                </TableCell>
+                <TableCell>
+                  <div className='text-xs font-medium text-stone-700 sm:text-sm'>
+                    {transaction.timestamp}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={transaction.status} />
+                </TableCell>
+                <TableCell>
+                  {transaction.explorerUrl ? (
+                    <a
+                      href={transaction.explorerUrl}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='inline-block h-5 w-5 transition-opacity hover:opacity-80'
+                    >
+                      <ExternalLink className='text-tundora-50 h-5 w-5' />
+                    </a>
+                  ) : null}
+                </TableCell>
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={5} className='py-8 text-center text-gray-500'>
                 {connected
-                  ? isLoadingTransfers
-                    ? 'Loading transactions...'
-                    : 'No transactions found. Send ERC20 tokens to your deposit address to see activity.'
+                  ? 'No transactions found. Send ERC20 tokens to your deposit address to see activity.'
                   : 'Connect your wallet to view transaction activity.'}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
     </div>
   );
 }

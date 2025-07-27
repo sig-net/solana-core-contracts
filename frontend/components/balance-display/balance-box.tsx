@@ -24,25 +24,29 @@ export function BalanceBox({
   return (
     <div
       className={cn(
-        'border-colors-dark-neutral-200 flex w-full items-center justify-between border-t py-5',
+        'border-colors-dark-neutral-200 flex w-full max-w-full flex-col gap-4 border-t py-4 sm:flex-row sm:items-center sm:justify-between sm:py-5',
         className,
       )}
     >
-      <div className='flex gap-8'>
-        <div className='flex flex-col gap-2'>
-          <div className='text-tundora-300 text-3xl font-light'>{amount}</div>
+      <div className='flex min-w-0 flex-1 gap-4 sm:gap-8'>
+        <div className='flex min-w-0 flex-col gap-1 sm:gap-2'>
+          <div className='text-tundora-300 truncate text-2xl font-light sm:text-3xl'>
+            {amount}
+          </div>
           <div className='text-tundora-50 text-sm font-semibold'>
             {usdValue}
           </div>
         </div>
-        <div className='flex items-center gap-4'>
+        <div className='flex flex-shrink-0 items-center gap-3 sm:gap-4'>
           {icon}
-          <span className='text-tundora-300 text-base font-bold'>
+          <span className='text-tundora-300 text-sm font-bold sm:text-base'>
             {tokenSymbol}
           </span>
         </div>
       </div>
-      <ActionButtons onSwapClick={onSwapClick} onSendClick={onSendClick} />
+      <div className='flex justify-end sm:justify-start'>
+        <ActionButtons onSwapClick={onSwapClick} onSendClick={onSendClick} />
+      </div>
     </div>
   );
 }

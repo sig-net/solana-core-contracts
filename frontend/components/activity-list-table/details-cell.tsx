@@ -15,22 +15,26 @@ export function DetailsCell({ transaction }: DetailsCellProps) {
   const isDeposit = transaction.type === 'Deposit';
 
   return (
-    <div className='flex items-center gap-4'>
-      <TokenDisplay token={transaction.fromToken} />
+    <div className='flex max-w-full min-w-0 items-center gap-2 sm:gap-4'>
+      <div className='flex-shrink-0'>
+        <TokenDisplay token={transaction.fromToken} />
+      </div>
 
-      <ArrowRight className='text-tundora-50 h-5 w-5 shrink-0' />
+      <ArrowRight className='text-tundora-50 h-4 w-4 shrink-0 sm:h-5 sm:w-5' />
 
       {isSwap || isDeposit ? (
-        <TokenDisplay token={transaction.toToken} />
+        <div className='flex-shrink-0'>
+          <TokenDisplay token={transaction.toToken} />
+        </div>
       ) : (
-        <div className='flex items-center gap-2'>
-          <WalletIcon className='text-tundora-50 h-5 w-5' />
-          <div className='text-sm leading-6 font-medium text-stone-600'>
+        <div className='flex min-w-0 items-center gap-1 sm:gap-2'>
+          <WalletIcon className='text-tundora-50 h-4 w-4 shrink-0 sm:h-5 sm:w-5' />
+          <div className='min-w-0 text-xs font-medium text-stone-600 sm:text-sm'>
             {transaction.address ? (
               <TruncatedText
                 text={transaction.address}
-                prefixLength={6}
-                suffixLength={4}
+                prefixLength={4}
+                suffixLength={3}
                 copyable={true}
                 className='transition-colors hover:text-blue-600'
               />

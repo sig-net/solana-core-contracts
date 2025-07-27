@@ -372,13 +372,13 @@ export class SolanaService {
         this.bridgeContract.derivePendingDepositPda(requestIdBytes);
 
       // Check if a pending deposit already exists
-      const existingPendingDeposit =
-        await this.bridgeContract.checkPendingDepositExists(pendingDepositPda);
-      if (existingPendingDeposit) {
-        throw new Error(
-          `A pending deposit already exists for this request. Please wait for it to be processed before initiating a new deposit.`,
-        );
-      }
+      // const existingPendingDeposit =
+      //   await this.bridgeContract.checkPendingDepositExists(pendingDepositPda);
+      // if (existingPendingDeposit) {
+      //   throw new Error(
+      //     `A pending deposit already exists for this request. Please wait for it to be processed before initiating a new deposit.`,
+      //   );
+      // }
 
       const evmParams = evmParamsToProgram(txParams);
 
@@ -461,8 +461,6 @@ export class SolanaService {
       const amountBN = new BN(amountBigInt.toString());
       const erc20AddressBytes = this.bridgeContract.hexToBytes(erc20Address);
 
-      console.log('recipientAddress', recipientAddress);
-
       // Validate and convert recipient address (must be Ethereum format)
       if (!ethers.isAddress(recipientAddress)) {
         throw new Error('Invalid Ethereum address format');
@@ -525,9 +523,6 @@ export class SolanaService {
 
       // Step 7.5: Wait briefly to ensure event listeners are properly registered
       await new Promise(resolve => setTimeout(resolve, 500));
-      console.log(
-        'Event listeners set up, proceeding with withdrawal transaction',
-      );
 
       // Step 8: Call withdrawErc20 on Solana
       await this.bridgeContract.withdrawErc20({
@@ -538,11 +533,6 @@ export class SolanaService {
         recipientAddressBytes,
         evmParams,
       });
-
-      console.log(
-        'Withdrawal transaction submitted to Solana, request ID:',
-        requestId,
-      );
 
       // Step 9: Process the withdrawal flow with overall timeout
       onStatusChange?.({ status: 'processing' });
@@ -877,7 +867,7 @@ export class SolanaService {
       } catch (readError) {
         console.error('Read respond event failed:', readError);
         // Try to find read response in logs as fallback
-        console.log('Attempting to find read response in transaction logs...');
+
         const logReadResponse =
           await this.chainSignaturesContract.findReadResponseEventInLogs(
             requestId,
@@ -887,7 +877,6 @@ export class SolanaService {
             'MPC read response not found - the transaction monitoring may have failed',
           );
         }
-        console.log('Found read response in logs as fallback');
       }
 
       // Step 6: Complete the withdrawal
@@ -966,7 +955,7 @@ export class SolanaService {
               );
             if (signature) {
               // Don't resolve here, let the main event listener handle it
-              console.log('Found signature in periodic log check');
+
               return;
             }
           } else if (eventType === 'readRespond') {
@@ -976,7 +965,7 @@ export class SolanaService {
               );
             if (readResponse) {
               // Don't resolve here, let the main event listener handle it
-              console.log('Found read response in periodic log check');
+
               return;
             }
           }

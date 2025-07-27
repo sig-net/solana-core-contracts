@@ -152,7 +152,7 @@ export function WithdrawDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className='flex max-h-[90vh] max-w-md flex-col overflow-hidden'>
+      <DialogContent className='flex max-h-[90vh] max-w-md flex-col overflow-hidden p-6 sm:p-8'>
         <DialogTitle>Send</DialogTitle>
         <div className='min-h-0 flex-1 overflow-y-auto'>
           {step === 'amount-input' && !isProcessing && (

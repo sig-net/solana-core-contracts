@@ -41,7 +41,7 @@ export function TokenAmountDisplay({
   usdValue,
   className = '',
   placeholder = '0.00',
-  width = 'w-[120px]',
+  width = 'w-30',
   disabled = false,
 }: TokenAmountDisplayProps) {
   const formatBalance = (balance: string) => {
@@ -58,16 +58,16 @@ export function TokenAmountDisplay({
   };
   return (
     <div
-      className={`bg-pastels-swiss-coffee-200 border-dark-neutral-400/80 flex flex-col gap-3 rounded-xs border p-5 ${className}`}
+      className={`bg-pastels-swiss-coffee-200 border-dark-neutral-400/80 flex max-w-full flex-col gap-3 rounded-xs border p-4 sm:p-5 ${className}`}
     >
-      <div className='flex w-full items-center justify-between gap-3'>
-        <div className='flex flex-1 items-center gap-2'>
+      <div className='flex w-full min-w-0 items-center justify-between gap-2'>
+        <div className='flex min-w-0 flex-1 items-center gap-2'>
           <input
             type='text'
             value={value}
             onChange={e => !disabled && onChange(e.target.value)}
             placeholder={placeholder}
-            className='text-dark-neutral-500 w-full border-none bg-transparent text-xl outline-none'
+            className='text-dark-neutral-500 w-full min-w-0 border-none bg-transparent text-lg outline-none sm:text-xl'
           />
           {selectedToken && !disabled && (
             <button
@@ -82,9 +82,7 @@ export function TokenAmountDisplay({
 
         <DropdownMenu open={disabled ? false : undefined}>
           <DropdownMenuTrigger asChild disabled={disabled}>
-            <button
-              className={`bg-pastels-pampas-500 border-dark-neutral-50 text-dark-neutral-400 flex shrink-0 items-center justify-between gap-3 rounded-xs border px-2 py-1 font-medium outline-none ${width}`}
-            >
+            <button className='bg-pastels-pampas-500 border-dark-neutral-50 text-dark-neutral-400 flex w-24 shrink-0 items-center justify-between gap-2 rounded-xs border px-2 py-1 font-medium outline-none sm:w-30'>
               {selectedToken ? (
                 <div className='flex items-center gap-2'>
                   <CryptoIcon
@@ -92,17 +90,17 @@ export function TokenAmountDisplay({
                     token={selectedToken.symbol}
                     className='size-4'
                   />
-                  <span>{selectedToken.symbol}</span>
+                  <span className='text-sm'>{selectedToken.symbol}</span>
                 </div>
               ) : (
-                <span>Select Token</span>
+                <span className='text-sm'>Select</span>
               )}
               <ChevronDown className='text-dark-neutral-400 size-4' />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align='end'
-            className={`${width} min-w-0 space-y-1 rounded-xs`}
+            className='w-30 min-w-0 space-y-1 rounded-xs'
           >
             {tokens.map((token, index) => (
               <DropdownMenuItem
@@ -126,7 +124,7 @@ export function TokenAmountDisplay({
         <div className='flex flex-col gap-1'>
           {usdValue && (
             <div className='flex items-center'>
-              <span className='text-dark-neutral-200 text-[12px] leading-[14px] font-medium'>
+              <span className='text-dark-neutral-200 text-xs font-medium'>
                 {usdValue}
               </span>
             </div>
@@ -134,7 +132,7 @@ export function TokenAmountDisplay({
 
           {selectedToken && (
             <div className='flex items-center'>
-              <span className='text-dark-neutral-300 text-[11px] font-medium'>
+              <span className='text-dark-neutral-300 text-xs font-medium'>
                 Available: {formatBalance(selectedToken.balance)}{' '}
                 {selectedToken.symbol}
               </span>

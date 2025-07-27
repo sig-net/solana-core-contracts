@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronDown } from 'lucide-react';
+
 import { CryptoIcon } from '@/components/balance-display/crypto-icon';
 import {
   DropdownMenu,
@@ -27,6 +28,8 @@ interface TokenAmountDisplayProps {
   usdValue?: string;
   className?: string;
   placeholder?: string;
+  width?: string;
+  disabled?: boolean;
 }
 
 export function TokenAmountDisplay({
@@ -38,6 +41,8 @@ export function TokenAmountDisplay({
   usdValue,
   className = '',
   placeholder = '0.00',
+  width = 'w-[120px]',
+  disabled = false,
 }: TokenAmountDisplayProps) {
   const formatBalance = (balance: string) => {
     const num = parseFloat(balance);
@@ -60,11 +65,11 @@ export function TokenAmountDisplay({
           <input
             type='text'
             value={value}
-            onChange={e => onChange(e.target.value)}
+            onChange={e => !disabled && onChange(e.target.value)}
             placeholder={placeholder}
             className='text-dark-neutral-500 w-full border-none bg-transparent text-xl outline-none'
           />
-          {selectedToken && (
+          {selectedToken && !disabled && (
             <button
               type='button'
               onClick={handleMaxClick}
@@ -75,18 +80,20 @@ export function TokenAmountDisplay({
           )}
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className='bg-pastels-pampas-500 border-dark-neutral-50 text-dark-neutral-400 flex shrink-0 items-center gap-3 rounded-xs border px-2 py-1 font-medium'>
+        <DropdownMenu open={disabled ? false : undefined}>
+          <DropdownMenuTrigger asChild disabled={disabled}>
+            <button
+              className={`bg-pastels-pampas-500 border-dark-neutral-50 text-dark-neutral-400 flex shrink-0 items-center justify-between gap-3 rounded-xs border px-2 py-1 font-medium outline-none ${width}`}
+            >
               {selectedToken ? (
-                <>
+                <div className='flex items-center gap-2'>
                   <CryptoIcon
                     chain={selectedToken.chain}
                     token={selectedToken.symbol}
                     className='size-4'
                   />
                   <span>{selectedToken.symbol}</span>
-                </>
+                </div>
               ) : (
                 <span>Select Token</span>
               )}
@@ -95,7 +102,7 @@ export function TokenAmountDisplay({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align='end'
-            className='w-[120px] min-w-0 space-y-1 rounded-xs'
+            className={`${width} min-w-0 space-y-1 rounded-xs`}
           >
             {tokens.map((token, index) => (
               <DropdownMenuItem
@@ -115,24 +122,26 @@ export function TokenAmountDisplay({
         </DropdownMenu>
       </div>
 
-      <div className='flex flex-col gap-1'>
-        {usdValue && (
-          <div className='flex items-center'>
-            <span className='text-dark-neutral-200 text-[12px] leading-[14px] font-medium'>
-              {usdValue}
-            </span>
-          </div>
-        )}
+      {(usdValue || selectedToken) && (
+        <div className='flex flex-col gap-1'>
+          {usdValue && (
+            <div className='flex items-center'>
+              <span className='text-dark-neutral-200 text-[12px] leading-[14px] font-medium'>
+                {usdValue}
+              </span>
+            </div>
+          )}
 
-        {selectedToken && (
-          <div className='flex items-center'>
-            <span className='text-dark-neutral-300 text-[11px] font-medium'>
-              Available: {formatBalance(selectedToken.balance)}{' '}
-              {selectedToken.symbol}
-            </span>
-          </div>
-        )}
-      </div>
+          {selectedToken && (
+            <div className='flex items-center'>
+              <span className='text-dark-neutral-300 text-[11px] font-medium'>
+                Available: {formatBalance(selectedToken.balance)}{' '}
+                {selectedToken.symbol}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import { erc20Abi, formatUnits } from 'viem';
+
 import { getPublicClient } from '@/lib/viem/providers';
 import { getTokenMetadata } from '@/lib/constants/token-metadata';
+import type { TokenDecimalInfo } from '@/lib/types/token.types';
 
 export interface FormatBalanceOptions {
   /** Manual precision override (decimal places to show) */
@@ -17,12 +19,6 @@ export interface FormatBalanceOptions {
   fallbackDecimals?: number;
   /** Override token symbol (useful for display symbols) */
   symbol?: string;
-}
-
-interface TokenDecimalInfo {
-  decimals: number;
-  symbol?: string;
-  timestamp: number;
 }
 
 // Unified cache for token decimals and basic info

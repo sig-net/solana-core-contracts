@@ -1,7 +1,6 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { rateLimitedRequest } from '@/lib/utils/rpc-utils';
 
 // CoinGecko API for token prices
 const COINGECKO_API = 'https://api.coingecko.com/api/v3';
@@ -31,11 +30,8 @@ async function fetchTokenPrices(
 
   if (coinIds.length === 0) return {};
 
-  // Rate limit CoinGecko API calls
-  const response = await rateLimitedRequest(() => 
-    fetch(
-      `${COINGECKO_API}/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd&include_24hr_change=true`,
-    )
+  const response = await fetch(
+    `${COINGECKO_API}/simple/price?ids=${coinIds.join(',')}&vs_currencies=usd&include_24hr_change=true`,
   );
 
   if (!response.ok) {

@@ -110,7 +110,6 @@ export function hexToBytes(hex: string): Uint8Array {
   return bytes;
 }
 
-
 /**
  * Derive epsilon value for key derivation (matches test file)
  */

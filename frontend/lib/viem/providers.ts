@@ -12,5 +12,3 @@ export function getPublicClient(): PublicClient {
     transport: http(getSepoliaRpcUrl()),
   });
 }
-
-

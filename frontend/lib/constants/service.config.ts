@@ -1,0 +1,72 @@
+/**
+ * Service configuration constants to centralize hardcoded values
+ * across the application services.
+ */
+
+export const ETHEREUM_CONFIG = {
+  /** Sepolia testnet chain ID */
+  CHAIN_ID: 11155111,
+  /** Ethereum SLIP-44 coin type */
+  SLIP44_COIN_TYPE: 60,
+} as const;
+
+export const CRYPTOGRAPHY_CONFIG = {
+  /** Signature algorithm for chain signatures */
+  SIGNATURE_ALGORITHM: 'ECDSA',
+  /** Target blockchain for signatures */
+  TARGET_BLOCKCHAIN: 'ethereum',
+  /** Root path for withdrawal operations */
+  WITHDRAWAL_ROOT_PATH: 'root',
+} as const;
+
+export const TIMEOUT_CONFIG = {
+  /** Default event timeout for deposits (5 minutes) */
+  DEPOSIT_TIMEOUT: 300000,
+  /** Extended timeout for withdrawals (10 minutes) */
+  WITHDRAWAL_TIMEOUT: 600000,
+  /** Short timeout for fallback operations (3 minutes) */
+  FALLBACK_TIMEOUT: 180000,
+  /** Cache TTL for token decimals (5 minutes) */
+  CACHE_TTL: 300000,
+  /** Fallback cache TTL (1 minute) */
+  FALLBACK_CACHE_TTL: 60000,
+  /** Auto-cleanup interval for expired subscriptions (1 minute) */
+  CLEANUP_INTERVAL: 60000,
+  /** Maximum age for subscriptions before auto-cleanup (10 minutes) */
+  MAX_SUBSCRIPTION_AGE: 600000,
+} as const;
+
+export const INTERVAL_CONFIG = {
+  /** Event polling interval (10 seconds) */
+  EVENT_POLLING_INTERVAL: 10000,
+  /** Brief delay to ensure event listeners are registered (500ms) */
+  EVENT_LISTENER_DELAY: 500,
+} as const;
+
+export const BALANCE_CONFIG = {
+  /** Range for random subtraction to work around contract constraints */
+  RANDOM_SUBTRACTION_RANGE: 1000,
+  /** Default token decimals when contract call fails */
+  DEFAULT_TOKEN_DECIMALS: 18,
+  /** Minimum balance threshold */
+  MINIMUM_BALANCE: 1,
+} as const;
+
+export const RETRY_CONFIG = {
+  /** Default number of retries for failed operations */
+  DEFAULT_RETRIES: 2,
+  /** Default key version for request generation */
+  DEFAULT_KEY_VERSION: 0,
+} as const;
+
+/**
+ * Combined service configuration for easy import
+ */
+export const SERVICE_CONFIG = {
+  ETHEREUM: ETHEREUM_CONFIG,
+  CRYPTOGRAPHY: CRYPTOGRAPHY_CONFIG,
+  TIMEOUTS: TIMEOUT_CONFIG,
+  INTERVALS: INTERVAL_CONFIG,
+  BALANCE: BALANCE_CONFIG,
+  RETRY: RETRY_CONFIG,
+} as const;

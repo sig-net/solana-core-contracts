@@ -175,7 +175,6 @@ export async function preloadTokenInfo(
   await Promise.allSettled(promises);
 }
 
-
 export async function getTokenSymbol(tokenAddress: string): Promise<string> {
   const tokenInfo = await getTokenInfo(tokenAddress);
   return tokenInfo.symbol;

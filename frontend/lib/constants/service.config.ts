@@ -20,20 +20,14 @@ export const CRYPTOGRAPHY_CONFIG = {
 } as const;
 
 export const TIMEOUT_CONFIG = {
-  /** Default event timeout for deposits (5 minutes) */
-  DEPOSIT_TIMEOUT: 300000,
-  /** Extended timeout for withdrawals (10 minutes) */
-  WITHDRAWAL_TIMEOUT: 600000,
-  /** Short timeout for fallback operations (3 minutes) */
-  FALLBACK_TIMEOUT: 180000,
   /** Cache TTL for token decimals (5 minutes) */
   CACHE_TTL: 300000,
   /** Fallback cache TTL (1 minute) */
   FALLBACK_CACHE_TTL: 60000,
-  /** Auto-cleanup interval for expired subscriptions (1 minute) */
-  CLEANUP_INTERVAL: 60000,
-  /** Maximum age for subscriptions before auto-cleanup (10 minutes) */
-  MAX_SUBSCRIPTION_AGE: 600000,
+  /** Auto-cleanup interval for expired subscriptions (30 minutes) */
+  CLEANUP_INTERVAL: 1800000,
+  /** Maximum age for subscriptions before auto-cleanup (2 hours) */
+  MAX_SUBSCRIPTION_AGE: 7200000,
 } as const;
 
 export const INTERVAL_CONFIG = {

@@ -122,9 +122,7 @@ export class DepositService {
       const evmParams = evmParamsToProgram(txParams);
 
       // Setup event listeners BEFORE calling depositErc20
-      eventPromises = await this.eventOrchestrator.subscribe(requestId, {
-        timeout: SERVICE_CONFIG.TIMEOUTS.DEPOSIT_TIMEOUT,
-      });
+      eventPromises = await this.eventOrchestrator.subscribe(requestId);
 
       await this.bridgeContract.depositErc20({
         authority: publicKey,

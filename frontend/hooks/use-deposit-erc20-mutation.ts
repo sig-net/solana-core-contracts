@@ -1,13 +1,15 @@
 'use client';
 
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWallet } from '@solana/wallet-adapter-react';
 
+import { queryKeys } from '@/lib/query-client';
 import { useSolanaService } from './use-solana-service';
 
 export function useDepositErc20Mutation() {
   const { publicKey } = useWallet();
   const solanaService = useSolanaService();
+  const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
@@ -37,6 +39,15 @@ export function useDepositErc20Mutation() {
     },
     onSuccess: () => {
       if (publicKey) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.solana.userBalances(publicKey.toString()),
+        });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.solana.unclaimedBalances(publicKey.toString()),
+        });
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.solana.outgoingTransfers(publicKey.toString()),
+        });
       }
     },
     onError: error => {

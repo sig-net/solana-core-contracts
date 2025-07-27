@@ -116,9 +116,7 @@ export class WithdrawalService {
       const requestIdBytes = this.bridgeContract.hexToBytes(requestId);
 
       // Step 7: Setup event listeners BEFORE making the call
-      eventPromises = await this.eventOrchestrator.subscribe(requestId, {
-        timeout: SERVICE_CONFIG.TIMEOUTS.WITHDRAWAL_TIMEOUT,
-      });
+      eventPromises = await this.eventOrchestrator.subscribe(requestId);
 
       // Step 8: Call withdrawErc20 on Solana
       await this.bridgeContract.withdrawErc20({

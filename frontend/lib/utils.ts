@@ -29,4 +29,3 @@ export function convertTokenBalancesToDisplayTokens(
 ) {
   return tokenBalances.map(convertTokenBalanceToDisplayToken);
 }
-

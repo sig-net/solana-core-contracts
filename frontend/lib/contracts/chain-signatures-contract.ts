@@ -3,10 +3,7 @@ import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import type { Hex } from 'viem';
 
 import { CHAIN_SIGNATURES_PROGRAM_IDl } from '../program/idl_chain_sig';
-import {
-  CHAIN_SIGNATURES_PROGRAM_ID,
-  CHAIN_SIGNATURES_TIMEOUTS,
-} from '../constants/chain-signatures.constants';
+import { CHAIN_SIGNATURES_PROGRAM_ID } from '../constants/chain-signatures.constants';
 import type {
   ChainSignaturesProgram,
   ChainSignaturesSignature,

@@ -25,10 +25,10 @@ export function BalanceSection() {
       <div className='flex w-full max-w-full flex-col gap-5'>
         {/* Balance section header skeleton */}
         <div className='flex items-center justify-between'>
-          <div className='h-6 w-24 bg-gray-200 rounded animate-pulse'></div>
-          <div className='h-9 w-20 bg-gray-200 rounded animate-pulse'></div>
+          <div className='h-6 w-24 animate-pulse rounded bg-gray-200'></div>
+          <div className='h-9 w-20 animate-pulse rounded bg-gray-200'></div>
         </div>
-        
+
         {/* Balance boxes skeleton */}
         <div className='grid w-full max-w-full gap-4 sm:gap-6 md:grid-cols-2 md:gap-8 lg:gap-10'>
           {Array.from({ length: 2 }).map((_, index) => (
@@ -38,17 +38,17 @@ export function BalanceSection() {
             >
               <div className='flex min-w-0 flex-1 gap-4 sm:gap-8'>
                 <div className='flex min-w-0 flex-col gap-1 sm:gap-2'>
-                  <div className='h-8 w-16 bg-gray-200 rounded animate-pulse sm:h-9 sm:w-20'></div>
-                  <div className='h-4 w-12 bg-gray-200 rounded animate-pulse'></div>
+                  <div className='h-8 w-16 animate-pulse rounded bg-gray-200 sm:h-9 sm:w-20'></div>
+                  <div className='h-4 w-12 animate-pulse rounded bg-gray-200'></div>
                 </div>
                 <div className='flex flex-shrink-0 items-center gap-3 sm:gap-4'>
-                  <div className='h-7 w-7 bg-gray-200 rounded-full animate-pulse'></div>
-                  <div className='h-4 w-10 bg-gray-200 rounded animate-pulse'></div>
+                  <div className='h-7 w-7 animate-pulse rounded-full bg-gray-200'></div>
+                  <div className='h-4 w-10 animate-pulse rounded bg-gray-200'></div>
                 </div>
               </div>
-              <div className='flex justify-end sm:justify-start gap-2'>
-                <div className='h-8 w-16 bg-gray-200 rounded animate-pulse'></div>
-                <div className='h-8 w-12 bg-gray-200 rounded animate-pulse'></div>
+              <div className='flex justify-end gap-2 sm:justify-start'>
+                <div className='h-8 w-16 animate-pulse rounded bg-gray-200'></div>
+                <div className='h-8 w-12 animate-pulse rounded bg-gray-200'></div>
               </div>
             </div>
           ))}

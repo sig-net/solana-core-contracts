@@ -6,7 +6,6 @@ import {
   SYSVAR_INSTRUCTIONS_PUBKEY,
 } from '@solana/web3.js';
 import { Program, AnchorProvider, BN, Wallet } from '@coral-xyz/anchor';
-import type { ProgramAccount } from '@coral-xyz/anchor';
 
 import { IDL, type SolanaCoreContracts } from '@/lib/program/idl';
 import {
@@ -149,7 +148,7 @@ export class BridgeContract {
   }
 
   /**
-   * Fetch user balance for a specific ERC20 token
+   * Fetch user balance for a specific ERC20 token using Anchor deserialization
    */
   async fetchUserBalance(
     userPublicKey: PublicKey,
@@ -162,29 +161,23 @@ export class BridgeContract {
         erc20Bytes,
       );
 
-      const accountInfo = await this.connection.getAccountInfo(userBalancePda);
+      // Use Anchor's account fetching mechanism instead of manual parsing
+      const userBalanceAccount =
+        await this.getBridgeProgram().account.userErc20Balance.fetchNullable(
+          userBalancePda,
+        );
 
-      if (!accountInfo) {
+      if (!userBalanceAccount) {
         return '0';
       }
 
-      if (!accountInfo.owner.equals(BRIDGE_PROGRAM_ID)) {
-        throw new Error('Account is not owned by the expected program');
-      }
-
-      const data = accountInfo.data;
-      const amountBytes = data.subarray(8, 24);
-      let amount = BigInt(0);
-
-      for (let i = 0; i < 16; i++) {
-        amount |= BigInt(amountBytes[i]) << BigInt(i * 8);
-      }
-
-      return amount.toString();
+      // Access the amount field directly from the deserialized account
+      return userBalanceAccount.amount.toString();
     } catch (error) {
       if (
         error instanceof Error &&
-        error.message.includes('Account does not exist')
+        (error.message.includes('Account does not exist') ||
+          error.message.includes('AccountNotFound'))
       ) {
         return '0';
       }
@@ -367,7 +360,6 @@ export class BridgeContract {
     );
   }
 
-
   /**
    * Fetch comprehensive user withdrawal data by combining multiple sources
    */
@@ -434,9 +426,8 @@ export class BridgeContract {
                   } | null = null;
 
                   try {
-                    decodedInstruction = coder.instruction.decode(
-                      instructionDataBuf,
-                    );
+                    decodedInstruction =
+                      coder.instruction.decode(instructionDataBuf);
                   } catch (decodeError) {
                     // Skip instructions we can't decode
                     continue;
@@ -450,11 +441,12 @@ export class BridgeContract {
                   // Handle withdrawErc20 instruction
                   if (instructionName === 'withdrawErc20') {
                     // Extract withdrawal data using IDL-decoded structure
-                    const requestId = Buffer.from(decodedData.requestId).toString(
-                      'hex',
-                    );
+                    const requestId = Buffer.from(
+                      decodedData.requestId,
+                    ).toString('hex');
                     const erc20Address =
-                      '0x' + Buffer.from(decodedData.erc20Address).toString('hex');
+                      '0x' +
+                      Buffer.from(decodedData.erc20Address).toString('hex');
                     const amount = decodedData.amount.toString();
                     const recipient =
                       '0x' +

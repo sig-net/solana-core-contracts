@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { SendIcon } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,6 @@ import { TokenAmountDisplay } from '@/components/ui/token-amount-display';
 import { cn } from '@/lib/utils';
 
 import { WithdrawToken } from './index';
-import { SendIcon } from 'lucide-react';
 
 interface FormData {
   amount: string;

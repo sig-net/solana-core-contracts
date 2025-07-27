@@ -47,7 +47,7 @@ export function TokenListItem({
         <div className='text-right'>
           <div className='text-sm text-stone-700'>{balance}</div>
           {balanceUsd && (
-            <div className='text-xs text-dark-neutral-300'>{balanceUsd}</div>
+            <div className='text-dark-neutral-300 text-xs'>{balanceUsd}</div>
           )}
         </div>
       )}

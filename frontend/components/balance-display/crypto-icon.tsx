@@ -13,25 +13,35 @@ export function CryptoIcon({
   token: string;
   className?: string;
 }) {
+  // Extract size number from className or default to 7
+  const sizeNumber = parseInt(className?.match(/size-(\d+)/)?.[1] || '7');
+
+  // Calculate icon sizes based on the container size
+  const tokenSize = sizeNumber * 4; // 4px per size unit
+  const networkSize = Math.max(12, sizeNumber * 2); // Minimum 12px, otherwise 2px per size unit
+
   return (
     <div
       className={cn(
-        'relative flex h-7 w-7 items-center justify-center rounded-full shadow-sm',
+        'relative flex items-center justify-center rounded-full shadow-sm',
         className,
       )}
     >
       <TokenIcon
         symbol={token}
-        size={28}
+        size={tokenSize}
         variant='background'
         className='rounded-full'
       />
 
       <NetworkIcon
         name={chain}
-        size={16}
+        size={networkSize}
         variant='background'
-        className='absolute -right-1.5 bottom-0 h-4 w-4 rounded-sm'
+        className={cn(
+          'absolute -right-1.5 bottom-0 rounded-sm',
+          sizeNumber <= 4 ? 'size-3' : 'size-4',
+        )}
       />
     </div>
   );

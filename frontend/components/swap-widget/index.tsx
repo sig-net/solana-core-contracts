@@ -4,12 +4,18 @@ import { useState } from 'react';
 import { ArrowDown } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
-import { TokenMetadata } from '@/lib/constants/token-metadata';
+import {
+  TokenMetadata,
+  SUPPORTED_TOKENS,
+} from '@/lib/constants/token-metadata';
+import {
+  TokenAmountDisplay,
+  Token,
+} from '@/components/ui/token-amount-display';
 
 import { Button } from '../ui/button';
 
 import { SwapHeader } from './swap-header';
-import { TokenInputField } from './token-input-field';
 
 interface SwapWidgetProps {
   className?: string;
@@ -34,7 +40,7 @@ interface SwapState {
 }
 
 export function SwapWidget({ className }: Pick<SwapWidgetProps, 'className'>) {
-  const [swapState] = useState<SwapState>({
+  const [swapState, setSwapState] = useState<SwapState>({
     fromToken: null,
     toToken: null,
     fromAmount: '',
@@ -42,17 +48,43 @@ export function SwapWidget({ className }: Pick<SwapWidgetProps, 'className'>) {
     isSwapping: false,
   });
 
-  const isSwapSupported = false;
+  // Helper function to convert TokenMetadata to Token
+  const tokenMetadataToToken = (tokenMetadata: TokenMetadata): Token => ({
+    symbol: tokenMetadata.symbol,
+    name: tokenMetadata.name,
+    chain: 'ethereum' as const,
+    address: tokenMetadata.address,
+    balance: '0', // Placeholder - in real app you'd fetch actual balance
+    decimals: tokenMetadata.decimals,
+  });
 
-  const handleFromAmountChange = () => {};
+  // Helper function to convert Token to TokenMetadata
+  const tokenToTokenMetadata = (token: Token): TokenMetadata | null => {
+    return SUPPORTED_TOKENS.find(t => t.symbol === token.symbol) || null;
+  };
 
-  const handleToAmountChange = () => {};
+  // Convert supported tokens
+  const supportedTokens: Token[] = SUPPORTED_TOKENS.map(tokenMetadataToToken);
 
-  const handleTokenSelect = () => {};
+  const handleFromAmountChange = (amount: string) => {
+    setSwapState(prev => ({ ...prev, fromAmount: amount }));
+  };
+
+  const handleToAmountChange = (amount: string) => {
+    setSwapState(prev => ({ ...prev, toAmount: amount }));
+  };
+
+  const handleFromTokenSelect = (token: Token) => {
+    const tokenMetadata = tokenToTokenMetadata(token);
+    setSwapState(prev => ({ ...prev, fromToken: tokenMetadata }));
+  };
+
+  const handleToTokenSelect = (token: Token) => {
+    const tokenMetadata = tokenToTokenMetadata(token);
+    setSwapState(prev => ({ ...prev, toToken: tokenMetadata }));
+  };
 
   const handleSwap = () => {};
-
-  const isSwapDisabled = true;
 
   return (
     <div
@@ -64,28 +96,43 @@ export function SwapWidget({ className }: Pick<SwapWidgetProps, 'className'>) {
       <SwapHeader onSettingsClick={() => console.log('Settings clicked')} />
 
       <div className='flex flex-col items-center gap-4'>
-        <TokenInputField
-          amount={swapState.fromAmount}
-          onAmountChange={handleFromAmountChange}
-          selectedToken={swapState.fromToken}
-          onTokenSelect={handleTokenSelect}
+        <TokenAmountDisplay
+          value={swapState.fromAmount}
+          onChange={handleFromAmountChange}
+          tokens={supportedTokens}
+          selectedToken={
+            swapState.fromToken
+              ? tokenMetadataToToken(swapState.fromToken)
+              : undefined
+          }
+          onTokenSelect={handleFromTokenSelect}
           placeholder='0'
+          width='w-40'
+          disabled={true}
         />
 
         <ArrowDown className='text-dark-neutral-300 h-5 w-5' />
 
-        <TokenInputField
-          amount={swapState.toAmount}
-          onAmountChange={handleToAmountChange}
-          selectedToken={swapState.toToken}
-          onTokenSelect={handleTokenSelect}
+        <TokenAmountDisplay
+          value={swapState.toAmount}
+          onChange={handleToAmountChange}
+          tokens={supportedTokens}
+          selectedToken={
+            swapState.toToken
+              ? tokenMetadataToToken(swapState.toToken)
+              : undefined
+          }
+          onTokenSelect={handleToTokenSelect}
           placeholder='0'
+          width='w-40'
+          disabled={true}
         />
       </div>
 
       <Button
         onClick={handleSwap}
-        variant='disabled'
+        disabled
+        variant='secondary'
         size='lg'
         className='w-full'
       >

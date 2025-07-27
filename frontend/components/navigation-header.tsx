@@ -1,7 +1,6 @@
 'use client';
 
 import { Settings } from 'lucide-react';
-import { formatTokenBalanceSync } from '@/lib/utils/balance-formatter';
 import Image from 'next/image';
 
 import { Button } from '@/components/ui/button';
@@ -10,25 +9,13 @@ import { cn } from '@/lib/utils';
 
 interface NavigationHeaderProps {
   className?: string;
-  totalBalance?: bigint;
-  balanceDecimals?: number;
   onSettingsClick?: () => void;
 }
 
 export function NavigationHeader({
   className,
-  totalBalance = BigInt(0),
-  balanceDecimals = 9,
   onSettingsClick,
 }: NavigationHeaderProps) {
-  // Format as USD value (assuming totalBalance is already in USD units)
-  const displayBalance = `$${formatTokenBalanceSync(
-    totalBalance,
-    balanceDecimals,
-    undefined,
-    { precision: 2 },
-  )}`;
-
   return (
     <header
       className={cn(
@@ -47,16 +34,6 @@ export function NavigationHeader({
             className='max-w-24 object-contain sm:h-7 sm:w-36 sm:max-w-36'
             priority
           />
-        </div>
-
-        {/* Center: Balance - Hide on small screens, show on md+ */}
-        <div className='hidden flex-col items-center md:flex'>
-          <span className='text-dark-neutral-200 text-xs font-medium tracking-wider uppercase'>
-            Total Balance
-          </span>
-          <span className='font-mono text-xl font-light text-stone-700 lg:text-2xl'>
-            {displayBalance}
-          </span>
         </div>
 
         {/* Right: Settings & Wallet */}

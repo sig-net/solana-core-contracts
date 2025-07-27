@@ -1,19 +1,74 @@
 'use client';
 
-import { useEffect, useRef, useState, ReactElement, useMemo, useCallback } from 'react';
+import { useEffect, useRef, useState, ReactElement } from 'react';
 import QRCodeStyling from 'qr-code-styling';
 import React from 'react';
 
 import { cn } from '@/lib/utils';
 
-interface QRCodeProps {
+type ErrorCorrectionLevel = 'L' | 'M' | 'Q' | 'H';
+
+interface BaseQRCodeProps {
   value: string;
   size?: number;
   className?: string;
-  icon?: ReactElement;
-  iconUrl?: string;
-  errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';
+  errorCorrectionLevel?: ErrorCorrectionLevel;
   margin?: number;
+}
+
+interface QRCodeWithIcon extends BaseQRCodeProps {
+  icon: ReactElement;
+  iconUrl?: never;
+}
+
+interface QRCodeWithIconUrl extends BaseQRCodeProps {
+  icon?: never;
+  iconUrl: string;
+}
+
+interface QRCodeWithoutIcon extends BaseQRCodeProps {
+  icon?: never;
+  iconUrl?: never;
+}
+
+type QRCodeProps = QRCodeWithIcon | QRCodeWithIconUrl | QRCodeWithoutIcon;
+
+async function convertIconToDataUrl(
+  icon: ReactElement,
+): Promise<string | undefined> {
+  try {
+    const tempDiv = document.createElement('div');
+    tempDiv.style.cssText =
+      'position:absolute;left:-9999px;width:64px;height:64px';
+    document.body.appendChild(tempDiv);
+
+    const { createRoot } = await import('react-dom/client');
+    const root = createRoot(tempDiv);
+
+    const clonedIcon = React.cloneElement(icon, {
+      width: 64,
+      height: 64,
+    } as React.SVGProps<SVGSVGElement>);
+
+    root.render(clonedIcon);
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    const svg = tempDiv.querySelector('svg');
+    let imageDataUrl: string | undefined;
+
+    if (svg) {
+      const svgString = new XMLSerializer().serializeToString(svg);
+      imageDataUrl = `data:image/svg+xml;base64,${btoa(svgString)}`;
+    }
+
+    root.unmount();
+    document.body.removeChild(tempDiv);
+
+    return imageDataUrl;
+  } catch (error) {
+    console.warn('Failed to convert icon to data URL:', error);
+    return undefined;
+  }
 }
 
 export function QRCode({
@@ -22,70 +77,12 @@ export function QRCode({
   className,
   icon,
   iconUrl,
-  errorCorrectionLevel = 'M',
+  errorCorrectionLevel = 'H',
   margin = 16,
 }: QRCodeProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const qrCodeRef = useRef<QRCodeStyling | null>(null);
   const [isGenerating, setIsGenerating] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastConfig, setLastConfig] = useState<string>('');
-
-  // Memoize the configuration to detect actual changes
-  const qrConfig = useMemo(() => {
-    return JSON.stringify({
-      value,
-      size,
-      iconUrl,
-      errorCorrectionLevel,
-      margin,
-      iconProps: icon?.props,
-    });
-  }, [value, size, iconUrl, errorCorrectionLevel, margin, icon?.props]);
-
-  // Memoize icon conversion to prevent unnecessary re-renders
-  const convertIconToDataUrl = useCallback(async (iconElement: ReactElement): Promise<string | undefined> => {
-    try {
-      // Create temporary container
-      const tempDiv = document.createElement('div');
-      tempDiv.style.position = 'absolute';
-      tempDiv.style.left = '-9999px';
-      tempDiv.style.width = '64px';
-      tempDiv.style.height = '64px';
-      document.body.appendChild(tempDiv);
-
-      // Import createRoot dynamically
-      const { createRoot } = await import('react-dom/client');
-      const root = createRoot(tempDiv);
-
-      // Render icon with fixed dimensions
-      const clonedIcon = React.cloneElement(iconElement, {
-        width: 64,
-        height: 64,
-      } as React.SVGProps<SVGSVGElement>);
-
-      root.render(clonedIcon);
-
-      // Wait for render and extract SVG
-      await new Promise(resolve => setTimeout(resolve, 50));
-      const svg = tempDiv.querySelector('svg');
-
-      let imageDataUrl: string | undefined;
-      if (svg) {
-        const svgString = new XMLSerializer().serializeToString(svg);
-        imageDataUrl = `data:image/svg+xml;base64,${btoa(svgString)}`;
-      }
-
-      // Cleanup
-      root.unmount();
-      document.body.removeChild(tempDiv);
-      
-      return imageDataUrl;
-    } catch (error) {
-      console.warn('Failed to convert icon to data URL:', error);
-      return undefined;
-    }
-  }, []);
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -93,20 +90,10 @@ export function QRCode({
     const generateQR = async () => {
       if (!value || !containerRef.current) return;
 
-      // Skip regeneration if config hasn't changed
-      if (qrConfig === lastConfig && qrCodeRef.current) {
-        setIsGenerating(false);
-        return;
-      }
-
       try {
         setIsGenerating(true);
         setError(null);
-        
-        // Only clear container if we're actually regenerating
-        if (qrConfig !== lastConfig) {
-          containerRef.current.innerHTML = '';
-        }
+        containerRef.current.innerHTML = '';
 
         let imageDataUrl: string | undefined;
         if (iconUrl) {
@@ -122,24 +109,11 @@ export function QRCode({
           data: value,
           image: imageDataUrl,
           margin,
-          qrOptions: {
-            errorCorrectionLevel,
-          },
-          dotsOptions: {
-            color: '#000000',
-            type: 'dots',
-          },
-          backgroundOptions: {
-            color: '#ffffff',
-          },
-          cornersSquareOptions: {
-            color: '#000000',
-            type: 'square',
-          },
-          cornersDotOptions: {
-            color: '#000000',
-            type: 'square',
-          },
+          qrOptions: { errorCorrectionLevel },
+          dotsOptions: { color: '#000000', type: 'dots' },
+          backgroundOptions: { color: '#ffffff' },
+          cornersSquareOptions: { color: '#000000', type: 'square' },
+          cornersDotOptions: { color: '#000000', type: 'square' },
           imageOptions: imageDataUrl
             ? {
                 crossOrigin: 'anonymous',
@@ -150,11 +124,6 @@ export function QRCode({
             : undefined,
         });
 
-        // Store reference and update config
-        qrCodeRef.current = qrCode;
-        setLastConfig(qrConfig);
-
-        // Single check before DOM manipulation
         if (!abortController.signal.aborted && containerRef.current) {
           qrCode.append(containerRef.current);
         }
@@ -174,7 +143,7 @@ export function QRCode({
 
     generateQR();
     return () => abortController.abort();
-  }, [qrConfig, lastConfig, value, size, icon, iconUrl, errorCorrectionLevel, margin, convertIconToDataUrl]);
+  }, [value, size, icon, iconUrl, errorCorrectionLevel, margin]);
 
   if (error) {
     return (
@@ -194,8 +163,8 @@ export function QRCode({
   }
 
   return (
-    <div 
-      className={cn('relative', className)} 
+    <div
+      className={cn('relative', className)}
       style={{ width: size, height: size }}
     >
       {/* Loading State */}

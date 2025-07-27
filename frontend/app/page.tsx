@@ -14,11 +14,11 @@ export default function Home() {
   const { data: userBalances = [] } = useUserBalances();
 
   const handleSettingsClick = () => {
-    console.log('Settings clicked');
+    // TODO: Implement settings functionality
   };
 
   const handleDepositClick = () => {
-    console.log('Deposit clicked');
+    // TODO: Implement deposit functionality
   };
 
   // Check if wallet is connected

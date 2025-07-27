@@ -29,7 +29,8 @@ export const NETWORKS: Record<string, NetworkInfo> = {
 
 // Get current network info (for now, hardcoded to Sepolia)
 export function getCurrentNetwork(): NetworkInfo {
-  // TODO: This could be dynamic based on environment or user selection
+  // FUTURE: Make this configurable via environment variables or user settings
+  // Consider adding NEXT_PUBLIC_NETWORK_NAME env var support
   return NETWORKS.sepolia;
 }
 

@@ -7,7 +7,6 @@ const envSchema = z.object({
   NEXT_PUBLIC_ALCHEMY_API_KEY: z.string().min(1, 'Alchemy API key is required'),
   NEXT_PUBLIC_SEPOLIA_RPC_URL: z.string().optional(),
   NEXT_PUBLIC_SOLANA_RPC_URL: z.string().optional(),
-  NODE_ENV: z.enum(['development', 'production', 'test']).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
@@ -18,7 +17,6 @@ export function useEnv(): Env {
       NEXT_PUBLIC_ALCHEMY_API_KEY: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY,
       NEXT_PUBLIC_SEPOLIA_RPC_URL: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL,
       NEXT_PUBLIC_SOLANA_RPC_URL: process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
-      NODE_ENV: process.env.NODE_ENV,
     };
 
     try {

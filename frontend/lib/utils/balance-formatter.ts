@@ -1,5 +1,5 @@
 import { erc20Abi, formatUnits } from 'viem';
-import { getAutomatedProvider } from '@/lib/viem/providers';
+import { getPublicClient } from '@/lib/viem/providers';
 import { getTokenMetadata } from '@/lib/constants/token-metadata';
 
 export interface FormatBalanceOptions {
@@ -44,7 +44,7 @@ async function fetchTokenDecimals(
     return cached;
   }
 
-  const provider = getAutomatedProvider();
+  const provider = getPublicClient();
 
   try {
     // Fetch decimals and symbol in parallel from contract

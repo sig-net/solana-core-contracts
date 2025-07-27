@@ -13,11 +13,11 @@ import {
   createEvmTransactionParams,
   evmParamsToProgram,
 } from '@/lib/program/utils';
-import { getAutomatedProvider } from '@/lib/viem/providers';
+import { getPublicClient } from '@/lib/viem/providers';
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { ChainSignaturesContract } from '@/lib/contracts/chain-signatures-contract';
 import { getTokenMetadata } from '@/lib/constants/token-metadata';
-import { RATE_LIMITERS, REQUEST_DEDUPLICATOR } from '@/lib/utils/rpc-utils';
+import { cachedRequest, rateLimitedRequest } from '@/lib/utils/rpc-utils';
 
 import type { EventPromises } from './types/chain-signatures.types';
 import { CHAIN_SIGNATURES_CONFIG } from './constants/chain-signatures.constants';
@@ -112,7 +112,7 @@ export class SolanaService {
       }
     }
 
-    const provider = getAutomatedProvider();
+    const provider = getPublicClient();
     try {
       const contractDecimals = await provider.readContract({
         address: erc20Address as `0x${string}`,
@@ -163,12 +163,12 @@ export class SolanaService {
   ): Promise<Array<{ address: string; balance: bigint; decimals: number }>> {
     const requestKey = `balances:${address}:${tokenAddresses.join(',')}`;
 
-    return REQUEST_DEDUPLICATOR.execute(requestKey, async () => {
-      const provider = getAutomatedProvider();
+    return cachedRequest(requestKey, async () => {
+      const provider = getPublicClient();
 
       // Rate limit balance requests
       const balancePromises = tokenAddresses.map(async tokenAddress => {
-        return this.rateLimitedRequest(async () => {
+        return rateLimitedRequest(async () => {
           try {
             const balance = await provider.readContract({
               address: tokenAddress as `0x${string}`,
@@ -206,21 +206,6 @@ export class SolanaService {
     });
   }
 
-  /**
-   * Rate limited request wrapper for Alchemy calls
-   */
-  private async rateLimitedRequest<T>(requestFn: () => Promise<T>): Promise<T> {
-    // Check rate limit
-    if (!RATE_LIMITERS.alchemy.tryConsume()) {
-      const retryAfter = RATE_LIMITERS.alchemy.getRetryAfter();
-      if (retryAfter > 0) {
-        console.warn(`Rate limit reached, waiting ${retryAfter}ms`);
-        await new Promise(resolve => setTimeout(resolve, retryAfter));
-      }
-    }
-
-    return requestFn();
-  }
 
   async fetchUnclaimedBalances(
     publicKey: PublicKey,
@@ -308,7 +293,7 @@ export class SolanaService {
     try {
       // Fetch actual decimals from the contract
       const actualDecimals = await this.getTokenDecimals(erc20Address);
-      const provider = getAutomatedProvider();
+      const provider = getPublicClient();
 
       const amountBigInt = ethers.parseUnits(amount, actualDecimals);
       const amountBN = new BN(amountBigInt.toString(), 10);
@@ -472,7 +457,7 @@ export class SolanaService {
         this.bridgeContract.hexToBytes(checksummedAddress);
 
       // Step 3: Get current nonce from the hardcoded recipient address (for withdrawals)
-      const provider = getAutomatedProvider();
+      const provider = getPublicClient();
       const currentNonce = await provider.getTransactionCount({
         address: HARDCODED_RECIPIENT_ADDRESS as `0x${string}`,
         blockTag: 'pending',

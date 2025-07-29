@@ -7,18 +7,12 @@ import { BalanceSection } from '@/components/balance-section';
 import { SwapWidget } from '@/components/swap-widget';
 import { ActivityListTable } from '@/components/activity-list-table';
 import { EmptyStateWallet } from '@/components/empty-state-wallet';
-import { useUserBalances } from '@/hooks';
 
 export default function Home() {
   const { publicKey } = useWallet();
-  const { data: userBalances = [] } = useUserBalances();
 
   const handleSettingsClick = () => {
     // TODO: Implement settings functionality
-  };
-
-  const handleDepositClick = () => {
-    // TODO: Implement deposit functionality
   };
 
   // Check if wallet is connected
@@ -30,7 +24,7 @@ export default function Home() {
 
       {!isWalletConnected ? (
         <div className='mx-auto mt-16 max-w-full p-4 xl:container'>
-          <EmptyStateWallet onDepositClick={handleDepositClick} />
+          <EmptyStateWallet />
         </div>
       ) : (
         <div className='mx-auto mt-8 max-w-full p-4 pb-16 lg:mt-16 xl:container'>

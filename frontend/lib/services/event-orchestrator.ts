@@ -30,10 +30,7 @@ export class EventOrchestrator {
    * Subscribe to events for a request ID. If a subscription already exists,
    * increment the subscriber count and return the existing promises.
    */
-  async subscribe(
-    requestId: string,
-    options: EventSubscriptionOptions = {},
-  ): Promise<EventPromises> {
+  async subscribe(requestId: string): Promise<EventPromises> {
     const existingSubscription = this.subscriptions.get(requestId);
 
     if (existingSubscription) {
@@ -46,7 +43,7 @@ export class EventOrchestrator {
     }
 
     // Create new subscription
-    const promises = this.createEventSubscription(requestId, options);
+    const promises = this.createEventSubscription(requestId);
     const subscription: EventSubscription = {
       requestId,
       promises,
@@ -106,10 +103,7 @@ export class EventOrchestrator {
   /**
    * Create event subscription without timeout handling
    */
-  private createEventSubscription(
-    requestId: string,
-    options: EventSubscriptionOptions,
-  ): EventPromises {
+  private createEventSubscription(requestId: string): EventPromises {
     // Setup event listeners without any timeouts
     const eventPromises =
       this.chainSignaturesContract.setupEventListeners(requestId);

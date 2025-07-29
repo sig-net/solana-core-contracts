@@ -47,7 +47,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
           setAvailableBalance(balanceResult.amount);
           setActualDecimals(balanceResult.decimals);
         }
-      } catch (error) {
+      } catch {
         // No balance available, continue with normal flow
         // No available balance to auto-claim, proceed with normal deposit flow
       } finally {

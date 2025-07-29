@@ -116,9 +116,6 @@ export class DepositService {
 
       const requestIdBytes = this.bridgeContract.hexToBytes(requestId);
 
-      const [pendingDepositPda] =
-        this.bridgeContract.derivePendingDepositPda(requestIdBytes);
-
       const evmParams = evmParamsToProgram(txParams);
 
       // Setup event listeners BEFORE calling depositErc20
@@ -184,7 +181,11 @@ export class DepositService {
     eventPromises: EventPromises,
     provider: PublicClient,
     nonce: number,
-    txParams: any,
+    txParams: {
+      maxPriorityFeePerGas: bigint;
+      maxFeePerGas: bigint;
+      gasLimit: bigint;
+    },
     onStatusChange?: DepositStatusCallback,
   ): Promise<void> {
     try {
@@ -200,9 +201,9 @@ export class DepositService {
         type: 2,
         chainId: ETHEREUM_CONFIG.CHAIN_ID,
         nonce,
-        maxPriorityFeePerGas: BigInt(txParams.maxPriorityFeePerGas.toString()),
-        maxFeePerGas: BigInt(txParams.maxFeePerGas.toString()),
-        gasLimit: BigInt(txParams.gasLimit.toString()),
+        maxPriorityFeePerGas: txParams.maxPriorityFeePerGas,
+        maxFeePerGas: txParams.maxFeePerGas,
+        gasLimit: txParams.gasLimit,
         to: unsignedTx.to,
         value: BigInt(0),
         data: callData,

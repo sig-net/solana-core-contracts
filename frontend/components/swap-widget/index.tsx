@@ -111,7 +111,6 @@ export function SwapWidget({ className }: Pick<SwapWidgetProps, 'className'>) {
           }
           onTokenSelect={handleFromTokenSelect}
           placeholder='0'
-          width='w-full'
           disabled={true}
         />
 
@@ -130,7 +129,6 @@ export function SwapWidget({ className }: Pick<SwapWidgetProps, 'className'>) {
           }
           onTokenSelect={handleToTokenSelect}
           placeholder='0'
-          width='w-full'
           disabled={true}
         />
       </div>

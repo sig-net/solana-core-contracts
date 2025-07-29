@@ -8,6 +8,7 @@ import {
   Address,
 } from 'viem';
 import { sepolia } from 'viem/chains';
+import { PublicKey } from '@solana/web3.js';
 
 /**
  * Create EVM transaction parameters with gas estimation
@@ -90,7 +91,7 @@ export function createSignedTransaction(
  * This must match exactly with the contract's generate_sign_respond_request_id function
  */
 export function generateRequestId(
-  sender: any,
+  sender: PublicKey,
   transactionData: Uint8Array,
   slip44ChainId: number,
   keyVersion: number,

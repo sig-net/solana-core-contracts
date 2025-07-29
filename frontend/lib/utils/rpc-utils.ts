@@ -36,7 +36,7 @@ export function exponentialBackoff(
 /**
  * Simple debounced function executor
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number,
 ): (...args: Parameters<T>) => void {
@@ -44,6 +44,6 @@ export function debounce<T extends (...args: any[]) => any>(
 
   return (...args: Parameters<T>) => {
     if (timeoutId) clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func.apply(null, args), wait);
+    timeoutId = setTimeout(() => func(...args), wait);
   };
 }

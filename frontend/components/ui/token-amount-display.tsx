@@ -28,7 +28,6 @@ interface TokenAmountDisplayProps {
   usdValue?: string;
   className?: string;
   placeholder?: string;
-  width?: string;
   disabled?: boolean;
 }
 
@@ -41,7 +40,6 @@ export function TokenAmountDisplay({
   usdValue,
   className = '',
   placeholder = '0.00',
-  width = 'w-30',
   disabled = false,
 }: TokenAmountDisplayProps) {
   const formatBalance = (balance: string) => {

@@ -3,11 +3,7 @@ import { Wallet, ArrowDownCircle, ArrowRightLeft } from 'lucide-react';
 import { WalletButton } from '@/components/wallet-button';
 import { EmptyState } from '@/components/ui/empty-state';
 
-interface EmptyStateWalletProps {
-  onDepositClick: () => void;
-}
-
-export function EmptyStateWallet({ onDepositClick }: EmptyStateWalletProps) {
+export function EmptyStateWallet() {
   return (
     <EmptyState
       icon={Wallet}

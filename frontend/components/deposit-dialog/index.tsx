@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWallet } from '@solana/wallet-adapter-react';
 
 import {
   Dialog,
@@ -30,7 +29,6 @@ enum DepositStep {
 }
 
 export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
-  const { publicKey } = useWallet();
   const [step, setStep] = useState<DepositStep>(DepositStep.SELECT_TOKEN);
   const [selectedToken, setSelectedToken] =
     useState<DepositTokenMetadata | null>(null);

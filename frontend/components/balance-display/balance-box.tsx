@@ -24,11 +24,11 @@ export function BalanceBox({
   return (
     <div
       className={cn(
-        'border-colors-dark-neutral-200 flex w-full max-w-full flex-col gap-4 border-t py-4 sm:flex-row sm:items-center sm:justify-between sm:py-5',
+        'border-colors-dark-neutral-200 flex w-full max-w-full gap-4 border-t py-4 sm:items-center sm:justify-between sm:py-5',
         className,
       )}
     >
-      <div className='flex min-w-0 flex-1 gap-4 sm:gap-8'>
+      <div className='flex min-w-0 flex-1 gap-4 sm:gap-5'>
         <div className='flex min-w-0 flex-col gap-1 sm:gap-2'>
           <div className='text-tundora-300 truncate text-2xl font-light sm:text-3xl'>
             {amount}

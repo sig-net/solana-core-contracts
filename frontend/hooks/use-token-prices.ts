@@ -12,7 +12,7 @@ const TOKEN_ID_MAP: Record<string, string> = {
   SOL: 'solana',
   BTC: 'bitcoin',
   DAI: 'dai',
-  COW: 'cow',
+  COW: 'cow-protocol',
 };
 
 export interface TokenPrice {

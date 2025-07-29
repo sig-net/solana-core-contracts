@@ -5,12 +5,12 @@ import { NetworkIcon } from '@web3icons/react';
 
 import { Button } from '@/components/ui/button';
 import { QRCode } from '@/components/ui/qr-code';
-import { DepositToken } from '@/lib/constants/deposit-tokens';
+import { DepositTokenMetadata } from '@/lib/constants/token-metadata';
 import { useCopyToClipboard } from '@/hooks';
 import { cn } from '@/lib/utils';
 
 interface DepositAddressProps {
-  token: DepositToken;
+  token: DepositTokenMetadata;
   depositAddress: string;
   onContinue?: () => void;
 }

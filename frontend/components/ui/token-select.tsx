@@ -57,7 +57,7 @@ export function TokenSelect({
               <CryptoIcon
                 chain={value.chain}
                 token={value.symbol}
-                className='h-6 w-6'
+                className='size-6'
               />
               <div className='text-left'>
                 <span className='font-medium text-stone-700'>

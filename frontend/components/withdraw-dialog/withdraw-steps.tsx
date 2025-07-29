@@ -137,7 +137,7 @@ export function WithdrawSteps({
         <CryptoIcon
           chain={token.chain}
           token={token.symbol}
-          className='h-6 w-6'
+          className='size-6'
         />
         <div className='min-w-0 flex-1'>
           <p className='text-dark-neutral-900 truncate text-sm font-medium'>

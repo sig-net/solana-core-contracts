@@ -30,7 +30,7 @@ export function useCopyToClipboard(resetDelay = 2000): CopyToClipboardReturn {
         // Fallback for mobile and older browsers
         const textArea = document.createElement('textarea');
         textArea.value = text;
-        
+
         // Make the textarea invisible but still focusable
         textArea.style.position = 'fixed';
         textArea.style.left = '-999999px';
@@ -39,14 +39,14 @@ export function useCopyToClipboard(resetDelay = 2000): CopyToClipboardReturn {
         textArea.style.pointerEvents = 'none';
         textArea.setAttribute('readonly', '');
         textArea.setAttribute('tabindex', '-1');
-        
+
         document.body.appendChild(textArea);
-        
+
         // Focus and select the text
         textArea.focus();
         textArea.select();
         textArea.setSelectionRange(0, text.length);
-        
+
         // For iOS Safari - additional selection method
         if (navigator.userAgent.match(/ipad|iphone/i)) {
           const range = document.createRange();
@@ -56,14 +56,14 @@ export function useCopyToClipboard(resetDelay = 2000): CopyToClipboardReturn {
           selection?.addRange(range);
           textArea.setSelectionRange(0, text.length);
         }
-        
+
         const successful = document.execCommand('copy');
         document.body.removeChild(textArea);
-        
+
         if (!successful) {
           throw new Error('Copy command failed');
         }
-        
+
         setIsCopied(true);
         setError(null);
 

@@ -1,10 +1,10 @@
 'use client';
 
 import { CryptoIcon } from '@/components/balance-display/crypto-icon';
-import { DepositToken } from '@/lib/constants/deposit-tokens';
+import { DepositTokenMetadata } from '@/lib/constants/token-metadata';
 
 interface LoadingStateProps {
-  token: DepositToken;
+  token: DepositTokenMetadata;
 }
 
 export function LoadingState({ token }: LoadingStateProps) {
@@ -15,7 +15,7 @@ export function LoadingState({ token }: LoadingStateProps) {
         <CryptoIcon
           chain={token.chain}
           token={token.symbol}
-          className='h-12 w-12'
+          className='size-12'
         />
         <div>
           <h3 className='text-tundora-300 mb-1 text-lg font-semibold'>

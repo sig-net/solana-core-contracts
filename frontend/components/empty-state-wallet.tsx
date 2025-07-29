@@ -1,7 +1,6 @@
 import { Wallet, ArrowDownCircle, ArrowRightLeft } from 'lucide-react';
 
 import { WalletButton } from '@/components/wallet-button';
-import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
 
 interface EmptyStateWalletProps {
@@ -16,16 +15,8 @@ export function EmptyStateWallet({ onDepositClick }: EmptyStateWalletProps) {
       description='Access and manage your ERC20 tokens across any chain from one unified interface. Connect your wallet to view balances or start depositing right away.'
       action={
         <>
-          <div className='mb-12 flex gap-4'>
+          <div className='mb-12 flex justify-center'>
             <WalletButton />
-            <Button
-              onClick={onDepositClick}
-              variant='secondary'
-              className='gap-2'
-            >
-              <ArrowDownCircle className='h-4 w-4' />
-              Deposit Tokens
-            </Button>
           </div>
 
           <div className='grid grid-cols-2 gap-8 text-center'>

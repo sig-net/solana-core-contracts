@@ -13,7 +13,7 @@ export function EmptyStateWallet({ onDepositClick }: EmptyStateWalletProps) {
     <EmptyState
       icon={Wallet}
       title='Start Your Cross-Chain Journey'
-      description='Bridge your ERC20 tokens between Ethereum and Solana seamlessly. Connect your wallet to view balances or start depositing right away.'
+      description='Access and manage your ERC20 tokens across any chain from one unified interface. Connect your wallet to view balances or start depositing right away.'
       action={
         <>
           <div className='mb-12 flex gap-4'>
@@ -47,9 +47,9 @@ export function EmptyStateWallet({ onDepositClick }: EmptyStateWalletProps) {
               </div>
               <div>
                 <p className='text-dark-neutral-900 text-base font-medium'>
-                  Bridge
+                  Manage
                 </p>
-                <p className='text-dark-neutral-600 text-sm'>To Solana</p>
+                <p className='text-dark-neutral-600 text-sm'>Cross-Chain</p>
               </div>
             </div>
           </div>

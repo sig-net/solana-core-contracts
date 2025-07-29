@@ -182,7 +182,7 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
             ? formatActivityDate(transfer.timestamp)
             : 'Unknown',
           timestampRaw: transfer.timestamp,
-          status: transfer.status as 'pending' | 'completed',
+          status: 'completed' as const, // Always show completed for now
           transactionHash: transfer.transactionHash,
           explorerUrl: transfer.transactionHash
             ? getTransactionExplorerUrl(transfer.transactionHash, 'sepolia')

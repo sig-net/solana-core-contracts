@@ -119,7 +119,7 @@ export class TokenBalanceService {
   }
 
   /**
-   * Fetch user balances from Solana bridge contract
+   * Fetch user balances from Solana contract
    */
   async fetchUserBalances(publicKey: PublicKey): Promise<TokenBalance[]> {
     try {
@@ -152,7 +152,7 @@ export class TokenBalanceService {
   }
 
   /**
-   * Fetch single user balance from Solana bridge contract
+   * Fetch single user balance from Solana contract
    */
   async fetchUserBalance(
     publicKey: PublicKey,

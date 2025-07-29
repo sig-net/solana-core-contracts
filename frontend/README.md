@@ -1,4 +1,6 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cross-Chain Wallet Frontend
+
+This is a [Next.js](https://nextjs.org) project for a cross-chain wallet that allows users to manage ERC20 tokens across Ethereum and Solana from a unified Solana-based interface.
 
 ## Getting Started
 

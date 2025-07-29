@@ -17,7 +17,7 @@ import { SYSTEM_PROGRAM_ID } from '@/lib/constants/service.constants';
 
 /**
  * BridgeContract class handles all low-level contract interactions,
- * PDA derivations, and account management for the bridge program.
+ * PDA derivations, and account management for the cross-chain wallet program.
  */
 export class BridgeContract {
   private program: Program<SolanaCoreContracts> | null = null;
@@ -28,7 +28,7 @@ export class BridgeContract {
   ) {}
 
   /**
-   * Get the bridge program instance
+   * Get the core contracts program instance
    */
   private getBridgeProgram(): Program<SolanaCoreContracts> {
     if (!this.program) {
@@ -405,7 +405,7 @@ export class BridgeContract {
 
             if (!tx || !tx.meta || tx.meta.err) continue;
 
-            // Check if this transaction involves the bridge program
+            // Check if this transaction involves the core contracts program
             const accountKeys = tx.transaction.message.staticAccountKeys;
 
             // Find instructions for our program

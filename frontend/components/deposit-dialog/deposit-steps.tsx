@@ -91,7 +91,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
             },
           });
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Bridge failed');
+          setError(err instanceof Error ? err.message : 'Deposit failed');
           setDepositStatus('failed');
         }
       };
@@ -113,7 +113,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
       {
         id: 'send',
         title: 'Balance detected',
-        description: `${token.symbol} available for bridging`,
+        description: `${token.symbol} available for deposit`,
         status:
           availableBalance && parseFloat(availableBalance) > 0
             ? 'completed'
@@ -124,8 +124,8 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
       },
       {
         id: 'bridge',
-        title: 'Bridging to Solana',
-        description: 'Processing through bridge',
+        title: 'Processing Deposit',
+        description: 'Transferring to your account',
         status: hasStartedBridge
           ? ['completed'].includes(depositStatus)
             ? 'completed'
@@ -141,7 +141,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
             rel='noopener noreferrer'
             className='flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800'
           >
-            View bridge transaction
+            View transaction
             <ExternalLink className='h-3 w-3' />
           </a>
         ),

@@ -10,7 +10,7 @@ export interface Point {
 
 /**
  * CryptographyService handles all cryptographic operations for key derivation
- * and address generation in the bridge system.
+ * and address generation in the cross-chain wallet system.
  */
 export class CryptographyService {
   /**

@@ -57,7 +57,7 @@ export function WithdrawSteps({
       {
         id: 'bridge',
         title: 'Processing withdrawal',
-        description: 'MPC signature & Ethereum submission',
+        description: 'MPC signature & transaction submission',
         status: ['completing_withdrawal', 'completed'].includes(status)
           ? 'completed'
           : [

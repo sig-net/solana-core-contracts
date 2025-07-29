@@ -1,6 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 
-// Bridge Program ID
+// Solana Core Contracts Program ID
 export const BRIDGE_PROGRAM_ID = new PublicKey(
   'GDMMWC3YiZEffb2u5dw6FTLRY5wV5vAcXP72LRAJaVhK',
 );

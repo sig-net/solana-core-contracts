@@ -67,7 +67,7 @@ export function BalanceSection() {
         <EmptyState
           icon={Package}
           title='No tokens found'
-          description='Deposit some tokens to get started with the bridge.'
+          description='Deposit some tokens to get started managing your portfolio.'
           compact
           action={
             <Button onClick={handleDepositClick} variant='default'>

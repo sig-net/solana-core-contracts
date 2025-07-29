@@ -15,7 +15,7 @@ export function ActionButtons({
 }: ActionButtonsProps) {
   return (
     <div className='flex items-center gap-4'>
-      <Button variant='default' size='default' onClick={onSwapClick}>
+      <Button variant='default' size='default' disabled onClick={onSwapClick}>
         <ArrowUpDown className='h-3 w-3' />
         Swap
       </Button>

@@ -11,7 +11,7 @@ export interface StatusCallback {
 // Alias for deposit operations
 export type DepositStatusCallback = StatusCallback;
 
-// Alias for withdrawal operations  
+// Alias for withdrawal operations
 export type WithdrawalStatusCallback = StatusCallback;
 
 // Base props for loading states

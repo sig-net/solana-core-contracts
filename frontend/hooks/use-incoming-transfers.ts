@@ -8,7 +8,7 @@ import {
   AssetTransfersCategory,
   SortingOrder,
 } from 'alchemy-sdk';
-import { ERC20_ADDRESSES } from '@/lib/constants/ethereum.constants';
+import { ALL_TOKENS } from '@/lib/constants/token-metadata';
 import { queryKeys } from '@/lib/query-client';
 import { useDepositAddress } from './use-deposit-address';
 import { useEnv } from './use-env';
@@ -34,9 +34,7 @@ async function fetchTransfersFromAlchemy(
     network: Network.ETH_SEPOLIA,
   });
 
-  const supportedTokens = Object.values(ERC20_ADDRESSES).map(addr =>
-    addr.toLowerCase(),
-  );
+  const supportedTokens = ALL_TOKENS.map(token => token.address.toLowerCase());
 
   const response = await alchemy.core.getAssetTransfers({
     fromBlock: '0x0',

@@ -1,11 +1,14 @@
 'use client';
 
-import { DEPOSIT_TOKENS, DepositToken } from '@/lib/constants/deposit-tokens';
+import {
+  SUPPORTED_TOKENS,
+  DepositTokenMetadata,
+} from '@/lib/constants/token-metadata';
 
 import { TokenListItem } from './token-list-item';
 
 interface TokenSelectionProps {
-  onTokenSelect: (token: DepositToken) => void;
+  onTokenSelect: (token: DepositTokenMetadata) => void;
 }
 
 export function TokenSelection({ onTokenSelect }: TokenSelectionProps) {
@@ -17,7 +20,7 @@ export function TokenSelection({ onTokenSelect }: TokenSelectionProps) {
 
       {/* Token List */}
       <div className='space-y-3 overflow-y-auto'>
-        {DEPOSIT_TOKENS.map((token, index) => (
+        {SUPPORTED_TOKENS.map((token, index) => (
           <TokenListItem
             key={`${token.chain}-${token.address}-${index}`}
             symbol={token.symbol}

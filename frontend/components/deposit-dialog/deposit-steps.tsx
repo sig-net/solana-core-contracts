@@ -7,13 +7,13 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { Button } from '@/components/ui/button';
 import { Steps, Step } from '@/components/ui/steps';
 import { CryptoIcon } from '@/components/balance-display/crypto-icon';
-import { DepositToken } from '@/lib/constants/deposit-tokens';
+import { DepositTokenMetadata } from '@/lib/constants/token-metadata';
 import { useDepositErc20Mutation } from '@/hooks/use-deposit-erc20-mutation';
 import { useSolanaService } from '@/hooks/use-solana-service';
 import { DepositStatus } from '@/lib/types/bridge.types';
 
 interface DepositStepsProps {
-  token: DepositToken;
+  token: DepositTokenMetadata;
   onBack: () => void;
   onClose: () => void;
 }
@@ -125,7 +125,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
       {
         id: 'bridge',
         title: 'Processing Deposit',
-        description: 'Transferring to your account',
+        description: 'MPC signature & transaction submission',
         status: hasStartedBridge
           ? ['completed'].includes(depositStatus)
             ? 'completed'
@@ -180,7 +180,7 @@ export function DepositSteps({ token, onBack, onClose }: DepositStepsProps) {
         <CryptoIcon
           chain={token.chain}
           token={token.symbol}
-          className='h-6 w-6'
+          className='size-6'
         />
         <div className='min-w-0 flex-1'>
           <p className='text-dark-neutral-900 truncate text-sm font-medium'>

@@ -7,8 +7,7 @@ import type {
   UnclaimedTokenBalance,
 } from '@/lib/types/token.types';
 import { getPublicClient } from '@/lib/viem/providers';
-import { getTokenMetadata } from '@/lib/constants/token-metadata';
-import { COMMON_ERC20_ADDRESSES } from '@/lib/constants/ethereum.constants';
+import { getTokenMetadata, ALL_TOKENS } from '@/lib/constants/token-metadata';
 import type { BridgeContract } from '@/lib/contracts/bridge-contract';
 
 /**
@@ -88,12 +87,12 @@ export class TokenBalanceService {
     derivedAddress: string,
   ): Promise<UnclaimedTokenBalance[]> {
     try {
-      const commonErc20Addresses = [...COMMON_ERC20_ADDRESSES] as string[];
+      const tokenAddresses = ALL_TOKENS.map(token => token.address);
 
       // Use batch fetching to reduce RPC calls
       const batchResults = await this.batchFetchErc20Balances(
         derivedAddress,
-        commonErc20Addresses,
+        tokenAddresses,
       );
 
       const results: UnclaimedTokenBalance[] = [];
@@ -123,9 +122,9 @@ export class TokenBalanceService {
    */
   async fetchUserBalances(publicKey: PublicKey): Promise<TokenBalance[]> {
     try {
-      const commonErc20Addresses = [...COMMON_ERC20_ADDRESSES] as string[];
+      const tokenAddresses = ALL_TOKENS.map(token => token.address);
 
-      const balancesPromises = commonErc20Addresses.map(async erc20Address => {
+      const balancesPromises = tokenAddresses.map(async erc20Address => {
         const balance = await this.bridgeContract.fetchUserBalance(
           publicKey,
           erc20Address,

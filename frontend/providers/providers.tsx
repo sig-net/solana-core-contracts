@@ -8,7 +8,11 @@ import {
   ConnectionProvider,
   WalletProvider,
 } from '@solana/wallet-adapter-react';
-import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
+import {
+  PhantomWalletAdapter,
+  SolflareWalletAdapter,
+} from '@solana/wallet-adapter-wallets';
+import { WalletConnectWalletAdapter } from '@walletconnect/solana-adapter';
 import { WagmiProvider } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -40,7 +44,20 @@ export function Providers({ children }: ProvidersProps) {
     [network],
   );
 
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
+  // Configure wallets following Reown documentation
+  const wallets = useMemo(
+    () => [
+      new PhantomWalletAdapter(),
+      new SolflareWalletAdapter(),
+      new WalletConnectWalletAdapter({
+        network: network,
+        options: {
+          projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || '',
+        },
+      }),
+    ],
+    [network],
+  );
 
   return (
     <QueryClientProvider client={queryClient}>

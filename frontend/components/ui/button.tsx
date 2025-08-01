@@ -19,8 +19,8 @@ const buttonVariants = cva(
         disabled: 'bg-clam-shell-100 border-clam-shell-500 text-clam-shell-500',
       },
       size: {
-        default: 'h-8 px-3 py-2',
-        sm: 'h-7 px-2.5 py-1.5 text-xs',
+        default: 'h-8 p-2',
+        sm: 'h-7 p-2.5 py-1.5 text-xs',
         lg: 'h-10 px-4 py-2.5',
         icon: 'size-8',
       },

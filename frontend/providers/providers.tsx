@@ -49,12 +49,12 @@ export function Providers({ children }: ProvidersProps) {
     () => [
       new PhantomWalletAdapter(),
       new SolflareWalletAdapter(),
-      new WalletConnectWalletAdapter({
-        network: network,
-        options: {
-          projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || '',
-        },
-      }),
+      // new WalletConnectWalletAdapter({
+      //   network: network,
+      //   options: {
+      //     projectId: process.env.NEXT_PUBLIC_WALLET_CONNECT_PROJECT_ID || '',
+      //   },
+      // }),
     ],
     [network],
   );

@@ -15,25 +15,12 @@ import { formatAddress } from '@/lib/address-utils';
 
 export function WalletButton() {
   const { setVisible: setModalVisible } = useWalletModal();
-  const { buttonState, onConnect, onDisconnect, publicKey } = useWalletMultiButton({
-    onSelectWallet() {
-      setModalVisible(true);
-    },
-  });
-
-  const handleClick = () => {
-    switch (buttonState) {
-      case 'no-wallet':
+  const { buttonState, onConnect, onSelectWallet, onDisconnect, publicKey } =
+    useWalletMultiButton({
+      onSelectWallet() {
         setModalVisible(true);
-        break;
-      case 'has-wallet':
-        // has-wallet state is handled by dropdown
-        break;
-      case 'connected':
-        // Connected state is handled by dropdown
-        break;
-    }
-  };
+      },
+    });
 
   if (buttonState === 'connecting') {
     return (
@@ -44,59 +31,37 @@ export function WalletButton() {
     );
   }
 
-  if (buttonState === 'connected' && publicKey) {
+  if (buttonState === 'has-wallet' || buttonState === 'connected') {
     return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+      <div className='flex items-center gap-2'>
+        {buttonState === 'connected' && publicKey && (
           <Button variant='outline' className='gap-2 font-medium'>
             <Wallet className='h-4 w-4' />
             {formatAddress(publicKey.toString(), 4, 4)}
-            <ChevronDown className='h-3 w-3' />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align='end'>
-          <DropdownMenuItem onClick={() => setModalVisible(true)}>
-            <RefreshCw className='mr-2 h-4 w-4' />
-            Change Wallet
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onDisconnect} className='text-red-500'>
-            <LogOut className='mr-2 h-4 w-4' />
-            Disconnect
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    );
-  }
-
-  // For has-wallet state, show dropdown with connect and disconnect options
-  if (buttonState === 'has-wallet') {
-    return (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button className='gap-2 font-medium'>
+        )}
+        {buttonState === 'has-wallet' && !publicKey && (
+          <Button onClick={onConnect} className='gap-2 font-medium'>
             <Wallet className='h-4 w-4' />
             Connect
-            <ChevronDown className='h-3 w-3' />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align='end'>
-          <DropdownMenuItem onClick={onConnect}>
-            <Wallet className='mr-2 h-4 w-4' />
-            Connect
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onDisconnect} className='text-red-500'>
-            <LogOut className='mr-2 h-4 w-4' />
-            Disconnect
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        )}
+        <Button
+          variant='outline'
+          onClick={onDisconnect}
+          className='border-red-200 bg-red-50 font-medium text-red-600'
+          title='Disconnect wallet'
+        >
+          <LogOut className='h-4 w-4' />
+        </Button>
+      </div>
     );
   }
 
   return (
-    <Button onClick={handleClick} className='font-medium'>
+    <Button onClick={onSelectWallet} className='font-medium'>
       <Wallet className='mr-2 h-4 w-4' />
-      Connect Wallet
+      Select Wallet
     </Button>
   );
 }

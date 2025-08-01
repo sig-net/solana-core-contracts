@@ -2,7 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 
 // Solana Core Contracts Program ID
 export const BRIDGE_PROGRAM_ID = new PublicKey(
-  'GDMMWC3YiZEffb2u5dw6FTLRY5wV5vAcXP72LRAJaVhK',
+  'aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS',
 );
 
 // PDA Seeds

@@ -2,15 +2,9 @@
 
 import { useWalletMultiButton } from '@solana/wallet-adapter-base-ui';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { Wallet, ChevronDown, LogOut, RefreshCw } from 'lucide-react';
+import { Wallet, LogOut } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { formatAddress } from '@/lib/address-utils';
 
 export function WalletButton() {

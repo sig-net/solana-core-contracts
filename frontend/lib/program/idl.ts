@@ -1,5 +1,5 @@
 export type SolanaCoreContracts = {
-  address: 'GDMMWC3YiZEffb2u5dw6FTLRY5wV5vAcXP72LRAJaVhK';
+  address: 'aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS';
   metadata: {
     name: 'solanaCoreContracts';
     version: '0.1.0';
@@ -12,7 +12,7 @@ export type SolanaCoreContracts = {
       discriminator: [137, 119, 173, 96, 103, 202, 227, 33];
       accounts: [
         {
-          name: 'authority';
+          name: 'payer';
           writable: true;
           signer: true;
         },
@@ -89,7 +89,7 @@ export type SolanaCoreContracts = {
       discriminator: [108, 220, 227, 17, 212, 248, 163, 74];
       accounts: [
         {
-          name: 'authority';
+          name: 'payer';
           writable: true;
           signer: true;
         },
@@ -169,12 +169,12 @@ export type SolanaCoreContracts = {
       discriminator: [22, 2, 82, 3, 29, 137, 71, 85];
       accounts: [
         {
-          name: 'authority';
+          name: 'payer';
           writable: true;
           signer: true;
         },
         {
-          name: 'requester';
+          name: 'requesterPda';
           writable: true;
           pda: {
             seeds: [
@@ -199,8 +199,8 @@ export type SolanaCoreContracts = {
                 ];
               },
               {
-                kind: 'account';
-                path: 'authority';
+                kind: 'arg';
+                path: 'requester';
               },
             ];
           };
@@ -298,6 +298,10 @@ export type SolanaCoreContracts = {
           type: {
             array: ['u8', 32];
           };
+        },
+        {
+          name: 'requester';
+          type: 'pubkey';
         },
         {
           name: 'erc20Address';
@@ -1127,7 +1131,7 @@ export type SolanaCoreContracts = {
 };
 
 export const IDL: SolanaCoreContracts = {
-  address: 'GDMMWC3YiZEffb2u5dw6FTLRY5wV5vAcXP72LRAJaVhK',
+  address: 'aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS',
   metadata: {
     name: 'solanaCoreContracts',
     version: '0.1.0',
@@ -1140,7 +1144,7 @@ export const IDL: SolanaCoreContracts = {
       discriminator: [137, 119, 173, 96, 103, 202, 227, 33],
       accounts: [
         {
-          name: 'authority',
+          name: 'payer',
           writable: true,
           signer: true,
         },
@@ -1198,7 +1202,7 @@ export const IDL: SolanaCoreContracts = {
       discriminator: [108, 220, 227, 17, 212, 248, 163, 74],
       accounts: [
         {
-          name: 'authority',
+          name: 'payer',
           writable: true,
           signer: true,
         },
@@ -1256,12 +1260,12 @@ export const IDL: SolanaCoreContracts = {
       discriminator: [22, 2, 82, 3, 29, 137, 71, 85],
       accounts: [
         {
-          name: 'authority',
+          name: 'payer',
           writable: true,
           signer: true,
         },
         {
-          name: 'requester',
+          name: 'requesterPda',
           writable: true,
           pda: {
             seeds: [
@@ -1273,8 +1277,8 @@ export const IDL: SolanaCoreContracts = {
                 ],
               },
               {
-                kind: 'account',
-                path: 'authority',
+                kind: 'arg',
+                path: 'requester',
               },
             ],
           },
@@ -1341,6 +1345,10 @@ export const IDL: SolanaCoreContracts = {
           type: {
             array: ['u8', 32],
           },
+        },
+        {
+          name: 'requester',
+          type: 'pubkey',
         },
         {
           name: 'erc20Address',

@@ -195,34 +195,38 @@ export class BridgeContract {
    * Call depositErc20 method with all accounts prepared
    */
   async depositErc20({
-    authority,
+    requester,
+    payer,
     requestIdBytes,
     erc20AddressBytes,
     amount,
     evmParams,
   }: {
-    authority: PublicKey;
+    requester: PublicKey;
+    payer?: PublicKey;
     requestIdBytes: number[];
     erc20AddressBytes: number[];
     amount: BN;
     evmParams: any;
   }): Promise<string> {
-    const [vaultAuthority] = this.deriveVaultAuthorityPda(authority);
+    const payerKey = payer;
+    const [requesterPda] = this.deriveVaultAuthorityPda(requester);
     const [pendingDepositPda] = this.derivePendingDepositPda(requestIdBytes);
     const [chainSignaturesStatePda] = this.deriveChainSignaturesStatePda();
 
     return await this.getBridgeProgram()
       .methods.depositErc20(
         requestIdBytes,
+        requester,
         erc20AddressBytes,
         amount,
         evmParams,
       )
       .accounts({
-        authority,
-        requester: vaultAuthority,
+        payer: payerKey,
+        requesterPda: requesterPda,
         pendingDeposit: pendingDepositPda,
-        feePayer: authority,
+        feePayer: payerKey,
         chainSignaturesState: chainSignaturesStatePda,
         chainSignaturesProgram: CHAIN_SIGNATURES_PROGRAM_ID,
         systemProgram: SYSTEM_PROGRAM_ID,
@@ -235,21 +239,24 @@ export class BridgeContract {
    * Call claimErc20 method with all accounts prepared
    */
   async claimErc20({
-    authority,
+    payer,
     requestIdBytes,
     serializedOutput,
     signature,
     erc20AddressBytes,
+    requester,
   }: {
-    authority: PublicKey;
+    payer?: PublicKey;
     requestIdBytes: number[];
     serializedOutput: number[];
     signature: any;
     erc20AddressBytes: number[];
+    requester: PublicKey;
   }): Promise<string> {
+    const payerKey = payer || this.wallet.publicKey;
     const [pendingDepositPda] = this.derivePendingDepositPda(requestIdBytes);
     const erc20Bytes = Buffer.from(erc20AddressBytes);
-    const [userBalancePda] = this.deriveUserBalancePda(authority, erc20Bytes);
+    const [userBalancePda] = this.deriveUserBalancePda(requester, erc20Bytes);
 
     return await this.getBridgeProgram()
       .methods.claimErc20(
@@ -258,7 +265,7 @@ export class BridgeContract {
         signature,
       )
       .accounts({
-        authority,
+        payer: payerKey,
         pendingDeposit: pendingDepositPda,
         userBalance: userBalancePda,
         systemProgram: SYSTEM_PROGRAM_ID,
@@ -315,23 +322,25 @@ export class BridgeContract {
    * Complete ERC20 withdrawal
    */
   async completeWithdrawErc20({
-    authority,
+    payer,
     requestIdBytes,
     serializedOutput,
     signature,
     erc20AddressBytes,
+    requester,
   }: {
-    authority: PublicKey;
+    payer?: PublicKey;
     requestIdBytes: number[];
     serializedOutput: number[];
     signature: any;
     erc20AddressBytes: number[];
+    requester: PublicKey;
   }): Promise<string> {
-    const [globalVaultAuthority] = this.deriveGlobalVaultAuthorityPda();
+    const payerKey = payer || this.wallet.publicKey;
     const [pendingWithdrawalPda] =
       this.derivePendingWithdrawalPda(requestIdBytes);
     const erc20Bytes = Buffer.from(erc20AddressBytes);
-    const [userBalancePda] = this.deriveUserBalancePda(authority, erc20Bytes);
+    const [userBalancePda] = this.deriveUserBalancePda(requester, erc20Bytes);
 
     return await this.getBridgeProgram()
       .methods.completeWithdrawErc20(
@@ -340,12 +349,9 @@ export class BridgeContract {
         signature,
       )
       .accounts({
-        authority,
-        requester: globalVaultAuthority,
+        payer: payerKey,
         pendingWithdrawal: pendingWithdrawalPda,
         userBalance: userBalancePda,
-        chainSignaturesState: this.deriveChainSignaturesStatePda()[0],
-        chainSignaturesProgram: CHAIN_SIGNATURES_PROGRAM_ID,
         systemProgram: SYSTEM_PROGRAM_ID,
       } as any)
       .rpc();

@@ -33,15 +33,12 @@ export class SolanaService {
     this.tokenBalanceService = new TokenBalanceService(this.bridgeContract);
     this.depositService = new DepositService(
       this.bridgeContract,
-      this.chainSignaturesContract,
       this.tokenBalanceService,
       wallet,
     );
     this.withdrawalService = new WithdrawalService(
       this.bridgeContract,
-      this.chainSignaturesContract,
       this.tokenBalanceService,
-      wallet,
     );
   }
 
@@ -118,22 +115,6 @@ export class SolanaService {
       amount,
       recipientAddress,
       onStatusChange,
-    );
-  }
-
-  async claimErc20(publicKey: PublicKey, requestId: string): Promise<string> {
-    return this.depositService.claimErc20(publicKey, requestId);
-  }
-
-  async completeWithdraw(
-    publicKey: PublicKey,
-    requestId: string,
-    erc20Address: string,
-  ): Promise<string> {
-    return this.withdrawalService.completeWithdraw(
-      publicKey,
-      requestId,
-      erc20Address,
     );
   }
 

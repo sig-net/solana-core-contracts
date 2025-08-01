@@ -12,7 +12,7 @@ pub use state::*;
 pub mod schema_helper;
 use ::chain_signatures::Signature;
 
-declare_id!("GDMMWC3YiZEffb2u5dw6FTLRY5wV5vAcXP72LRAJaVhK");
+declare_id!("aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS");
 
 #[program]
 pub mod solana_core_contracts {
@@ -37,11 +37,19 @@ pub mod solana_core_contracts {
     pub fn deposit_erc20(
         ctx: Context<DepositErc20>,
         request_id: [u8; 32],
+        requester: Pubkey,
         erc20_address: [u8; 20],
         amount: u128,
         tx_params: EvmTransactionParams,
     ) -> Result<()> {
-        instructions::erc20_vault::deposit_erc20(ctx, request_id, erc20_address, amount, tx_params)
+        instructions::erc20_vault::deposit_erc20(
+            ctx,
+            request_id,
+            requester,
+            erc20_address,
+            amount,
+            tx_params,
+        )
     }
 
     pub fn claim_erc20(
@@ -95,21 +103,21 @@ pub mod solana_core_contracts {
 }
 
 #[derive(Accounts)]
-#[instruction(request_id: [u8; 32], erc20_address: [u8; 20], amount: u128, tx_params: EvmTransactionParams)]
+#[instruction(request_id: [u8; 32], requester: Pubkey, erc20_address: [u8; 20], amount: u128, tx_params: EvmTransactionParams)]
 pub struct DepositErc20<'info> {
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub payer: Signer<'info>,
 
     #[account(
         mut,
-        seeds = [b"vault_authority", authority.key().as_ref()],
+        seeds = [b"vault_authority", requester.as_ref()],
         bump
     )]
-    pub requester: SystemAccount<'info>,
+    pub requester_pda: SystemAccount<'info>,
 
     #[account(
         init,
-        payer = authority,
+        payer = payer,
         space = PendingErc20Deposit::space(),
         seeds = [
             b"pending_erc20_deposit",
@@ -141,7 +149,7 @@ pub struct DepositErc20<'info> {
 #[instruction(request_id: [u8; 32])]
 pub struct ClaimErc20<'info> {
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub payer: Signer<'info>,
 
     #[account(
         mut,
@@ -150,16 +158,13 @@ pub struct ClaimErc20<'info> {
             &request_id
         ],
         bump,
-        close = authority,
-        // Remove has_one = requester, as pending_deposit doesn't have a requester field
-        // Instead, add a constraint to check the authority matches
-        constraint = pending_deposit.requester == authority.key()
+        close = payer
     )]
     pub pending_deposit: Account<'info, PendingErc20Deposit>,
 
     #[account(
         init_if_needed,
-        payer = authority,
+        payer = payer,
         space = UserErc20Balance::space(),
         seeds = [
             b"user_erc20_balance",
@@ -234,7 +239,7 @@ pub struct WithdrawErc20<'info> {
 #[instruction(request_id: [u8; 32])]
 pub struct CompleteWithdrawErc20<'info> {
     #[account(mut)]
-    pub authority: Signer<'info>,
+    pub payer: Signer<'info>,
 
     #[account(
         mut,
@@ -243,8 +248,7 @@ pub struct CompleteWithdrawErc20<'info> {
             &request_id
         ],
         bump,
-        close = authority,
-        constraint = pending_withdrawal.requester == authority.key()
+        close = payer
     )]
     pub pending_withdrawal: Account<'info, PendingErc20Withdrawal>,
 

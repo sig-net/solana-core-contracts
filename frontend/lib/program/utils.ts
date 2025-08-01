@@ -185,7 +185,7 @@ function derivePublicKey(
 export function deriveUserEthereumAddress(publicKey: PublicKey): string {
   // Derive vault authority PDA (matches test file)
   const PROGRAM_ID = new PublicKey(
-    'GDMMWC3YiZEffb2u5dw6FTLRY5wV5vAcXP72LRAJaVhK',
+    'aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS',
   );
   const [vaultAuthority] = PublicKey.findProgramAddressSync(
     [Buffer.from('vault_authority'), publicKey.toBuffer()],

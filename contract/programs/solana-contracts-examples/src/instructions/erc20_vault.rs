@@ -29,12 +29,12 @@ pub struct Erc20TransferResult {
 pub fn deposit_erc20(
     ctx: Context<DepositErc20>,
     request_id: [u8; 32],
+    requester: Pubkey,
     erc20_address: [u8; 20],
     amount: u128,
     tx_params: EvmTransactionParams,
 ) -> Result<()> {
-    let authority = ctx.accounts.authority.key();
-    let path = authority.to_string();
+    let path = requester.to_string();
 
     // Create ERC20 transfer call
     let recipient_bytes = hex::decode(&HARDCODED_RECIPIENT[2..])
@@ -61,7 +61,7 @@ pub fn deposit_erc20(
 
     // Add detailed logging
     msg!("=== REQUEST ID CALCULATION DEBUG ===");
-    msg!("Sender (requester): {}", ctx.accounts.requester.key());
+    msg!("Sender (requester): {}", ctx.accounts.requester_pda.key());
     msg!("Transaction data length: {}", rlp_encoded_tx.len());
     msg!(
         "Transaction data (first 32 bytes): {:?}",
@@ -76,7 +76,7 @@ pub fn deposit_erc20(
 
     // Generate request ID and verify it matches the one passed in
     let computed_request_id = generate_sign_respond_request_id(
-        &ctx.accounts.requester.key(),
+        &ctx.accounts.requester_pda.key(),
         &rlp_encoded_tx,
         60, // Ethereum SLIP-44
         0,  // key_version
@@ -97,7 +97,7 @@ pub fn deposit_erc20(
 
     // Store pending deposit info
     let pending = &mut ctx.accounts.pending_deposit;
-    pending.requester = authority;
+    pending.requester = requester;
     pending.amount = amount;
     pending.erc20_address = erc20_address;
     pending.path = path.clone();
@@ -117,12 +117,11 @@ pub fn deposit_erc20(
         .map_err(|_| crate::error::ErrorCode::SerializationError)?;
 
     // CPI to sign_respond
-    let authority_key = ctx.accounts.authority.key();
-    let requester_bump = ctx.bumps.requester;
-    let authority_key_bytes = authority_key.to_bytes();
+    let requester_key_bytes = requester.to_bytes();
+    let requester_bump = ctx.bumps.requester_pda;
     let signer_seeds: &[&[&[u8]]] = &[&[
         b"vault_authority",
-        authority_key_bytes.as_ref(),
+        requester_key_bytes.as_ref(),
         &[requester_bump],
     ]];
 
@@ -130,7 +129,7 @@ pub fn deposit_erc20(
         ctx.accounts.chain_signatures_program.to_account_info(),
         SignRespond {
             program_state: ctx.accounts.chain_signatures_state.to_account_info(),
-            requester: ctx.accounts.requester.to_account_info(),
+            requester: ctx.accounts.requester_pda.to_account_info(),
             fee_payer: ctx
                 .accounts
                 .fee_payer

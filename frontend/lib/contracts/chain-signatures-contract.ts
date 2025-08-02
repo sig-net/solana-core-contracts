@@ -3,7 +3,6 @@ import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import type { Hex } from 'viem';
 
 import { CHAIN_SIGNATURES_PROGRAM_IDl } from '../program/idl_chain_sig';
-import { CHAIN_SIGNATURES_PROGRAM_ID } from '../constants/chain-signatures.constants';
 import type {
   ChainSignaturesProgram,
   ChainSignaturesSignature,
@@ -38,13 +37,6 @@ export class ChainSignaturesContract {
       CHAIN_SIGNATURES_PROGRAM_IDl,
       provider,
     ) as ChainSignaturesProgram;
-  }
-
-  /**
-   * Get the program ID
-   */
-  get programId() {
-    return CHAIN_SIGNATURES_PROGRAM_ID;
   }
 
   /**

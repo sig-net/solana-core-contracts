@@ -5,14 +5,25 @@ import { ethers } from 'ethers';
 
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { ChainSignaturesContract } from '@/lib/contracts/chain-signatures-contract';
+import type { ChainSignaturesSignature } from '@/lib/types/chain-signatures.types';
 
 export async function POST(request: NextRequest) {
   try {
-    const { requestId, erc20Address } = await request.json();
+    const { requestId, erc20Address, transactionParams } = await request.json();
 
     if (!requestId || !erc20Address) {
       return NextResponse.json(
         { error: 'Missing required fields: requestId and erc20Address' },
+        { status: 400 },
+      );
+    }
+
+    if (!transactionParams) {
+      return NextResponse.json(
+        {
+          error:
+            'Missing transactionParams - required for exact transaction reconstruction',
+        },
         { status: 400 },
       );
     }
@@ -34,7 +45,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Return success immediately and process in background
-    processWithdrawalInBackground(requestId, erc20Address);
+    processWithdrawalInBackground(requestId, erc20Address, transactionParams);
 
     return NextResponse.json({
       success: true,
@@ -54,6 +65,17 @@ export async function POST(request: NextRequest) {
 async function processWithdrawalInBackground(
   requestId: string,
   erc20Address: string,
+  transactionParams: {
+    type: number;
+    chainId: number;
+    nonce: number;
+    maxPriorityFeePerGas: string;
+    maxFeePerGas: string;
+    gasLimit: string;
+    to: string;
+    value: string;
+    data: string;
+  },
 ) {
   try {
     // Set up relayer wallet and contracts
@@ -98,17 +120,38 @@ async function processWithdrawalInBackground(
     const alchemyUrl = `https://eth-sepolia.g.alchemy.com/v2/${alchemyKey}`;
     const provider = new ethers.JsonRpcProvider(alchemyUrl);
 
-    await waitForReadResponseAndCompleteWithdrawal(
-      chainSignaturesContract,
+    // Phase 1: Wait for signature and submit to Ethereum immediately
+    const { signature, ethereumTxHash, blockNumber, gasUsed } =
+      await waitForSignatureAndSubmitToEthereum(
+        chainSignaturesContract,
+        bridgeContract,
+        provider,
+        requestId,
+        erc20Address,
+        transactionParams,
+      );
+
+    console.log(
+      `[WITHDRAW_RELAYER] Phase 1 complete - Ethereum tx: ${ethereumTxHash} confirmed in block ${blockNumber}`,
+    );
+
+    // Phase 2: Complete on Solana (we already have the read response from Phase 1)
+    console.log(
+      `[WITHDRAW_RELAYER] Phase 2 starting - completing withdrawal on Solana`,
+    );
+    await completeWithdrawalOnSolana(
       bridgeContract,
-      provider,
       requestId,
       erc20Address,
+      signature,
     );
 
     console.log('Withdrawal processing completed:', {
       requestId,
       erc20Address,
+      ethereumTxHash,
+      ethereumBlockNumber: blockNumber,
+      gasUsed: gasUsed?.toString(),
       completedBy: relayerWallet.publicKey.toString(),
     });
   } catch (error) {
@@ -121,83 +164,52 @@ async function processWithdrawalInBackground(
   }
 }
 
-async function waitForReadResponseAndCompleteWithdrawal(
+interface SignatureAndTxHash {
+  signature: ChainSignaturesSignature;
+  ethereumTxHash: string;
+  blockNumber?: number;
+  gasUsed?: bigint;
+}
+
+async function waitForSignatureAndSubmitToEthereum(
   chainSignaturesContract: ChainSignaturesContract,
   bridgeContract: BridgeContract,
   provider: ethers.JsonRpcProvider,
   requestId: string,
   erc20Address: string,
-): Promise<void> {
-  // Wait for read response event
-  let readEvent = null;
-  const maxAttempts = 60; // Reduced from 120 (was 10 minutes, now ~8 minutes with adaptive polling)
-  let pollingInterval = 10000; // Start with 10 seconds instead of 5
-  let consecutiveFailures = 0;
-
+  transactionParams: {
+    type: number;
+    chainId: number;
+    nonce: number;
+    maxPriorityFeePerGas: string;
+    maxFeePerGas: string;
+    gasLimit: string;
+    to: string;
+    value: string;
+    data: string;
+  },
+): Promise<SignatureAndTxHash> {
   console.log(
-    `[WITHDRAW_COMPLETE] Waiting for read response event for request ${requestId}`,
+    `[WITHDRAW_SIGNATURE] Starting signature-first flow - using EXACT transaction params from frontend`,
   );
 
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      readEvent =
-        await chainSignaturesContract.findReadResponseEventInLogs(requestId);
-      if (readEvent) {
-        console.log(
-          `[WITHDRAW_COMPLETE] Read response event found on attempt ${i + 1}`,
-        );
-        break;
-      }
+  // Step 1: Wait for signature event only
+  const signatureData = await waitForSignatureEvent(
+    chainSignaturesContract,
+    requestId,
+  );
 
-      // Reset failure count on successful call
-      consecutiveFailures = 0;
+  console.log(
+    `[WITHDRAW_SIGNATURE] Got signature for ${requestId}, using exact frontend transaction`,
+  );
 
-      // Gradually increase polling interval to reduce API calls
-      pollingInterval = Math.min(pollingInterval * 1.05, 25000); // Max 25 seconds
-    } catch (pollError) {
-      console.warn(
-        `[WITHDRAW_COMPLETE] Error during polling attempt ${i + 1}:`,
-        pollError,
-      );
-      consecutiveFailures++;
-
-      // Increase interval after failures to avoid hammering the API
-      if (consecutiveFailures >= 3) {
-        pollingInterval = Math.min(pollingInterval * 2, 45000); // Max 45 seconds
-        consecutiveFailures = 0; // Reset to prevent exponential growth
-      }
-    }
-
-    if (i < maxAttempts - 1) {
-      const nextPollTime = Math.round(pollingInterval / 1000);
-      console.log(
-        `[WITHDRAW_COMPLETE] Attempt ${i + 1}/${maxAttempts}, checking again in ${nextPollTime}s...`,
-      );
-      await new Promise(resolve => setTimeout(resolve, pollingInterval));
-    }
-  }
-
-  if (!readEvent) {
-    const timeoutDuration = (maxAttempts * pollingInterval) / 1000;
-    console.error('[WITHDRAW_COMPLETE] Read response event timeout:', {
-      requestId,
-      maxAttempts,
-      timeoutSeconds: timeoutDuration,
-    });
-    throw new Error(
-      `Read response event not found within timeout (${timeoutDuration}s)`,
-    );
-  }
-
-  // Extract Ethereum signature and submit withdrawal transaction
+  // Step 2: Extract Ethereum signature
   let ethereumSignature;
   try {
-    ethereumSignature = chainSignaturesContract.extractSignature(
-      readEvent.signature,
-    );
+    ethereumSignature = chainSignaturesContract.extractSignature(signatureData);
   } catch (sigError) {
     console.error(
-      '[WITHDRAW_COMPLETE] Failed to extract Ethereum signature:',
+      '[WITHDRAW_SIGNATURE] Failed to extract Ethereum signature:',
       sigError,
     );
     throw new Error(
@@ -205,44 +217,79 @@ async function waitForReadResponseAndCompleteWithdrawal(
     );
   }
 
-  // Get the transaction details from readEvent.serializedOutput
-  let tempTx;
-  try {
-    tempTx = ethers.Transaction.from(
-      ethers.hexlify(new Uint8Array(readEvent.serializedOutput)),
-    );
-  } catch (parseError) {
-    console.error(
-      '[WITHDRAW_COMPLETE] Failed to parse transaction:',
-      parseError,
-    );
-    throw new Error(
-      `Transaction parsing failed: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`,
-    );
-  }
+  // Step 3: Use the EXACT transaction parameters from frontend (no reconstruction!)
+  const exactTx = {
+    type: transactionParams.type,
+    chainId: transactionParams.chainId,
+    nonce: transactionParams.nonce,
+    maxPriorityFeePerGas: BigInt(transactionParams.maxPriorityFeePerGas),
+    maxFeePerGas: BigInt(transactionParams.maxFeePerGas),
+    gasLimit: BigInt(transactionParams.gasLimit),
+    to: transactionParams.to,
+    value: BigInt(transactionParams.value),
+    data: transactionParams.data,
+  };
+
+  console.log(
+    `[WITHDRAW_SIGNATURE] Using exact frontend transaction with nonce ${exactTx.nonce}`,
+  );
+
+  // Log transaction details for debugging
+  console.log('[WITHDRAW_SIGNATURE] Transaction details:', {
+    type: exactTx.type,
+    chainId: exactTx.chainId,
+    nonce: exactTx.nonce,
+    maxPriorityFeePerGas: exactTx.maxPriorityFeePerGas.toString(),
+    maxFeePerGas: exactTx.maxFeePerGas.toString(),
+    gasLimit: exactTx.gasLimit.toString(),
+    to: exactTx.to,
+    value: exactTx.value.toString(),
+    dataLength: exactTx.data.length,
+  });
+
+  // Log signature details for debugging
+  console.log('[WITHDRAW_SIGNATURE] Signature details:', {
+    r: ethereumSignature.r,
+    s: ethereumSignature.s,
+    v: Number(ethereumSignature.v),
+  });
 
   // Create signed transaction
   let signedTx;
   try {
     signedTx = ethers.Transaction.from({
-      type: tempTx.type,
-      chainId: tempTx.chainId,
-      nonce: tempTx.nonce,
-      maxPriorityFeePerGas: tempTx.maxPriorityFeePerGas,
-      maxFeePerGas: tempTx.maxFeePerGas,
-      gasLimit: tempTx.gasLimit,
-      to: tempTx.to as string,
-      value: tempTx.value,
-      data: tempTx.data as string,
+      ...exactTx,
       signature: {
         r: ethereumSignature.r,
         s: ethereumSignature.s,
         v: Number(ethereumSignature.v),
       },
     });
+
+    // Validate the signed transaction
+    console.log('[WITHDRAW_SIGNATURE] Signed transaction created:', {
+      hash: signedTx.hash,
+      from: signedTx.from,
+      to: signedTx.to,
+      serialized: signedTx.serialized.substring(0, 100) + '...',
+    });
+
+    // Verify the transaction is properly signed
+    if (!signedTx.from) {
+      throw new Error('Transaction signature invalid - cannot recover sender');
+    }
+
+    // Additional validation
+    if (!signedTx.hash || signedTx.hash === '0x') {
+      throw new Error('Transaction hash is invalid');
+    }
+
+    if (!signedTx.serialized || signedTx.serialized.length < 10) {
+      throw new Error('Serialized transaction is invalid');
+    }
   } catch (signError) {
     console.error(
-      '[WITHDRAW_COMPLETE] Failed to create signed transaction:',
+      '[WITHDRAW_SIGNATURE] Failed to create signed transaction:',
       signError,
     );
     throw new Error(
@@ -250,24 +297,214 @@ async function waitForReadResponseAndCompleteWithdrawal(
     );
   }
 
-  // Submit transaction to Ethereum
+  // Step 4: Validate transaction before broadcasting
+  try {
+    console.log(
+      '[WITHDRAW_SIGNATURE] Validating transaction before broadcast...',
+    );
+
+    // Try to estimate gas to validate the transaction
+    const gasEstimate = await provider.estimateGas({
+      from: signedTx.from,
+      to: signedTx.to,
+      data: signedTx.data,
+      value: signedTx.value,
+    });
+
+    console.log('[WITHDRAW_SIGNATURE] Gas estimation successful:', {
+      estimated: gasEstimate.toString(),
+      provided: signedTx.gasLimit.toString(),
+    });
+
+    if (gasEstimate > signedTx.gasLimit) {
+      console.warn('[WITHDRAW_SIGNATURE] Gas limit might be insufficient:', {
+        estimated: gasEstimate.toString(),
+        provided: signedTx.gasLimit.toString(),
+      });
+    }
+  } catch (estimateError) {
+    console.error('[WITHDRAW_SIGNATURE] Gas estimation failed:', estimateError);
+    console.warn(
+      '[WITHDRAW_SIGNATURE] Transaction might fail, but proceeding anyway...',
+    );
+  }
+
+  // Step 5: Submit transaction to Ethereum and wait for confirmation
   let txResponse;
   let txReceipt;
   try {
-    txResponse = await provider.broadcastTransaction(signedTx.serialized);
+    console.log('[WITHDRAW_SIGNATURE] About to broadcast transaction:', {
+      serializedTx: signedTx.serialized,
+      expectedHash: signedTx.hash,
+      from: signedTx.from,
+      to: signedTx.to,
+      nonce: signedTx.nonce,
+    });
 
-    txReceipt = await txResponse.wait();
+    txResponse = await provider.broadcastTransaction(signedTx.serialized);
+    console.log(
+      `[WITHDRAW_SIGNATURE] Ethereum transaction submitted: ${txResponse.hash}`,
+    );
+
+    // Verify the hash matches what we expected
+    if (txResponse.hash !== signedTx.hash) {
+      console.warn('[WITHDRAW_SIGNATURE] Transaction hash mismatch:', {
+        expected: signedTx.hash,
+        actual: txResponse.hash,
+      });
+    }
+
+    // Wait for confirmation to ensure the transaction succeeded
+    console.log(`[WITHDRAW_SIGNATURE] Waiting for transaction confirmation...`);
+
+    // Use a timeout for confirmation to avoid infinite waiting
+    const confirmationTimeout = 5 * 60 * 1000; // 5 minutes
+    const confirmationPromise = txResponse.wait();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(
+        () => reject(new Error('Transaction confirmation timeout')),
+        confirmationTimeout,
+      ),
+    );
+
+    txReceipt = await Promise.race([confirmationPromise, timeoutPromise]);
 
     if (!txReceipt) {
       throw new Error('Transaction receipt is null');
     }
+
+    if (txReceipt.status !== 1) {
+      throw new Error(`Transaction failed with status: ${txReceipt.status}`);
+    }
+
+    console.log(
+      `[WITHDRAW_SIGNATURE] Ethereum transaction confirmed in block ${txReceipt.blockNumber}: ${txResponse.hash}`,
+    );
+    console.log(
+      `[WITHDRAW_SIGNATURE] Gas used: ${txReceipt.gasUsed}/${txReceipt.gasLimit}`,
+    );
   } catch (ethError) {
-    console.error('[WITHDRAW_COMPLETE] Ethereum transaction failed:', {
+    console.error('[WITHDRAW_SIGNATURE] Ethereum transaction failed:', {
       error: ethError instanceof Error ? ethError.message : 'Unknown error',
       txHash: txResponse?.hash,
+      blockNumber: txReceipt?.blockNumber,
+      status: txReceipt?.status,
     });
     throw new Error(
       `Ethereum transaction failed: ${ethError instanceof Error ? ethError.message : 'Unknown error'}`,
+    );
+  }
+
+  return {
+    signature: signatureData,
+    ethereumTxHash: txResponse.hash,
+    blockNumber: txReceipt.blockNumber,
+    gasUsed: txReceipt.gasUsed,
+  };
+}
+
+async function waitForSignatureEvent(
+  chainSignaturesContract: ChainSignaturesContract,
+  requestId: string,
+): Promise<ChainSignaturesSignature> {
+  let signatureData = null;
+  const maxAttempts = 60;
+  let pollingInterval = 5000;
+  let consecutiveFailures = 0;
+
+  console.log(
+    `[WITHDRAW_SIGNATURE] Waiting for signature event for ${requestId}`,
+  );
+
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      signatureData =
+        await chainSignaturesContract.findSignatureEventInLogs(requestId);
+      if (signatureData) {
+        console.log(
+          `[WITHDRAW_SIGNATURE] Signature event found on attempt ${i + 1}`,
+        );
+        return signatureData;
+      }
+
+      consecutiveFailures = 0;
+      pollingInterval = Math.min(pollingInterval * 1.05, 15000);
+    } catch (pollError) {
+      console.warn(
+        `[WITHDRAW_SIGNATURE] Error during polling attempt ${i + 1}:`,
+        pollError,
+      );
+      consecutiveFailures++;
+
+      if (consecutiveFailures >= 3) {
+        pollingInterval = Math.min(pollingInterval * 2, 30000);
+        consecutiveFailures = 0;
+      }
+    }
+
+    if (i < maxAttempts - 1) {
+      const nextPollTime = Math.round(pollingInterval / 1000);
+      console.log(
+        `[WITHDRAW_SIGNATURE] Signature attempt ${i + 1}/${maxAttempts}, checking again in ${nextPollTime}s...`,
+      );
+      await new Promise(resolve => setTimeout(resolve, pollingInterval));
+    }
+  }
+
+  throw new Error(`Signature event not found within timeout for ${requestId}`);
+}
+
+async function completeWithdrawalOnSolana(
+  bridgeContract: BridgeContract,
+  requestId: string,
+  erc20Address: string,
+  signatureData: ChainSignaturesSignature,
+): Promise<void> {
+  // We need to get the read response again for the serialized output
+  // In a more sophisticated implementation, we'd pass this from Phase 1
+  console.log(
+    `[WITHDRAW_COMPLETE] Getting read response for Solana completion`,
+  );
+
+  // For now, we'll wait a bit for the read response to be available
+  let readEvent = null;
+  const maxAttempts = 10; // Reduced since it should be available quickly
+  let pollingInterval = 2000; // Start with 2 seconds
+
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const chainSignaturesContract = new ChainSignaturesContract(
+        bridgeContract['connection'],
+        bridgeContract['wallet'],
+      );
+
+      readEvent =
+        await chainSignaturesContract.findReadResponseEventInLogs(requestId);
+      if (readEvent) {
+        console.log(
+          `[WITHDRAW_COMPLETE] Read response found for Solana completion`,
+        );
+        break;
+      }
+    } catch (pollError) {
+      console.warn(
+        `[WITHDRAW_COMPLETE] Error getting read response:`,
+        pollError,
+      );
+    }
+
+    if (i < maxAttempts - 1) {
+      console.log(
+        `[WITHDRAW_COMPLETE] Read response not ready, waiting ${pollingInterval}ms...`,
+      );
+      await new Promise(resolve => setTimeout(resolve, pollingInterval));
+      pollingInterval = Math.min(pollingInterval * 1.2, 5000); // Max 5 seconds
+    }
+  }
+
+  if (!readEvent) {
+    throw new Error(
+      `Read response not available for Solana completion: ${requestId}`,
     );
   }
 
@@ -291,14 +528,14 @@ async function waitForReadResponseAndCompleteWithdrawal(
     );
   }
 
-  // Convert signature format
+  // Convert signature format for Solana
   const convertedSignature = {
     bigR: {
-      x: Array.from(readEvent.signature.bigR.x),
-      y: Array.from(readEvent.signature.bigR.y),
+      x: Array.from(signatureData.bigR.x),
+      y: Array.from(signatureData.bigR.y),
     },
-    s: Array.from(readEvent.signature.s),
-    recoveryId: readEvent.signature.recoveryId,
+    s: Array.from(signatureData.s),
+    recoveryId: signatureData.recoveryId,
   };
 
   const erc20AddressBytes = bridgeContract.hexToBytes(erc20Address);
@@ -312,6 +549,10 @@ async function waitForReadResponseAndCompleteWithdrawal(
       signature: convertedSignature,
       erc20AddressBytes,
     });
+
+    console.log(
+      `[WITHDRAW_COMPLETE] Solana withdrawal completion successful for request ${requestId}`,
+    );
   } catch (completeError) {
     console.error(
       '[WITHDRAW_COMPLETE] Failed to complete withdrawal on Solana:',

@@ -8,8 +8,10 @@ import {
   AssetTransfersCategory,
   SortingOrder,
 } from 'alchemy-sdk';
+
 import { ALL_TOKENS } from '@/lib/constants/token-metadata';
 import { queryKeys } from '@/lib/query-client';
+
 import { useDepositAddress } from './use-deposit-address';
 import { useEnv } from './use-env';
 
@@ -66,7 +68,7 @@ async function fetchTransfersFromAlchemy(
     try {
       const block = await alchemy.core.getBlock(Number(blockNumber));
       timestamp = block?.timestamp;
-    } catch (error) {
+    } catch {
       // Ignore timestamp errors
     }
 

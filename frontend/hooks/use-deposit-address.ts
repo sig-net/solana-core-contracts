@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 import { queryKeys } from '@/lib/query-client';
+
 import { useSolanaService } from './use-solana-service';
 
 export function useDepositAddress() {

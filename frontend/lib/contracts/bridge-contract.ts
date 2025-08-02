@@ -40,13 +40,6 @@ export class BridgeContract {
     return this.program;
   }
 
-  /**
-   * Reset the program instance (useful when wallet changes)
-   */
-  resetProgram(): void {
-    this.program = null;
-  }
-
   // ================================
   // PDA Derivation Methods
   // ================================
@@ -135,16 +128,6 @@ export class BridgeContract {
     return await this.getBridgeProgram().account.pendingErc20Deposit.fetch(
       pendingDepositPda,
     );
-  }
-
-  /**
-   * Check if pending deposit exists
-   */
-  async checkPendingDepositExists(
-    pendingDepositPda: PublicKey,
-  ): Promise<boolean> {
-    const accountInfo = await this.connection.getAccountInfo(pendingDepositPda);
-    return accountInfo !== null;
   }
 
   /**

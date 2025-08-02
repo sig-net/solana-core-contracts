@@ -5,8 +5,9 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 
 import { queryKeys } from '@/lib/query-client';
-import { useWithdrawalServiceDirect } from './use-withdrawal-service-direct';
-import type { WithdrawalService } from '@/lib/services/withdrawal-service';
+import { WithdrawalService } from '@/lib/services/withdrawal-service';
+
+import { useWithdrawalService } from './use-withdrawal-service';
 
 export interface OutgoingTransfer {
   requestId: string;
@@ -59,7 +60,7 @@ async function fetchUserWithdrawals(
 
 export function useOutgoingTransfers() {
   const { publicKey } = useWallet();
-  const withdrawalService = useWithdrawalServiceDirect();
+  const withdrawalService = useWithdrawalService();
 
   const query = useQuery({
     queryKey: publicKey

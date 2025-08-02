@@ -73,23 +73,34 @@ export class WithdrawalService {
         HARDCODED_RECIPIENT_ADDRESS,
       );
 
-      // Create EVM transaction parameters
-      const txParams = createEvmTransactionParams(Number(currentNonce));
-      const evmParams = evmParamsToProgram(txParams);
-
-      // Build EVM transaction to generate proper request ID
+      // Build EVM transaction call data first
       const callData = encodeFunctionData({
         abi: erc20Abi,
         functionName: 'transfer',
         args: [checksummedAddress as `0x${string}`, processAmountBigInt],
       });
 
+      const estimatedGas = await AlchemyService.estimateGas({
+        from: HARDCODED_RECIPIENT_ADDRESS,
+        to: erc20Address,
+        data: callData,
+        value: 0,
+      }).then(gas => parseInt(gas, 16));
+
+      // Create EVM transaction parameters with estimated gas limit
+      const txParams = await createEvmTransactionParams(
+        Number(currentNonce),
+        estimatedGas,
+      );
+      const evmParams = evmParamsToProgram(txParams);
+
       const tempTx = {
         type: 2,
         chainId: SERVICE_CONFIG.ETHEREUM.CHAIN_ID,
         nonce: currentNonce,
-        maxPriorityFeePerGas: txParams.maxPriorityFeePerGas,
-        maxFeePerGas: txParams.maxFeePerGas,
+        maxPriorityFeePerGas:
+          (txParams.maxPriorityFeePerGas * BigInt(120)) / BigInt(100),
+        maxFeePerGas: (txParams.maxFeePerGas * BigInt(120)) / BigInt(100),
         gasLimit: txParams.gasLimit,
         to: erc20Address,
         value: BigInt(0),
@@ -122,10 +133,22 @@ export class WithdrawalService {
         evmParams,
       });
 
-      // Notify relayer to monitor for this withdrawal
+      // Notify relayer to monitor for this withdrawal with exact transaction parameters
       await this.relayerService.notifyWithdrawal({
         requestId,
         erc20Address,
+        // Pass the exact transaction parameters used for signing
+        transactionParams: {
+          type: tempTx.type,
+          chainId: tempTx.chainId,
+          nonce: tempTx.nonce,
+          maxPriorityFeePerGas: tempTx.maxPriorityFeePerGas.toString(),
+          maxFeePerGas: tempTx.maxFeePerGas.toString(),
+          gasLimit: tempTx.gasLimit.toString(),
+          to: tempTx.to,
+          value: tempTx.value.toString(),
+          data: callData,
+        },
       });
 
       onStatusChange?.({

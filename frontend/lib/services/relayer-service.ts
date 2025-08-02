@@ -18,9 +18,21 @@ export class RelayerService {
   async notifyWithdrawal({
     requestId,
     erc20Address,
+    transactionParams,
   }: {
     requestId: string;
     erc20Address: string;
+    transactionParams?: {
+      type: number;
+      chainId: number;
+      nonce: number;
+      maxPriorityFeePerGas: string;
+      maxFeePerGas: string;
+      gasLimit: string;
+      to: string;
+      value: string;
+      data: string;
+    };
   }): Promise<void> {
     const response = await fetch('/api/relayer/notify-withdrawal', {
       method: 'POST',
@@ -28,6 +40,7 @@ export class RelayerService {
       body: JSON.stringify({
         requestId,
         erc20Address,
+        transactionParams,
       }),
     });
 

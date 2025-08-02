@@ -9,7 +9,6 @@ import { ChainSignaturesContract } from '@/lib/contracts/chain-signatures-contra
 import { generateRequestId, evmParamsToProgram } from '@/lib/program/utils';
 import { SERVICE_CONFIG } from '@/lib/constants/service.config';
 import { HARDCODED_RECIPIENT_ADDRESS } from '@/lib/constants/ethereum.constants';
-import { AlchemyService } from '@/lib/services/alchemy-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -25,10 +24,13 @@ export async function POST(request: NextRequest) {
     // Validate addresses
     try {
       new PublicKey(userAddress);
-      if (!ethers.isAddress(erc20Address) || !ethers.isAddress(ethereumAddress)) {
+      if (
+        !ethers.isAddress(erc20Address) ||
+        !ethers.isAddress(ethereumAddress)
+      ) {
         throw new Error('Invalid Ethereum address');
       }
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid address format' },
         { status: 400 },
@@ -71,10 +73,8 @@ async function processDepositInBackground(
       relayerWallet,
     );
 
-    // Get Alchemy instance for Ethereum operations
-    const alchemy = AlchemyService.getInstance();
-    
-    // Also keep ethers provider for transaction operations
+    // Use ethers provider for all Ethereum operations in server environment
+    // AlchemyService has compatibility issues in Node.js server context
     const provider = new ethers.JsonRpcProvider(
       `https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
     );
@@ -89,7 +89,7 @@ async function processDepositInBackground(
     const actualAmount = await monitorTokenBalance(
       ethereumAddress,
       erc20Address,
-      alchemy,
+      provider,
     );
 
     if (!actualAmount) {
@@ -115,15 +115,15 @@ async function processDepositInBackground(
       processAmount,
     ]);
 
-    const currentNonce = await AlchemyService.getTransactionCount(ethereumAddress, alchemy);
+    const currentNonce = await provider.getTransactionCount(ethereumAddress);
 
-    const feeData = await AlchemyService.getFeeData(alchemy);
-    const gasEstimate = await AlchemyService.estimateGas({
+    const feeData = await provider.getFeeData();
+    const gasEstimate = await provider.estimateGas({
       to: erc20Address,
       from: ethereumAddress,
       data: callData,
-      value: 0,
-    }, alchemy);
+      value: BigInt(0),
+    });
 
     const tempTx = {
       type: 2,
@@ -132,7 +132,7 @@ async function processDepositInBackground(
       maxPriorityFeePerGas:
         feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei'),
       maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
-      gasLimit: (BigInt(gasEstimate) * BigInt(120)) / BigInt(100), // Add 20% buffer
+      gasLimit: (gasEstimate * BigInt(120)) / BigInt(100), // Add 20% buffer
       to: erc20Address,
       value: BigInt(0),
       data: callData,
@@ -199,28 +199,60 @@ async function processDepositInBackground(
 async function monitorTokenBalance(
   address: string,
   tokenAddress: string,
-  alchemy?: any,
+  provider: ethers.JsonRpcProvider,
   timeoutMs = 300000, // 5 minutes
-  pollIntervalMs = 5000, // 5 seconds
+  initialPollIntervalMs = 10000, // Start with 10 seconds
 ): Promise<bigint | null> {
   const startTime = Date.now();
+  let pollIntervalMs = initialPollIntervalMs;
+  let consecutiveFailures = 0;
+  const maxConsecutiveFailures = 3;
+
+  // Create ERC20 contract instance
+  const erc20Contract = new ethers.Contract(
+    tokenAddress,
+    ['function balanceOf(address owner) view returns (uint256)'],
+    provider,
+  );
 
   while (Date.now() - startTime < timeoutMs) {
     try {
-      // Use AlchemyService to get token balance
-      const balance = await AlchemyService.getTokenBalance(address, tokenAddress, alchemy);
+      // Get token balance using ethers contract call
+      const balance = await erc20Contract.balanceOf(address);
 
-      if (balance && BigInt(balance) > BigInt(0)) {
-        return BigInt(balance);
+      if (balance > BigInt(0)) {
+        console.log(
+          `[DEPOSIT_MONITOR] Token balance detected: ${balance.toString()} for ${address}`,
+        );
+        return balance;
       }
+
+      // Reset failure count on successful call
+      consecutiveFailures = 0;
+
+      // Gradually increase polling interval to reduce API calls
+      pollIntervalMs = Math.min(pollIntervalMs * 1.1, 30000); // Max 30 seconds
     } catch (error) {
       console.error('Error fetching token balance:', error);
-      // Continue polling on error
+      consecutiveFailures++;
+
+      // Increase interval after failures to avoid hammering the API
+      if (consecutiveFailures >= maxConsecutiveFailures) {
+        pollIntervalMs = Math.min(pollIntervalMs * 2, 60000); // Max 1 minute
+        consecutiveFailures = 0; // Reset to prevent exponential growth
+      }
     }
 
+    const nextPollTime = Math.round(pollIntervalMs / 1000);
+    console.log(
+      `[DEPOSIT_MONITOR] No balance yet, checking again in ${nextPollTime}s...`,
+    );
     await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
   }
 
+  console.warn(
+    `[DEPOSIT_MONITOR] Timeout reached after ${timeoutMs / 1000}s for ${address}`,
+  );
   return null;
 }
 
@@ -232,7 +264,13 @@ async function waitForSignatureExecuteAndClaim(
   tempTx: ethers.TransactionRequest,
 ): Promise<void> {
   let signatureEvent = null;
-  const maxSignatureAttempts = 60;
+  const maxSignatureAttempts = 40; // Reduced from 60
+  let pollInterval = 8000; // Start with 8 seconds instead of 5
+  let consecutiveFailures = 0;
+
+  console.log(
+    `[DEPOSIT_SIGNATURE] Waiting for signature event for request ${requestId}`,
+  );
 
   for (let i = 0; i < maxSignatureAttempts; i++) {
     try {
@@ -240,12 +278,32 @@ async function waitForSignatureExecuteAndClaim(
         await chainSignaturesContract.findSignatureEventInLogs(requestId);
       if (events) {
         signatureEvent = events;
+        console.log(
+          `[DEPOSIT_SIGNATURE] Signature event found on attempt ${i + 1}`,
+        );
         break;
       }
-    } catch {
-      // Continue polling
+
+      // Reset failure count on successful call
+      consecutiveFailures = 0;
+    } catch (error) {
+      console.warn(`[DEPOSIT_SIGNATURE] Error on attempt ${i + 1}:`, error);
+      consecutiveFailures++;
+
+      // Increase polling interval after failures
+      if (consecutiveFailures >= 3) {
+        pollInterval = Math.min(pollInterval * 1.5, 20000); // Max 20 seconds
+        consecutiveFailures = 0;
+      }
     }
-    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    if (i < maxSignatureAttempts - 1) {
+      const nextPollTime = Math.round(pollInterval / 1000);
+      console.log(
+        `[DEPOSIT_SIGNATURE] Attempt ${i + 1}/${maxSignatureAttempts}, checking again in ${nextPollTime}s...`,
+      );
+      await new Promise(resolve => setTimeout(resolve, pollInterval));
+    }
   }
 
   if (!signatureEvent) {
@@ -274,18 +332,47 @@ async function waitForSignatureExecuteAndClaim(
 
   const txResponse = await provider.broadcastTransaction(signedTx.serialized);
   await txResponse.wait();
+
   let readEvent = null;
-  const maxReadAttempts = 60; // 5 minutes with 5-second intervals
+  const maxReadAttempts = 40; // Reduced from 60
+  let readPollInterval = 8000; // Start with 8 seconds
+  let readConsecutiveFailures = 0;
+
+  console.log(
+    `[DEPOSIT_READ] Waiting for read response event for request ${requestId}`,
+  );
 
   for (let i = 0; i < maxReadAttempts; i++) {
     try {
       readEvent =
         await chainSignaturesContract.findReadResponseEventInLogs(requestId);
-      if (readEvent) break;
-    } catch {
-      // Continue polling
+      if (readEvent) {
+        console.log(
+          `[DEPOSIT_READ] Read response event found on attempt ${i + 1}`,
+        );
+        break;
+      }
+
+      // Reset failure count on successful call
+      readConsecutiveFailures = 0;
+    } catch (error) {
+      console.warn(`[DEPOSIT_READ] Error on attempt ${i + 1}:`, error);
+      readConsecutiveFailures++;
+
+      // Increase polling interval after failures
+      if (readConsecutiveFailures >= 3) {
+        readPollInterval = Math.min(readPollInterval * 1.5, 20000); // Max 20 seconds
+        readConsecutiveFailures = 0;
+      }
     }
-    await new Promise(resolve => setTimeout(resolve, 5000));
+
+    if (i < maxReadAttempts - 1) {
+      const nextPollTime = Math.round(readPollInterval / 1000);
+      console.log(
+        `[DEPOSIT_READ] Attempt ${i + 1}/${maxReadAttempts}, checking again in ${nextPollTime}s...`,
+      );
+      await new Promise(resolve => setTimeout(resolve, readPollInterval));
+    }
   }
 
   if (!readEvent) {

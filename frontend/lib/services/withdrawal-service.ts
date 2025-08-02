@@ -8,13 +8,14 @@ import {
   createEvmTransactionParams,
   evmParamsToProgram,
 } from '@/lib/program/utils';
-import { AlchemyService } from './alchemy-service';
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { TokenBalanceService } from '@/lib/services/token-balance-service';
 import { RelayerService } from '@/lib/services/relayer-service';
 import type { WithdrawalStatusCallback } from '@/lib/types/shared.types';
 import { HARDCODED_RECIPIENT_ADDRESS } from '@/lib/constants/ethereum.constants';
 import { SERVICE_CONFIG } from '@/lib/constants/service.config';
+
+import { AlchemyService } from './alchemy-service';
 
 /**
  * WithdrawalService handles ERC20 withdrawal initiation.

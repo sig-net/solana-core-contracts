@@ -15,18 +15,57 @@ import { AlchemyService } from './alchemy-service';
  * fetching and processing ERC20 token balances.
  */
 export class TokenBalanceService {
+  private static decimalsCache = new Map<
+    string,
+    { decimals: number; timestamp: number }
+  >();
+  private static readonly DECIMALS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+
   constructor(private bridgeContract: BridgeContract) {}
 
   /**
-   * Get token decimals from contract
+   * Get token decimals from contract with caching
    */
   async getTokenDecimals(erc20Address: string): Promise<number> {
+    const cacheKey = erc20Address.toLowerCase();
+    const now = Date.now();
+
+    // Check cache first
+    const cached = TokenBalanceService.decimalsCache.get(cacheKey);
+    if (
+      cached &&
+      now - cached.timestamp < TokenBalanceService.DECIMALS_CACHE_TTL
+    ) {
+      return cached.decimals;
+    }
+
     try {
       const metadata = await AlchemyService.getTokenMetadata(erc20Address);
-      return metadata?.decimals ?? 18;
-    } catch {
+      const decimals = metadata?.decimals ?? 18;
+
+      // Cache the result
+      TokenBalanceService.decimalsCache.set(cacheKey, {
+        decimals,
+        timestamp: now,
+      });
+      return decimals;
+    } catch (error) {
+      console.warn(
+        `[TOKEN_BALANCE] Failed to fetch decimals for ${erc20Address}:`,
+        error,
+      );
+
+      // Fallback to hardcoded metadata
       const tokenMetadata = getTokenMetadata(erc20Address);
-      return tokenMetadata?.decimals || 18; // Default to 18 if unknown
+      const fallbackDecimals = tokenMetadata?.decimals || 18;
+
+      // Cache fallback result with shorter TTL
+      TokenBalanceService.decimalsCache.set(cacheKey, {
+        decimals: fallbackDecimals,
+        timestamp: now - TokenBalanceService.DECIMALS_CACHE_TTL * 0.8, // 80% TTL for fallbacks
+      });
+
+      return fallbackDecimals;
     }
   }
 

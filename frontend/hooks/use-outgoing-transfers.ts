@@ -5,8 +5,8 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { PublicKey } from '@solana/web3.js';
 
 import { queryKeys } from '@/lib/query-client';
-import { useSolanaService } from './use-solana-service';
-import type { SolanaService } from '@/lib/solana-service';
+import { useWithdrawalServiceDirect } from './use-withdrawal-service-direct';
+import type { WithdrawalService } from '@/lib/services/withdrawal-service';
 
 export interface OutgoingTransfer {
   requestId: string;
@@ -34,12 +34,12 @@ export interface WithdrawalRequest {
 
 async function fetchUserWithdrawals(
   publicKey: PublicKey,
-  solanaService: SolanaService,
+  withdrawalService: WithdrawalService,
 ): Promise<WithdrawalRequest[]> {
   try {
     // Use the comprehensive method that fetches both pending and historical withdrawals
     const allWithdrawals =
-      await solanaService.fetchAllUserWithdrawals(publicKey);
+      await withdrawalService.fetchAllUserWithdrawals(publicKey);
 
     // Transform to our format
     return allWithdrawals.map(withdrawal => ({
@@ -59,7 +59,7 @@ async function fetchUserWithdrawals(
 
 export function useOutgoingTransfers() {
   const { publicKey } = useWallet();
-  const solanaService = useSolanaService();
+  const withdrawalService = useWithdrawalServiceDirect();
 
   const query = useQuery({
     queryKey: publicKey
@@ -71,7 +71,7 @@ export function useOutgoingTransfers() {
       // Fetch user's withdrawal requests from Solana
       const withdrawalRequests = await fetchUserWithdrawals(
         publicKey,
-        solanaService,
+        withdrawalService,
       );
 
       // Transform withdrawal requests to OutgoingTransfer format

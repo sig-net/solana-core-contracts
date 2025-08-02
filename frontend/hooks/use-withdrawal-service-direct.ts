@@ -6,9 +6,9 @@ import { Wallet } from '@coral-xyz/anchor';
 
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { TokenBalanceService } from '@/lib/services/token-balance-service';
-import { DepositService } from '@/lib/services/deposit-service';
+import { WithdrawalService } from '@/lib/services/withdrawal-service';
 
-export function useDepositService() {
+export function useWithdrawalServiceDirect() {
   const { connection } = useConnection();
   const wallet = useWallet();
 
@@ -22,13 +22,7 @@ export function useDepositService() {
 
     const bridgeContract = new BridgeContract(connection, anchorWallet);
     const tokenBalanceService = new TokenBalanceService(bridgeContract);
-    const depositService = new DepositService(
-      bridgeContract,
-      tokenBalanceService,
-      anchorWallet,
-    );
-
-    return depositService;
+    return new WithdrawalService(bridgeContract, tokenBalanceService);
   }, [
     connection,
     wallet.publicKey,

@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 interface DepositAddressProps {
   token: DepositTokenMetadata;
   depositAddress: string;
-  onContinue?: () => void;
+  onContinue: () => void;
 }
 
 export function DepositAddress({
@@ -26,12 +26,6 @@ export function DepositAddress({
     copyToClipboard(depositAddress);
   };
 
-  const handleContinueToSteps = () => {
-    if (onContinue) {
-      onContinue();
-    }
-  };
-
   const formatAddress = (address: string) => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
@@ -42,7 +36,6 @@ export function DepositAddress({
         {token.chainName} Address
       </p>
 
-      {/* QR Code Container */}
       <div className='border-dark-neutral-400/80 gradient-bg-main flex flex-col justify-center gap-5 rounded-xs border p-5'>
         <QRCode
           value={depositAddress}
@@ -53,7 +46,6 @@ export function DepositAddress({
           margin={16}
         />
 
-        {/* Address Display */}
         <div className='bg-pastels-swiss-coffee-50 mx-auto flex w-fit items-center gap-3 px-2 py-1'>
           <span className='text-dark-neutral-400 font-medium'>
             {formatAddress(depositAddress)}
@@ -73,7 +65,6 @@ export function DepositAddress({
         </div>
       </div>
 
-      {/* Description */}
       <div className='flex items-center justify-center gap-2'>
         <Info className='h-4 w-4' />
         <p className='text-dark-neutral-400 text-center text-sm leading-relaxed'>
@@ -81,18 +72,15 @@ export function DepositAddress({
         </p>
       </div>
 
-      {/* Continue Buttons */}
-      {onContinue && (
-        <div className='flex w-full justify-center'>
-          <Button
-            onClick={handleContinueToSteps}
-            variant='secondary'
-            className='cursor-pointer'
-          >
-            I&apos;ve sent the tokens
-          </Button>
-        </div>
-      )}
+      <div className='flex w-full justify-center'>
+        <Button
+          onClick={onContinue}
+          variant='secondary'
+          className='cursor-pointer'
+        >
+          I&apos;ve sent the tokens
+        </Button>
+      </div>
     </div>
   );
 }

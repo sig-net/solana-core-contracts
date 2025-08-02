@@ -36,9 +36,6 @@ export class EventOrchestrator {
     if (existingSubscription) {
       // Increment subscriber count for existing subscription
       existingSubscription.subscribers++;
-      console.log(
-        `Reusing subscription for ${requestId}, subscribers: ${existingSubscription.subscribers}`,
-      );
       return existingSubscription.promises;
     }
 
@@ -52,7 +49,6 @@ export class EventOrchestrator {
     };
 
     this.subscriptions.set(requestId, subscription);
-    console.log(`Created new subscription for ${requestId}`);
 
     return promises;
   }
@@ -70,9 +66,6 @@ export class EventOrchestrator {
     }
 
     subscription.subscribers--;
-    console.log(
-      `Unsubscribed from ${requestId}, remaining subscribers: ${subscription.subscribers}`,
-    );
 
     if (subscription.subscribers <= 0) {
       this.cleanupSubscription(requestId);
@@ -132,7 +125,6 @@ export class EventOrchestrator {
     if (subscription) {
       try {
         subscription.promises.cleanup();
-        console.log(`Cleaned up subscription for ${requestId}`);
       } catch (error) {
         console.error(
           `Error cleaning up subscription for ${requestId}:`,
@@ -163,14 +155,10 @@ export class EventOrchestrator {
       }
 
       for (const requestId of expiredRequestIds) {
-        console.log(`Auto-cleaning expired subscription: ${requestId}`);
         this.cleanupSubscription(requestId);
       }
 
       if (expiredRequestIds.length > 0) {
-        console.log(
-          `Cleaned up ${expiredRequestIds.length} expired subscriptions`,
-        );
       }
     }, this.CLEANUP_INTERVAL);
   }
@@ -179,8 +167,6 @@ export class EventOrchestrator {
    * Manual cleanup of all subscriptions (useful for shutdown)
    */
   cleanup(): void {
-    console.log(`Cleaning up all ${this.subscriptions.size} subscriptions`);
-
     for (const [requestId] of this.subscriptions) {
       this.cleanupSubscription(requestId);
     }

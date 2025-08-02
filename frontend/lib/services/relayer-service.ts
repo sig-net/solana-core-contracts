@@ -16,28 +16,28 @@ export class RelayerService {
   }
 
   async notifyWithdrawal({
-    userAddress,
     requestId,
     erc20Address,
-    amount,
-    recipient,
   }: {
-    userAddress: string;
     requestId: string;
     erc20Address: string;
-    amount: string;
-    recipient: string;
   }): Promise<void> {
-    await fetch('/api/relayer/notify-withdrawal', {
+    const response = await fetch('/api/relayer/notify-withdrawal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        userAddress,
         requestId,
         erc20Address,
-        amount,
-        recipient,
       }),
     });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Relayer notification failed: ${response.status} ${response.statusText} - ${errorText}`,
+      );
+    }
+
+    return response.json();
   }
 }

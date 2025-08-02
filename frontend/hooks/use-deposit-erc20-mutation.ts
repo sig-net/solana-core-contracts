@@ -4,11 +4,12 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 import { queryKeys } from '@/lib/query-client';
-import { useSolanaService } from './use-solana-service';
+
+import { useDepositService } from './use-deposit-service';
 
 export function useDepositErc20Mutation() {
   const { publicKey } = useWallet();
-  const solanaService = useSolanaService();
+  const depositService = useDepositService();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -29,7 +30,7 @@ export function useDepositErc20Mutation() {
       }) => void;
     }) => {
       if (!publicKey) throw new Error('No public key available');
-      return solanaService.depositErc20(
+      return depositService.depositErc20(
         publicKey,
         erc20Address,
         amount,

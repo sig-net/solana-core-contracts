@@ -1,14 +1,14 @@
 import { PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
-import { erc20Abi } from 'viem';
 
 import type {
   TokenBalance,
   UnclaimedTokenBalance,
 } from '@/lib/types/token.types';
-import { getPublicClient } from '@/lib/viem/providers';
 import { getTokenMetadata, ALL_TOKENS } from '@/lib/constants/token-metadata';
 import type { BridgeContract } from '@/lib/contracts/bridge-contract';
+
+import { AlchemyService } from './alchemy-service';
 
 /**
  * TokenBalanceService handles all token balance operations including
@@ -21,14 +21,9 @@ export class TokenBalanceService {
    * Get token decimals from contract
    */
   async getTokenDecimals(erc20Address: string): Promise<number> {
-    const provider = getPublicClient();
     try {
-      const contractDecimals = await provider.readContract({
-        address: erc20Address as `0x${string}`,
-        abi: erc20Abi,
-        functionName: 'decimals',
-      });
-      return Number(contractDecimals);
+      const metadata = await AlchemyService.getTokenMetadata(erc20Address);
+      return metadata?.decimals ?? 18;
     } catch {
       const tokenMetadata = getTokenMetadata(erc20Address);
       return tokenMetadata?.decimals || 18; // Default to 18 if unknown
@@ -42,42 +37,82 @@ export class TokenBalanceService {
     address: string,
     tokenAddresses: string[],
   ): Promise<Array<{ address: string; balance: bigint; decimals: number }>> {
-    const provider = getPublicClient();
+    try {
+      // Use Alchemy's getTokenBalances for efficient batch fetching
+      const balances = await AlchemyService.getTokenBalances(
+        address,
+        tokenAddresses,
+      );
 
+      if (!balances) {
+        return this.fallbackBatchFetch(address, tokenAddresses);
+      }
+
+      const results: Array<{
+        address: string;
+        balance: bigint;
+        decimals: number;
+      }> = [];
+
+      for (const tokenBalance of balances.tokenBalances) {
+        const balance = BigInt(tokenBalance.tokenBalance || '0');
+
+        if (balance > BigInt(0)) {
+          // Only fetch decimals for non-zero balances
+          const decimals = await this.getTokenDecimals(
+            tokenBalance.contractAddress,
+          );
+          results.push({
+            address: tokenBalance.contractAddress,
+            balance,
+            decimals,
+          });
+        } else {
+          // Include zero balances with default decimals
+          results.push({
+            address: tokenBalance.contractAddress,
+            balance: BigInt(0),
+            decimals: 18,
+          });
+        }
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Error batch fetching token balances:', error);
+      // Fallback to individual calls
+      return this.fallbackBatchFetch(address, tokenAddresses);
+    }
+  }
+
+  /**
+   * Fallback method for individual balance fetching when batch fails
+   */
+  private async fallbackBatchFetch(
+    address: string,
+    tokenAddresses: string[],
+  ): Promise<Array<{ address: string; balance: bigint; decimals: number }>> {
     const balancePromises = tokenAddresses.map(async tokenAddress => {
       try {
-        const balance = await provider.readContract({
-          address: tokenAddress as `0x${string}`,
-          abi: erc20Abi,
-          functionName: 'balanceOf',
-          args: [address as `0x${string}`],
-        });
-        return { address: tokenAddress, balance: balance as bigint };
+        const balance = await AlchemyService.getTokenBalance(
+          address,
+          tokenAddress,
+        );
+        const balanceBigInt = BigInt(balance || '0');
+
+        if (balanceBigInt > BigInt(0)) {
+          const decimals = await this.getTokenDecimals(tokenAddress);
+          return { address: tokenAddress, balance: balanceBigInt, decimals };
+        } else {
+          return { address: tokenAddress, balance: BigInt(0), decimals: 18 };
+        }
       } catch (error) {
         console.error(`Error fetching balance for ${tokenAddress}:`, error);
-        return { address: tokenAddress, balance: BigInt(0) };
+        return { address: tokenAddress, balance: BigInt(0), decimals: 18 };
       }
     });
 
-    const balanceResults = await Promise.all(balancePromises);
-
-    // Only fetch decimals for tokens with non-zero balances
-    const nonZeroBalances = balanceResults.filter(
-      result => result.balance > BigInt(0),
-    );
-    const decimalsPromises = nonZeroBalances.map(async result => {
-      const decimals = await this.getTokenDecimals(result.address);
-      return { ...result, decimals };
-    });
-
-    const finalResults = await Promise.all(decimalsPromises);
-
-    // Include zero balances with default decimals for completeness
-    const zeroBalances = balanceResults
-      .filter(result => result.balance === BigInt(0))
-      .map(result => ({ ...result, decimals: 18 })); // Default decimals for zero balances
-
-    return [...finalResults, ...zeroBalances];
+    return Promise.all(balancePromises);
   }
 
   /**

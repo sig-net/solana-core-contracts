@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 import { queryKeys } from '@/lib/query-client';
+
 import { useSolanaService } from './use-solana-service';
 
 export function useUserBalances() {
@@ -19,8 +20,8 @@ export function useUserBalances() {
       return solanaService.fetchUserBalances(publicKey);
     },
     enabled: !!publicKey,
-    staleTime: 30000,
-    refetchInterval: 30000,
+    staleTime: 10000,
+    refetchInterval: 10000,
     refetchIntervalInBackground: false,
   });
 }

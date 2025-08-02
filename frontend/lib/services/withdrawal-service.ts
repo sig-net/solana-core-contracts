@@ -8,7 +8,7 @@ import {
   createEvmTransactionParams,
   evmParamsToProgram,
 } from '@/lib/program/utils';
-import { getPublicClient } from '@/lib/viem/providers';
+import { AlchemyService } from './alchemy-service';
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { TokenBalanceService } from '@/lib/services/token-balance-service';
 import { RelayerService } from '@/lib/services/relayer-service';
@@ -48,6 +48,7 @@ export class WithdrawalService {
       // Get token decimals and convert amount to proper format
       const decimals =
         await this.tokenBalanceService.getTokenDecimals(erc20Address);
+
       const amountBigInt = ethers.parseUnits(amount, decimals);
 
       // Subtract a small random amount to avoid PDA collisions
@@ -67,11 +68,9 @@ export class WithdrawalService {
         this.bridgeContract.hexToBytes(checksummedAddress);
 
       // Get current nonce from the hardcoded recipient address (for withdrawals)
-      const provider = getPublicClient();
-      const currentNonce = await provider.getTransactionCount({
-        address: HARDCODED_RECIPIENT_ADDRESS as `0x${string}`,
-        blockTag: 'pending',
-      });
+      const currentNonce = await AlchemyService.getTransactionCount(
+        HARDCODED_RECIPIENT_ADDRESS,
+      );
 
       // Create EVM transaction parameters
       const txParams = createEvmTransactionParams(Number(currentNonce));
@@ -124,11 +123,8 @@ export class WithdrawalService {
 
       // Notify relayer to monitor for this withdrawal
       await this.relayerService.notifyWithdrawal({
-        userAddress: publicKey.toString(),
         requestId,
         erc20Address,
-        amount: processAmountBigInt.toString(),
-        recipient: checksummedAddress,
       });
 
       onStatusChange?.({
@@ -138,7 +134,6 @@ export class WithdrawalService {
 
       return requestId;
     } catch (error) {
-      console.error('Withdraw failed:', error);
       throw new Error(
         `Failed to initiate withdrawal: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );

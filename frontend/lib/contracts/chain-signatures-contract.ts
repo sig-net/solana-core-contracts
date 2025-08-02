@@ -135,20 +135,27 @@ export class ChainSignaturesContract {
         maxSupportedTransactionVersion: 0,
       });
 
-      for (const log of tx?.meta?.logMessages || []) {
+      if (!tx?.meta?.logMessages) {
+        continue;
+      }
+
+      for (const log of tx.meta.logMessages) {
         try {
           const logMessage = log.split(':')[1]?.trim();
+          if (!logMessage) continue;
+
           const decoded = chainSigProgram.coder.events.decode(logMessage);
 
           if (decoded && decoded.name === 'signatureRespondedEvent') {
             const eventData = decoded.data as SignatureRespondedEvent;
-
             const eventRequestIdBytes = Buffer.from(eventData.requestId);
+
             if (requestIdBytes.equals(eventRequestIdBytes)) {
               return eventData.signature;
             }
           }
         } catch {
+          // Skip logs we can't decode
           continue;
         }
       }
@@ -177,20 +184,27 @@ export class ChainSignaturesContract {
         maxSupportedTransactionVersion: 0,
       });
 
-      for (const log of tx?.meta?.logMessages || []) {
+      if (!tx?.meta?.logMessages) {
+        continue;
+      }
+
+      for (const log of tx.meta.logMessages) {
         try {
           const logMessage = log.split(':')[1]?.trim();
+          if (!logMessage) continue;
+
           const decoded = chainSigProgram.coder.events.decode(logMessage);
 
           if (decoded && decoded.name === 'readRespondedEvent') {
             const eventData = decoded.data as ReadRespondedEvent;
-
             const eventRequestIdBytes = Buffer.from(eventData.requestId);
+
             if (requestIdBytes.equals(eventRequestIdBytes)) {
               return eventData;
             }
           }
         } catch {
+          // Skip logs we can't decode
           continue;
         }
       }

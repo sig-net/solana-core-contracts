@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 import {
   Dialog,
@@ -10,11 +11,11 @@ import {
 } from '@/components/ui/dialog';
 import { DepositTokenMetadata } from '@/lib/constants/token-metadata';
 import { useDepositAddress } from '@/hooks';
+import { useDepositErc20Mutation } from '@/hooks/use-deposit-erc20-mutation';
 
 import { TokenSelection } from './token-selection';
 import { DepositAddress } from './deposit-address';
 import { LoadingState } from './loading-state';
-import { DepositSteps } from './deposit-steps';
 
 interface DepositDialogProps {
   open: boolean;
@@ -25,16 +26,17 @@ enum DepositStep {
   SELECT_TOKEN = 'select-token',
   GENERATING_ADDRESS = 'generating-address',
   SHOW_ADDRESS = 'show-address',
-  STEPS = 'steps',
 }
 
 export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
+  const { publicKey } = useWallet();
   const [step, setStep] = useState<DepositStep>(DepositStep.SELECT_TOKEN);
   const [selectedToken, setSelectedToken] =
     useState<DepositTokenMetadata | null>(null);
 
   const { data: depositAddress, isLoading: isGeneratingAddress } =
     useDepositAddress();
+  const depositMutation = useDepositErc20Mutation();
 
   const handleTokenSelect = (token: DepositTokenMetadata) => {
     if (token.chain !== 'ethereum') {
@@ -49,19 +51,23 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
     }
   };
 
-  const handleContinueToSteps = () => {
-    setStep(DepositStep.STEPS);
-  };
+  const handleNotifyRelayer = async () => {
+    if (!publicKey || !selectedToken) return;
 
-  const handleBack = () => {
-    if (
-      step === DepositStep.SHOW_ADDRESS ||
-      step === DepositStep.GENERATING_ADDRESS
-    ) {
-      setStep(DepositStep.SELECT_TOKEN);
-      setSelectedToken(null);
-    } else if (step === DepositStep.STEPS) {
-      setStep(DepositStep.SHOW_ADDRESS);
+    try {
+      // Notify relayer and close dialog - processing happens in background
+      await depositMutation.mutateAsync({
+        erc20Address: selectedToken.address,
+        amount: '', // Empty amount since user determines actual amount sent
+        decimals: selectedToken.decimals,
+      });
+
+      // Close dialog immediately after notification
+      handleClose();
+    } catch (err) {
+      console.error('Failed to notify relayer:', err);
+      // Still close dialog - user can check activity table later
+      handleClose();
     }
   };
 
@@ -107,18 +113,10 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
               <DepositAddress
                 token={selectedToken}
                 depositAddress={depositAddress}
-                onContinue={handleContinueToSteps}
+                onContinue={handleNotifyRelayer}
               />
             </>
           )}
-
-        {step === DepositStep.STEPS && selectedToken && (
-          <DepositSteps
-            token={selectedToken}
-            onBack={handleBack}
-            onClose={handleClose}
-          />
-        )}
       </DialogContent>
     </Dialog>
   );

@@ -43,8 +43,6 @@ export class DepositService {
         CHAIN_SIGNATURES_CONFIG.BASE_PUBLIC_KEY,
       );
 
-      console.log('Derived address:', derivedAddress);
-
       // Notify relayer to monitor for this deposit
       await this.relayerService.notifyDeposit({
         userAddress: publicKey.toString(),

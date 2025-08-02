@@ -5,11 +5,11 @@ import { useWallet } from '@solana/wallet-adapter-react';
 
 import { queryKeys } from '@/lib/query-client';
 
-import { useSolanaService } from './use-solana-service';
+import { useTokenBalanceService } from './use-token-balance-service';
 
 export function useUserBalances() {
   const { publicKey } = useWallet();
-  const solanaService = useSolanaService();
+  const tokenBalanceService = useTokenBalanceService();
 
   return useQuery({
     queryKey: publicKey
@@ -17,7 +17,7 @@ export function useUserBalances() {
       : [],
     queryFn: () => {
       if (!publicKey) throw new Error('No public key available');
-      return solanaService.fetchUserBalances(publicKey);
+      return tokenBalanceService.fetchUserBalances(publicKey);
     },
     enabled: !!publicKey,
     staleTime: 10000,

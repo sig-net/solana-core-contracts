@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
       if (!/^0x[a-fA-F0-9]+$/.test(requestId)) {
         throw new Error('Invalid request ID format');
       }
-    } catch (error) {
+    } catch {
       return NextResponse.json(
         { error: 'Invalid address format' },
         { status: 400 },
@@ -128,28 +128,51 @@ async function waitForReadResponseAndCompleteWithdrawal(
   requestId: string,
   erc20Address: string,
 ): Promise<void> {
-  const stepStartTime = Date.now();
-
   // Wait for read response event
   let readEvent = null;
-  const maxAttempts = 120; // 10 minutes with 5-second intervals
-  const pollingInterval = 5000; // 5 seconds
+  const maxAttempts = 60; // Reduced from 120 (was 10 minutes, now ~8 minutes with adaptive polling)
+  let pollingInterval = 10000; // Start with 10 seconds instead of 5
+  let consecutiveFailures = 0;
+
+  console.log(
+    `[WITHDRAW_COMPLETE] Waiting for read response event for request ${requestId}`,
+  );
 
   for (let i = 0; i < maxAttempts; i++) {
     try {
       readEvent =
         await chainSignaturesContract.findReadResponseEventInLogs(requestId);
       if (readEvent) {
+        console.log(
+          `[WITHDRAW_COMPLETE] Read response event found on attempt ${i + 1}`,
+        );
         break;
       }
+
+      // Reset failure count on successful call
+      consecutiveFailures = 0;
+
+      // Gradually increase polling interval to reduce API calls
+      pollingInterval = Math.min(pollingInterval * 1.05, 25000); // Max 25 seconds
     } catch (pollError) {
       console.warn(
         `[WITHDRAW_COMPLETE] Error during polling attempt ${i + 1}:`,
         pollError,
       );
+      consecutiveFailures++;
+
+      // Increase interval after failures to avoid hammering the API
+      if (consecutiveFailures >= 3) {
+        pollingInterval = Math.min(pollingInterval * 2, 45000); // Max 45 seconds
+        consecutiveFailures = 0; // Reset to prevent exponential growth
+      }
     }
 
     if (i < maxAttempts - 1) {
+      const nextPollTime = Math.round(pollingInterval / 1000);
+      console.log(
+        `[WITHDRAW_COMPLETE] Attempt ${i + 1}/${maxAttempts}, checking again in ${nextPollTime}s...`,
+      );
       await new Promise(resolve => setTimeout(resolve, pollingInterval));
     }
   }

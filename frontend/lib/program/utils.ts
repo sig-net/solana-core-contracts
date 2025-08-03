@@ -2,7 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
 import { BN } from '@coral-xyz/anchor';
 
-import { AlchemyService } from '../services/alchemy-service';
+import { alchemy } from '../services/alchemy-service';
 
 export interface EvmTransactionParams {
   value: bigint;
@@ -74,7 +74,7 @@ export async function createEvmTransactionParams(
       console.log(
         '[GAS_ESTIMATION] Fetching current gas prices from network...',
       );
-      const feeData = await AlchemyService.getFeeData();
+      const feeData = await alchemy.core.getFeeData();
 
       if (feeData?.maxFeePerGas && feeData?.maxPriorityFeePerGas) {
         // Add 20% buffer to ensure transaction is competitive

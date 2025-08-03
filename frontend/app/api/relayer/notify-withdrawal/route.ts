@@ -376,19 +376,10 @@ async function waitForSignatureAndSubmitToEthereum(
     if (txReceipt.status !== 1) {
       throw new Error(`Transaction failed with status: ${txReceipt.status}`);
     }
-
-    console.log(
-      `[WITHDRAW_SIGNATURE] Ethereum transaction confirmed in block ${txReceipt.blockNumber}: ${txResponse.hash}`,
-    );
-    console.log(
-      `[WITHDRAW_SIGNATURE] Gas used: ${txReceipt.gasUsed}/${txReceipt.gasLimit}`,
-    );
   } catch (ethError) {
     console.error('[WITHDRAW_SIGNATURE] Ethereum transaction failed:', {
       error: ethError instanceof Error ? ethError.message : 'Unknown error',
       txHash: txResponse?.hash,
-      blockNumber: txReceipt?.blockNumber,
-      status: txReceipt?.status,
     });
     throw new Error(
       `Ethereum transaction failed: ${ethError instanceof Error ? ethError.message : 'Unknown error'}`,
@@ -407,51 +398,23 @@ async function waitForSignatureEvent(
   chainSignaturesContract: ChainSignaturesContract,
   requestId: string,
 ): Promise<ChainSignaturesSignature> {
-  let signatureData = null;
-  const maxAttempts = 60;
-  let pollingInterval = 5000;
-  let consecutiveFailures = 0;
-
   console.log(
-    `[WITHDRAW_SIGNATURE] Waiting for signature event for ${requestId}`,
+    `[WITHDRAW_SIGNATURE] Setting up event listener for ${requestId}`,
   );
 
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      signatureData =
-        await chainSignaturesContract.findSignatureEventInLogs(requestId);
-      if (signatureData) {
-        console.log(
-          `[WITHDRAW_SIGNATURE] Signature event found on attempt ${i + 1}`,
-        );
-        return signatureData;
-      }
+  // Setup event listeners instead of polling
+  const eventPromises = chainSignaturesContract.setupEventListeners(requestId);
 
-      consecutiveFailures = 0;
-      pollingInterval = Math.min(pollingInterval * 1.05, 15000);
-    } catch (pollError) {
-      console.warn(
-        `[WITHDRAW_SIGNATURE] Error during polling attempt ${i + 1}:`,
-        pollError,
-      );
-      consecutiveFailures++;
+  try {
+    console.log(`[WITHDRAW_SIGNATURE] Waiting for signature event...`);
+    const signatureEvent = await eventPromises.signature;
+    console.log(`[WITHDRAW_SIGNATURE] Signature event received`);
 
-      if (consecutiveFailures >= 3) {
-        pollingInterval = Math.min(pollingInterval * 2, 30000);
-        consecutiveFailures = 0;
-      }
-    }
-
-    if (i < maxAttempts - 1) {
-      const nextPollTime = Math.round(pollingInterval / 1000);
-      console.log(
-        `[WITHDRAW_SIGNATURE] Signature attempt ${i + 1}/${maxAttempts}, checking again in ${nextPollTime}s...`,
-      );
-      await new Promise(resolve => setTimeout(resolve, pollingInterval));
-    }
+    return signatureEvent.signature;
+  } finally {
+    // Cleanup event listeners
+    eventPromises.cleanup();
   }
-
-  throw new Error(`Signature event not found within timeout for ${requestId}`);
 }
 
 async function completeWithdrawalOnSolana(
@@ -460,52 +423,26 @@ async function completeWithdrawalOnSolana(
   erc20Address: string,
   signatureData: ChainSignaturesSignature,
 ): Promise<void> {
-  // We need to get the read response again for the serialized output
-  // In a more sophisticated implementation, we'd pass this from Phase 1
+  // Get the read response using event listeners instead of polling
   console.log(
-    `[WITHDRAW_COMPLETE] Getting read response for Solana completion`,
+    `[WITHDRAW_COMPLETE] Setting up event listener for read response`,
   );
 
-  // For now, we'll wait a bit for the read response to be available
-  let readEvent = null;
-  const maxAttempts = 10; // Reduced since it should be available quickly
-  let pollingInterval = 2000; // Start with 2 seconds
+  const chainSignaturesContract = new ChainSignaturesContract(
+    bridgeContract['connection'],
+    bridgeContract['wallet'],
+  );
 
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      const chainSignaturesContract = new ChainSignaturesContract(
-        bridgeContract['connection'],
-        bridgeContract['wallet'],
-      );
+  const eventPromises = chainSignaturesContract.setupEventListeners(requestId);
 
-      readEvent =
-        await chainSignaturesContract.findReadResponseEventInLogs(requestId);
-      if (readEvent) {
-        console.log(
-          `[WITHDRAW_COMPLETE] Read response found for Solana completion`,
-        );
-        break;
-      }
-    } catch (pollError) {
-      console.warn(
-        `[WITHDRAW_COMPLETE] Error getting read response:`,
-        pollError,
-      );
-    }
-
-    if (i < maxAttempts - 1) {
-      console.log(
-        `[WITHDRAW_COMPLETE] Read response not ready, waiting ${pollingInterval}ms...`,
-      );
-      await new Promise(resolve => setTimeout(resolve, pollingInterval));
-      pollingInterval = Math.min(pollingInterval * 1.2, 5000); // Max 5 seconds
-    }
-  }
-
-  if (!readEvent) {
-    throw new Error(
-      `Read response not available for Solana completion: ${requestId}`,
-    );
+  let readEvent;
+  try {
+    console.log(`[WITHDRAW_COMPLETE] Waiting for read response event...`);
+    readEvent = await eventPromises.readRespond;
+    console.log(`[WITHDRAW_COMPLETE] Read response event received`);
+  } finally {
+    // Cleanup event listeners
+    eventPromises.cleanup();
   }
 
   // Get pending withdrawal details

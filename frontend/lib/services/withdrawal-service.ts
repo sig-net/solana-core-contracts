@@ -15,7 +15,7 @@ import type { WithdrawalStatusCallback } from '@/lib/types/shared.types';
 import { VAULT_ETHEREUM_ADDRESS } from '@/lib/constants/addresses';
 import { SERVICE_CONFIG } from '@/lib/constants/service.config';
 
-import { AlchemyService } from './alchemy-service';
+import { alchemy } from './alchemy-service';
 
 /**
  * WithdrawalService handles ERC20 withdrawal initiation.
@@ -69,7 +69,7 @@ export class WithdrawalService {
         this.bridgeContract.hexToBytes(checksummedAddress);
 
       // Get current nonce from the hardcoded recipient address (for withdrawals)
-      const currentNonce = await AlchemyService.getTransactionCount(
+      const currentNonce = await alchemy.core.getTransactionCount(
         VAULT_ETHEREUM_ADDRESS,
       );
 
@@ -80,7 +80,7 @@ export class WithdrawalService {
         args: [checksummedAddress as `0x${string}`, processAmountBigInt],
       });
 
-      const estimatedGas = await AlchemyService.estimateGas({
+      const estimatedGas = await alchemy.core.estimateGas({
         from: VAULT_ETHEREUM_ADDRESS,
         to: erc20Address,
         data: callData,

@@ -8,7 +8,7 @@ import type {
 import { getTokenMetadata, ALL_TOKENS } from '@/lib/constants/token-metadata';
 import type { BridgeContract } from '@/lib/contracts/bridge-contract';
 
-import { AlchemyService } from './alchemy-service';
+import { alchemy } from './alchemy-service';
 
 /**
  * TokenBalanceService handles all token balance operations including
@@ -40,7 +40,7 @@ export class TokenBalanceService {
     }
 
     try {
-      const metadata = await AlchemyService.getTokenMetadata(erc20Address);
+      const metadata = await alchemy.core.getTokenMetadata(erc20Address);
       const decimals = metadata?.decimals ?? 18;
 
       // Cache the result
@@ -78,7 +78,7 @@ export class TokenBalanceService {
   ): Promise<Array<{ address: string; balance: bigint; decimals: number }>> {
     try {
       // Use Alchemy's getTokenBalances for efficient batch fetching
-      const balances = await AlchemyService.getTokenBalances(
+      const balances = await alchemy.core.getTokenBalances(
         address,
         tokenAddresses,
       );
@@ -133,10 +133,10 @@ export class TokenBalanceService {
   ): Promise<Array<{ address: string; balance: bigint; decimals: number }>> {
     const balancePromises = tokenAddresses.map(async tokenAddress => {
       try {
-        const balance = await AlchemyService.getTokenBalance(
-          address,
+        const tokenBalances = await alchemy.core.getTokenBalances(address, [
           tokenAddress,
-        );
+        ]);
+        const balance = tokenBalances?.tokenBalances?.[0]?.tokenBalance || '0';
         const balanceBigInt = BigInt(balance || '0');
 
         if (balanceBigInt > BigInt(0)) {

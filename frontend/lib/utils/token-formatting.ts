@@ -1,6 +1,7 @@
 import { erc20Abi } from 'viem';
+import { Contract } from 'alchemy-sdk';
 
-import { getPublicClient } from '@/lib/viem/providers';
+import { getAlchemy } from '@/lib/services/alchemy-service';
 
 // This file handles token metadata fetching and caching
 // For balance formatting, use @/lib/utils/balance-formatter instead
@@ -90,25 +91,15 @@ const DEFAULT_TOKEN_INFO: TokenInfo = {
 async function fetchTokenInfoFromContract(
   tokenAddress: string,
 ): Promise<TokenInfo> {
-  const provider = getPublicClient();
+  const alchemy = getAlchemy();
+  const provider = await alchemy.config.getProvider();
+  const contract = new Contract(tokenAddress, erc20Abi, provider);
 
   try {
     const [symbol, name, decimals] = await Promise.all([
-      provider.readContract({
-        address: tokenAddress as `0x${string}`,
-        abi: erc20Abi,
-        functionName: 'symbol',
-      }),
-      provider.readContract({
-        address: tokenAddress as `0x${string}`,
-        abi: erc20Abi,
-        functionName: 'name',
-      }),
-      provider.readContract({
-        address: tokenAddress as `0x${string}`,
-        abi: erc20Abi,
-        functionName: 'decimals',
-      }),
+      contract.symbol(),
+      contract.name(),
+      contract.decimals(),
     ]);
 
     const symbolStr = symbol as string;

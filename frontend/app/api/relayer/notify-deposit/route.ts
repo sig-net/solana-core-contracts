@@ -260,142 +260,72 @@ async function waitForSignatureExecuteAndClaim(
   requestId: string,
   tempTx: ethers.TransactionRequest,
 ): Promise<void> {
-  let signatureEvent = null;
-  const maxSignatureAttempts = 40; // Reduced from 60
-  let pollInterval = 8000; // Start with 8 seconds instead of 5
-  let consecutiveFailures = 0;
-
   console.log(
-    `[DEPOSIT_SIGNATURE] Waiting for signature event for request ${requestId}`,
+    `[DEPOSIT_SIGNATURE] Setting up event listeners for request ${requestId}`,
   );
 
-  for (let i = 0; i < maxSignatureAttempts; i++) {
-    try {
-      const events =
-        await chainSignaturesContract.findSignatureEventInLogs(requestId);
-      if (events) {
-        signatureEvent = events;
-        console.log(
-          `[DEPOSIT_SIGNATURE] Signature event found on attempt ${i + 1}`,
-        );
-        break;
-      }
+  // Setup event listeners instead of polling
+  const eventPromises = chainSignaturesContract.setupEventListeners(requestId);
 
-      // Reset failure count on successful call
-      consecutiveFailures = 0;
-    } catch (error) {
-      console.warn(`[DEPOSIT_SIGNATURE] Error on attempt ${i + 1}:`, error);
-      consecutiveFailures++;
+  try {
+    // Wait for signature event
+    console.log(`[DEPOSIT_SIGNATURE] Waiting for signature event...`);
+    const signatureEvent = await eventPromises.signature;
+    console.log(`[DEPOSIT_SIGNATURE] Signature event received`);
 
-      // Increase polling interval after failures
-      if (consecutiveFailures >= 3) {
-        pollInterval = Math.min(pollInterval * 1.5, 20000); // Max 20 seconds
-        consecutiveFailures = 0;
-      }
-    }
+    const ethereumSignature = chainSignaturesContract.extractSignature(
+      signatureEvent.signature,
+    );
 
-    if (i < maxSignatureAttempts - 1) {
-      const nextPollTime = Math.round(pollInterval / 1000);
-      console.log(
-        `[DEPOSIT_SIGNATURE] Attempt ${i + 1}/${maxSignatureAttempts}, checking again in ${nextPollTime}s...`,
-      );
-      await new Promise(resolve => setTimeout(resolve, pollInterval));
-    }
+    const signedTx = ethers.Transaction.from({
+      type: tempTx.type,
+      chainId: tempTx.chainId,
+      nonce: tempTx.nonce,
+      maxPriorityFeePerGas: tempTx.maxPriorityFeePerGas,
+      maxFeePerGas: tempTx.maxFeePerGas,
+      gasLimit: tempTx.gasLimit,
+      to: tempTx.to as string,
+      value: tempTx.value,
+      data: tempTx.data as string,
+      signature: {
+        r: ethereumSignature.r,
+        s: ethereumSignature.s,
+        v: Number(ethereumSignature.v),
+      },
+    });
+
+    const txResponse = await provider.broadcastTransaction(signedTx.serialized);
+    await txResponse.wait();
+
+    // Wait for read response event
+    console.log(`[DEPOSIT_READ] Waiting for read response event...`);
+    const readEvent = await eventPromises.readRespond;
+    console.log(`[DEPOSIT_READ] Read response event received`);
+
+    const requestIdBytes = bridgeContract.hexToBytes(requestId);
+    const [pendingDepositPda] =
+      bridgeContract.derivePendingDepositPda(requestIdBytes);
+    const pendingDeposit =
+      await bridgeContract.fetchPendingDeposit(pendingDepositPda);
+
+    const convertedSignature = {
+      bigR: {
+        x: Array.from(readEvent.signature.bigR.x),
+        y: Array.from(readEvent.signature.bigR.y),
+      },
+      s: Array.from(readEvent.signature.s),
+      recoveryId: readEvent.signature.recoveryId,
+    };
+
+    await bridgeContract.claimErc20({
+      requester: pendingDeposit.requester,
+      requestIdBytes,
+      serializedOutput: readEvent.serializedOutput,
+      signature: convertedSignature,
+      erc20AddressBytes: pendingDeposit.erc20Address,
+    });
+  } finally {
+    // Always cleanup event listeners
+    eventPromises.cleanup();
   }
-
-  if (!signatureEvent) {
-    throw new Error('Signature event not found within timeout');
-  }
-
-  const ethereumSignature =
-    chainSignaturesContract.extractSignature(signatureEvent);
-
-  const signedTx = ethers.Transaction.from({
-    type: tempTx.type,
-    chainId: tempTx.chainId,
-    nonce: tempTx.nonce,
-    maxPriorityFeePerGas: tempTx.maxPriorityFeePerGas,
-    maxFeePerGas: tempTx.maxFeePerGas,
-    gasLimit: tempTx.gasLimit,
-    to: tempTx.to as string,
-    value: tempTx.value,
-    data: tempTx.data as string,
-    signature: {
-      r: ethereumSignature.r,
-      s: ethereumSignature.s,
-      v: Number(ethereumSignature.v),
-    },
-  });
-
-  const txResponse = await provider.broadcastTransaction(signedTx.serialized);
-  await txResponse.wait();
-
-  let readEvent = null;
-  const maxReadAttempts = 40; // Reduced from 60
-  let readPollInterval = 8000; // Start with 8 seconds
-  let readConsecutiveFailures = 0;
-
-  console.log(
-    `[DEPOSIT_READ] Waiting for read response event for request ${requestId}`,
-  );
-
-  for (let i = 0; i < maxReadAttempts; i++) {
-    try {
-      readEvent =
-        await chainSignaturesContract.findReadResponseEventInLogs(requestId);
-      if (readEvent) {
-        console.log(
-          `[DEPOSIT_READ] Read response event found on attempt ${i + 1}`,
-        );
-        break;
-      }
-
-      // Reset failure count on successful call
-      readConsecutiveFailures = 0;
-    } catch (error) {
-      console.warn(`[DEPOSIT_READ] Error on attempt ${i + 1}:`, error);
-      readConsecutiveFailures++;
-
-      // Increase polling interval after failures
-      if (readConsecutiveFailures >= 3) {
-        readPollInterval = Math.min(readPollInterval * 1.5, 20000); // Max 20 seconds
-        readConsecutiveFailures = 0;
-      }
-    }
-
-    if (i < maxReadAttempts - 1) {
-      const nextPollTime = Math.round(readPollInterval / 1000);
-      console.log(
-        `[DEPOSIT_READ] Attempt ${i + 1}/${maxReadAttempts}, checking again in ${nextPollTime}s...`,
-      );
-      await new Promise(resolve => setTimeout(resolve, readPollInterval));
-    }
-  }
-
-  if (!readEvent) {
-    throw new Error('Read response event not found within timeout');
-  }
-
-  const requestIdBytes = bridgeContract.hexToBytes(requestId);
-  const [pendingDepositPda] =
-    bridgeContract.derivePendingDepositPda(requestIdBytes);
-  const pendingDeposit =
-    await bridgeContract.fetchPendingDeposit(pendingDepositPda);
-
-  const convertedSignature = {
-    bigR: {
-      x: Array.from(readEvent.signature.bigR.x),
-      y: Array.from(readEvent.signature.bigR.y),
-    },
-    s: Array.from(readEvent.signature.s),
-    recoveryId: readEvent.signature.recoveryId,
-  };
-
-  await bridgeContract.claimErc20({
-    requester: pendingDeposit.requester,
-    requestIdBytes,
-    serializedOutput: readEvent.serializedOutput,
-    signature: convertedSignature,
-    erc20AddressBytes: pendingDeposit.erc20Address,
-  });
 }

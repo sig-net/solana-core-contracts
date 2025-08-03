@@ -2,18 +2,13 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useWallet } from '@solana/wallet-adapter-react';
-import {
-  Alchemy,
-  Network,
-  AssetTransfersCategory,
-  SortingOrder,
-} from 'alchemy-sdk';
+import { AssetTransfersCategory, SortingOrder } from 'alchemy-sdk';
 
 import { ALL_TOKENS } from '@/lib/constants/token-metadata';
 import { queryKeys } from '@/lib/query-client';
 
 import { useDepositAddress } from './use-deposit-address';
-import { useEnv } from './use-env';
+import { useAlchemy } from './use-alchemy';
 
 export interface TransferEvent {
   transactionHash: string;
@@ -29,13 +24,8 @@ export interface TransferEvent {
 
 async function fetchTransfersFromAlchemy(
   toAddress: string,
-  alchemyApiKey: string,
+  alchemy: any,
 ): Promise<TransferEvent[]> {
-  const alchemy = new Alchemy({
-    apiKey: alchemyApiKey,
-    network: Network.ETH_SEPOLIA,
-  });
-
   const supportedTokens = ALL_TOKENS.map(token => token.address.toLowerCase());
 
   const response = await alchemy.core.getAssetTransfers({
@@ -93,7 +83,7 @@ async function fetchTransfersFromAlchemy(
 export function useIncomingTransfers() {
   const { publicKey } = useWallet();
   const { data: depositAddress } = useDepositAddress();
-  const env = useEnv();
+  const alchemy = useAlchemy();
 
   const query = useQuery({
     queryKey:
@@ -103,10 +93,7 @@ export function useIncomingTransfers() {
     queryFn: async (): Promise<TransferEvent[]> => {
       if (!depositAddress) throw new Error('No deposit address available');
 
-      return await fetchTransfersFromAlchemy(
-        depositAddress,
-        env.NEXT_PUBLIC_ALCHEMY_API_KEY,
-      );
+      return await fetchTransfersFromAlchemy(depositAddress, alchemy);
     },
     enabled: !!publicKey && !!depositAddress,
     staleTime: 30000,

@@ -2,11 +2,11 @@ import { PublicKey } from '@solana/web3.js';
 import { Wallet } from '@coral-xyz/anchor';
 
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
-import { CryptographyService } from '@/lib/services/cryptography-service';
+import { deriveEthereumAddress } from '@/lib/constants/addresses';
 import { TokenBalanceService } from '@/lib/services/token-balance-service';
 import { RelayerService } from '@/lib/services/relayer-service';
-import type { DepositStatusCallback } from '@/lib/types/shared.types';
-import { CHAIN_SIGNATURES_CONFIG } from '@/lib/constants/chain-signatures.constants';
+import type { StatusCallback } from '@/lib/types/shared.types';
+import { CHAIN_SIGNATURES_CONFIG } from '@/lib/constants/addresses';
 
 /**
  * DepositService shows users where to deposit ERC20 tokens on Ethereum.
@@ -31,13 +31,13 @@ export class DepositService {
     erc20Address: string,
     amount: string,
     _decimals = 6,
-    onStatusChange?: DepositStatusCallback,
+    onStatusChange?: StatusCallback,
   ): Promise<string> {
     try {
       const [vaultAuthority] =
         this.bridgeContract.deriveVaultAuthorityPda(publicKey);
       const path = publicKey.toString();
-      const derivedAddress = CryptographyService.deriveEthereumAddress(
+      const derivedAddress = deriveEthereumAddress(
         path,
         vaultAuthority.toString(),
         CHAIN_SIGNATURES_CONFIG.BASE_PUBLIC_KEY,

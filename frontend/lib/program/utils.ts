@@ -64,61 +64,20 @@ export function generateRequestId(
 export async function createEvmTransactionParams(
   nonce: number,
   gasLimit: number,
-  useDynamicGas = true,
 ): Promise<EvmTransactionParams> {
-  let maxFeePerGas: bigint;
-  let maxPriorityFeePerGas: bigint;
+  const feeData = await alchemy.core.getFeeData();
 
-  if (useDynamicGas) {
-    try {
-      console.log(
-        '[GAS_ESTIMATION] Fetching current gas prices from network...',
-      );
-      const feeData = await alchemy.core.getFeeData();
-
-      if (feeData?.maxFeePerGas && feeData?.maxPriorityFeePerGas) {
-        // Add 20% buffer to ensure transaction is competitive
-        const bufferMultiplier = 1.2;
-        maxFeePerGas = BigInt(
-          Math.floor(Number(feeData.maxFeePerGas) * bufferMultiplier),
-        );
-        maxPriorityFeePerGas = BigInt(
-          Math.floor(Number(feeData.maxPriorityFeePerGas) * bufferMultiplier),
-        );
-
-        console.log('[GAS_ESTIMATION] Using dynamic gas prices:', {
-          original: {
-            maxFeePerGas: feeData.maxFeePerGas.toString(),
-            maxPriorityFeePerGas: feeData.maxPriorityFeePerGas.toString(),
-          },
-          withBuffer: {
-            maxFeePerGas: maxFeePerGas.toString(),
-            maxPriorityFeePerGas: maxPriorityFeePerGas.toString(),
-          },
-        });
-      } else {
-        throw new Error('Invalid fee data received from network');
-      }
-    } catch (error) {
-      console.warn(
-        '[GAS_ESTIMATION] Failed to fetch dynamic gas prices, using fallback:',
-        error,
-      );
-      // Fallback to higher default values if network call fails
-      maxFeePerGas = ethers.parseUnits('50', 'gwei'); // Increased from 30
-      maxPriorityFeePerGas = ethers.parseUnits('5', 'gwei'); // Increased from 2
-    }
-  } else {
-    // Use fallback values (higher than original defaults)
-    maxFeePerGas = ethers.parseUnits('50', 'gwei');
-    maxPriorityFeePerGas = ethers.parseUnits('5', 'gwei');
-  }
+  const bufferMultiplier = 1.2;
 
   return {
     value: BigInt(0),
     gasLimit: BigInt(gasLimit),
-    maxFeePerGas,
-    maxPriorityFeePerGas,
+    maxFeePerGas: BigInt(
+      Math.floor(Number(feeData.maxFeePerGas) * bufferMultiplier),
+    ),
+    maxPriorityFeePerGas: BigInt(
+      Math.floor(Number(feeData.maxPriorityFeePerGas) * bufferMultiplier),
+    ),
     nonce: BigInt(nonce),
     chainId: BigInt(11155111), // Sepolia testnet
   };

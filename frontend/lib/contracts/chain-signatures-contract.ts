@@ -2,7 +2,6 @@ import { Connection } from '@solana/web3.js';
 import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import type { Hex } from 'viem';
 
-import { CHAIN_SIGNATURES_PROGRAM_IDl } from '../program/idl_chain_sig';
 import type {
   ChainSignaturesProgram,
   ChainSignaturesSignature,
@@ -10,7 +9,7 @@ import type {
   ReadRespondedEvent,
   EventPromises,
 } from '../types/chain-signatures.types';
-import type { EthereumSignature } from '../types/ethereum.types';
+import { CHAIN_SIGNATURES_PROGRAM_IDl } from '../program/IDL_CHAIN_SIG';
 
 /**
  * ChainSignaturesContract class handles all interactions with the chain signatures program,
@@ -65,7 +64,7 @@ export class ChainSignaturesContract {
         if (eventRequestId === requestId) {
           signatureResolve(event);
         } else {
-          throw new Error('Signature event request ID mismatch');
+          console.warn('Signature event request ID mismatch');
         }
       },
     );
@@ -79,7 +78,7 @@ export class ChainSignaturesContract {
         if (eventRequestId === requestId) {
           readRespondResolve(event);
         } else {
-          throw new Error('Signature event request ID mismatch');
+          console.warn('Signature event request ID mismatch');
         }
       },
     );
@@ -99,7 +98,7 @@ export class ChainSignaturesContract {
   /**
    * Extract Ethereum signature from chain signatures signature
    */
-  extractSignature(signature: ChainSignaturesSignature): EthereumSignature {
+  extractSignature(signature: ChainSignaturesSignature) {
     const r = ('0x' + Buffer.from(signature.bigR.x).toString('hex')) as Hex;
     const s = ('0x' + Buffer.from(signature.s).toString('hex')) as Hex;
     const v = BigInt(signature.recoveryId + 27);

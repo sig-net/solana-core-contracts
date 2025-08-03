@@ -11,7 +11,7 @@ import {
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { TokenBalanceService } from '@/lib/services/token-balance-service';
 import { RelayerService } from '@/lib/services/relayer-service';
-import type { WithdrawalStatusCallback } from '@/lib/types/shared.types';
+import type { StatusCallback } from '@/lib/types/shared.types';
 import { VAULT_ETHEREUM_ADDRESS } from '@/lib/constants/addresses';
 import { SERVICE_CONFIG } from '@/lib/constants/service.config';
 
@@ -39,7 +39,7 @@ export class WithdrawalService {
     erc20Address: string,
     amount: string,
     recipientAddress: string,
-    onStatusChange?: WithdrawalStatusCallback,
+    onStatusChange?: StatusCallback,
   ): Promise<string> {
     try {
       // Get the global vault authority (requester for withdrawals)

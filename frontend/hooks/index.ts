@@ -1,4 +1,3 @@
-export { useSolanaService } from './use-solana-service';
 export { useDepositAddress } from './use-deposit-address';
 export { useUserBalances } from './use-user-balances';
 export { useDepositErc20Mutation } from './use-deposit-erc20-mutation';

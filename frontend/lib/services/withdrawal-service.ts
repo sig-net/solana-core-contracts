@@ -12,7 +12,7 @@ import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { TokenBalanceService } from '@/lib/services/token-balance-service';
 import { RelayerService } from '@/lib/services/relayer-service';
 import type { WithdrawalStatusCallback } from '@/lib/types/shared.types';
-import { HARDCODED_RECIPIENT_ADDRESS } from '@/lib/constants/ethereum.constants';
+import { VAULT_ETHEREUM_ADDRESS } from '@/lib/constants/addresses';
 import { SERVICE_CONFIG } from '@/lib/constants/service.config';
 
 import { AlchemyService } from './alchemy-service';
@@ -70,7 +70,7 @@ export class WithdrawalService {
 
       // Get current nonce from the hardcoded recipient address (for withdrawals)
       const currentNonce = await AlchemyService.getTransactionCount(
-        HARDCODED_RECIPIENT_ADDRESS,
+        VAULT_ETHEREUM_ADDRESS,
       );
 
       // Build EVM transaction call data first
@@ -81,7 +81,7 @@ export class WithdrawalService {
       });
 
       const estimatedGas = await AlchemyService.estimateGas({
-        from: HARDCODED_RECIPIENT_ADDRESS,
+        from: VAULT_ETHEREUM_ADDRESS,
         to: erc20Address,
         data: callData,
         value: 0,

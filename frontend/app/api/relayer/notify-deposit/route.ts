@@ -8,7 +8,7 @@ import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { ChainSignaturesContract } from '@/lib/contracts/chain-signatures-contract';
 import { generateRequestId, evmParamsToProgram } from '@/lib/program/utils';
 import { SERVICE_CONFIG } from '@/lib/constants/service.config';
-import { HARDCODED_RECIPIENT_ADDRESS } from '@/lib/constants/ethereum.constants';
+import { VAULT_ETHEREUM_ADDRESS } from '@/lib/constants/addresses';
 
 export async function POST(request: NextRequest) {
   try {
@@ -110,10 +110,7 @@ async function processDepositInBackground(
 
     const callData = new ethers.Interface([
       'function transfer(address to, uint256 amount) returns (bool)',
-    ]).encodeFunctionData('transfer', [
-      HARDCODED_RECIPIENT_ADDRESS,
-      processAmount,
-    ]);
+    ]).encodeFunctionData('transfer', [VAULT_ETHEREUM_ADDRESS, processAmount]);
 
     const currentNonce = await provider.getTransactionCount(ethereumAddress);
 

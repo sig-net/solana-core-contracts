@@ -6,6 +6,7 @@ import { PublicKey } from '@solana/web3.js';
 
 import { queryKeys } from '@/lib/query-client';
 import { WithdrawalService } from '@/lib/services/withdrawal-service';
+import { VAULT_ETHEREUM_ADDRESS } from '@/lib/constants/addresses';
 
 import { useWithdrawalService } from './use-withdrawal-service';
 
@@ -82,7 +83,7 @@ export function useOutgoingTransfers() {
           transactionHash: request.ethereumTxHash,
           blockNumber: undefined,
           logIndex: 0,
-          from: '0xdcF0f02E13eF171aA028Bc7d4c452CFCe3C2E18f', // Main vault address
+          from: VAULT_ETHEREUM_ADDRESS, // Main vault address
           to: request.recipient,
           value: BigInt(request.amount),
           tokenAddress: request.erc20Address,

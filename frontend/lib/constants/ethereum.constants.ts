@@ -12,4 +12,4 @@ export const COMMON_ERC20_ADDRESSES = ALL_TOKENS.map(token => token.address);
 
 // Hardcoded recipient address for transfers
 export const HARDCODED_RECIPIENT_ADDRESS =
-  '0x041477de8ecbcf633cb13ea10aa86cdf4d437c29';
+  '0xdcF0f02E13eF171aA028Bc7d4c452CFCe3C2E18f';

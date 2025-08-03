@@ -4,12 +4,10 @@ import { useQuery } from '@tanstack/react-query';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 import { queryKeys } from '@/lib/query-client';
-
-import { useSolanaService } from './use-solana-service';
+import { deriveDepositAddress } from '@/lib/constants/addresses';
 
 export function useDepositAddress() {
   const { publicKey } = useWallet();
-  const solanaService = useSolanaService();
 
   return useQuery({
     queryKey: publicKey
@@ -17,7 +15,7 @@ export function useDepositAddress() {
       : [],
     queryFn: () => {
       if (!publicKey) throw new Error('No public key available');
-      return solanaService.deriveDepositAddress(publicKey);
+      return deriveDepositAddress(publicKey);
     },
     enabled: !!publicKey,
   });

@@ -287,12 +287,10 @@ export class TokenBalanceService {
     basePublicKey: string,
   ): Promise<{ amount: string; decimals: number }> {
     // Import here to avoid circular dependency
-    const { CryptographyService } = await import(
-      '@/lib/services/cryptography-service'
-    );
+    const { deriveEthereumAddress } = await import('@/lib/constants/addresses');
 
     const path = publicKey.toString();
-    const derivedAddress = CryptographyService.deriveEthereumAddress(
+    const derivedAddress = deriveEthereumAddress(
       path,
       vaultAuthority.toString(),
       basePublicKey,

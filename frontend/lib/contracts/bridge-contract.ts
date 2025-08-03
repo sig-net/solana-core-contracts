@@ -7,10 +7,12 @@ import {
 } from '@solana/web3.js';
 import { Program, AnchorProvider, BN, Wallet } from '@coral-xyz/anchor';
 
-import { IDL, type SolanaCoreContracts } from '@/lib/program/idl';
-import { BRIDGE_PROGRAM_ID, BRIDGE_PDA_SEEDS } from '@/lib/constants/addresses';
-import { CHAIN_SIGNATURES_PROGRAM_ID } from '@/lib/constants/chain-signatures.constants';
-import { SYSTEM_PROGRAM_ID } from '@/lib/constants/service.constants';
+import { IDL, type SolanaCoreContracts } from '@/lib/program/IDL_SOLANA_DEX';
+import {
+  BRIDGE_PROGRAM_ID,
+  BRIDGE_PDA_SEEDS,
+  CHAIN_SIGNATURES_PROGRAM_ID,
+} from '@/lib/constants/addresses';
 
 /**
  * BridgeContract class handles all low-level contract interactions,
@@ -209,7 +211,6 @@ export class BridgeContract {
         feePayer: payerKey,
         chainSignaturesState: chainSignaturesStatePda,
         chainSignaturesProgram: CHAIN_SIGNATURES_PROGRAM_ID,
-        systemProgram: SYSTEM_PROGRAM_ID,
         instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       } as any)
       .rpc();
@@ -248,7 +249,6 @@ export class BridgeContract {
         payer: payerKey,
         pendingDeposit: pendingDepositPda,
         userBalance: userBalancePda,
-        systemProgram: SYSTEM_PROGRAM_ID,
       } as any)
       .rpc();
   }
@@ -292,7 +292,6 @@ export class BridgeContract {
         userBalance: userBalancePda,
         chainSignaturesState: this.deriveChainSignaturesStatePda()[0],
         chainSignaturesProgram: CHAIN_SIGNATURES_PROGRAM_ID,
-        systemProgram: SYSTEM_PROGRAM_ID,
         instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       } as any)
       .rpc();
@@ -332,7 +331,6 @@ export class BridgeContract {
         payer: payerKey,
         pendingWithdrawal: pendingWithdrawalPda,
         userBalance: userBalancePda,
-        systemProgram: SYSTEM_PROGRAM_ID,
       } as any)
       .rpc();
   }

@@ -1,16 +1,11 @@
-import { Alchemy, Network } from 'alchemy-sdk';
+import { getAlchemyProvider } from '@/lib/utils/providers';
 
-// Create singleton Alchemy instance
-let alchemyInstance: Alchemy | null = null;
-
-export function getAlchemy(): Alchemy {
-  if (!alchemyInstance) {
-    alchemyInstance = new Alchemy({
-      apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY!,
-      network: Network.ETH_SEPOLIA,
-    });
-  }
-  return alchemyInstance;
+/**
+ * Get Alchemy SDK instance
+ * @deprecated Use getAlchemyProvider from @/lib/utils/providers instead
+ */
+export function getAlchemy() {
+  return getAlchemyProvider();
 }
 
 // Export the instance for direct use

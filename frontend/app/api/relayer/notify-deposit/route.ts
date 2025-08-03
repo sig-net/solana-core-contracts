@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Connection, PublicKey, Keypair } from '@solana/web3.js';
+import { PublicKey, Keypair } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
 import NodeWallet from '@coral-xyz/anchor/dist/esm/nodewallet.js';
 import { ethers } from 'ethers';
@@ -9,6 +9,11 @@ import { ChainSignaturesContract } from '@/lib/contracts/chain-signatures-contra
 import { generateRequestId, evmParamsToProgram } from '@/lib/program/utils';
 import { SERVICE_CONFIG } from '@/lib/constants/service.config';
 import { VAULT_ETHEREUM_ADDRESS } from '@/lib/constants/addresses';
+import { getFullEnv } from '@/lib/utils/env';
+import {
+  getSolanaConnection,
+  getEthereumProvider,
+} from '@/lib/utils/providers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,10 +65,16 @@ async function processDepositInBackground(
   ethereumAddress: string,
 ) {
   try {
+    // Get validated environment variables
+    const env = getFullEnv();
+
+    // Get providers
+    const connection = getSolanaConnection();
+    const provider = getEthereumProvider();
+
     // Set up relayer wallet and contracts
-    const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL!);
     const relayerKeypair = Keypair.fromSecretKey(
-      new Uint8Array(JSON.parse(process.env.RELAYER_PRIVATE_KEY!)),
+      new Uint8Array(JSON.parse(env.RELAYER_PRIVATE_KEY)),
     );
     const relayerWallet = new NodeWallet(relayerKeypair);
 
@@ -71,12 +82,6 @@ async function processDepositInBackground(
     const chainSignaturesContract = new ChainSignaturesContract(
       connection,
       relayerWallet,
-    );
-
-    // Use ethers provider for all Ethereum operations in server environment
-    // AlchemyService has compatibility issues in Node.js server context
-    const provider = new ethers.JsonRpcProvider(
-      `https://eth-sepolia.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_API_KEY}`,
     );
 
     // Monitor Ethereum for the deposit and get actual deposited amount
@@ -93,11 +98,7 @@ async function processDepositInBackground(
     );
 
     if (!actualAmount) {
-      console.error('No token balance detected within timeout for deposit:', {
-        userAddress,
-        erc20Address,
-        ethereumAddress,
-      });
+      console.error('[DEPOSIT] No token balance detected within timeout');
       return;
     }
 
@@ -158,8 +159,10 @@ async function processDepositInBackground(
     });
     const amountBN = new BN(processAmount.toString());
 
+    console.log('[DEPOSIT] Creating Solana deposit...');
+
     // Call deposit_erc20 (permissionless)
-    await bridgeContract.depositErc20({
+    const solanaTxHash = await bridgeContract.depositErc20({
       requester: userPublicKey,
       payer: relayerWallet.publicKey,
       requestIdBytes,
@@ -168,7 +171,9 @@ async function processDepositInBackground(
       evmParams,
     });
 
-    await waitForSignatureExecuteAndClaim(
+    console.log(`[DEPOSIT] Solana tx: ${solanaTxHash}`);
+
+    const ethereumTxHash = await waitForSignatureExecuteAndClaim(
       chainSignaturesContract,
       bridgeContract,
       provider,
@@ -176,19 +181,11 @@ async function processDepositInBackground(
       tempTx,
     );
 
-    console.log('Deposit processing completed:', {
-      userAddress,
-      requestId,
-      actualAmount: actualAmount.toString(),
-      processedAmount: processAmount.toString(),
-    });
+    console.log(`[DEPOSIT] Ethereum tx: ${ethereumTxHash}`);
+    console.log('[DEPOSIT] Deposit completed successfully');
   } catch (error) {
-    console.error('Background deposit processing failed:', {
-      userAddress,
-      erc20Address,
-      ethereumAddress,
+    console.error('[DEPOSIT] Processing failed:', {
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined,
     });
   }
 }
@@ -218,9 +215,7 @@ async function monitorTokenBalance(
       const balance = await erc20Contract.balanceOf(address);
 
       if (balance > BigInt(0)) {
-        console.log(
-          `[DEPOSIT_MONITOR] Token balance detected: ${balance.toString()} for ${address}`,
-        );
+        console.log(`[DEPOSIT] Token balance detected`);
         return balance;
       }
 
@@ -242,14 +237,12 @@ async function monitorTokenBalance(
 
     const nextPollTime = Math.round(pollIntervalMs / 1000);
     console.log(
-      `[DEPOSIT_MONITOR] No balance yet, checking again in ${nextPollTime}s...`,
+      `[DEPOSIT] No balance yet, checking again in ${nextPollTime}s...`,
     );
     await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
   }
 
-  console.warn(
-    `[DEPOSIT_MONITOR] Timeout reached after ${timeoutMs / 1000}s for ${address}`,
-  );
+  console.warn(`[DEPOSIT] Timeout reached after ${timeoutMs / 1000}s`);
   return null;
 }
 
@@ -259,23 +252,22 @@ async function waitForSignatureExecuteAndClaim(
   provider: ethers.JsonRpcProvider,
   requestId: string,
   tempTx: ethers.TransactionRequest,
-): Promise<void> {
-  console.log(
-    `[DEPOSIT_SIGNATURE] Setting up event listeners for request ${requestId}`,
-  );
+): Promise<string> {
+  console.log(`[DEPOSIT] Waiting for signature...`);
 
   // Setup event listeners instead of polling
   const eventPromises = chainSignaturesContract.setupEventListeners(requestId);
 
   try {
     // Wait for signature event
-    console.log(`[DEPOSIT_SIGNATURE] Waiting for signature event...`);
     const signatureEvent = await eventPromises.signature;
-    console.log(`[DEPOSIT_SIGNATURE] Signature event received`);
+    console.log(`[DEPOSIT] Signature received`);
 
     const ethereumSignature = chainSignaturesContract.extractSignature(
       signatureEvent.signature,
     );
+
+    console.log(`[DEPOSIT] Submitting to Ethereum...`);
 
     const signedTx = ethers.Transaction.from({
       type: tempTx.type,
@@ -298,9 +290,8 @@ async function waitForSignatureExecuteAndClaim(
     await txResponse.wait();
 
     // Wait for read response event
-    console.log(`[DEPOSIT_READ] Waiting for read response event...`);
+    console.log(`[DEPOSIT] Completing on Solana...`);
     const readEvent = await eventPromises.readRespond;
-    console.log(`[DEPOSIT_READ] Read response event received`);
 
     const requestIdBytes = bridgeContract.hexToBytes(requestId);
     const [pendingDepositPda] =
@@ -324,6 +315,8 @@ async function waitForSignatureExecuteAndClaim(
       signature: convertedSignature,
       erc20AddressBytes: pendingDeposit.erc20Address,
     });
+
+    return txResponse.hash;
   } finally {
     // Always cleanup event listeners
     eventPromises.cleanup();

@@ -1,5 +1,7 @@
+import { BRIDGE_PROGRAM_ID } from '../constants/addresses';
+
 export type SolanaCoreContracts = {
-  address: '3si68i2yXFAGy5k8BpqGpPJR5wE27id1Jenx3uN8GCws';
+  address: string;
   metadata: {
     name: 'solanaCoreContracts';
     version: '0.1.0';
@@ -1131,7 +1133,7 @@ export type SolanaCoreContracts = {
 };
 
 export const IDL: SolanaCoreContracts = {
-  address: '3si68i2yXFAGy5k8BpqGpPJR5wE27id1Jenx3uN8GCws',
+  address: BRIDGE_PROGRAM_ID.toString(),
   metadata: {
     name: 'solanaCoreContracts',
     version: '0.1.0',

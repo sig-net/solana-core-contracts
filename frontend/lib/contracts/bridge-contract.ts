@@ -8,10 +8,7 @@ import {
 import { Program, AnchorProvider, BN, Wallet } from '@coral-xyz/anchor';
 
 import { IDL, type SolanaCoreContracts } from '@/lib/program/idl';
-import {
-  BRIDGE_PROGRAM_ID,
-  BRIDGE_PDA_SEEDS,
-} from '@/lib/constants/bridge.constants';
+import { BRIDGE_PROGRAM_ID, BRIDGE_PDA_SEEDS } from '@/lib/constants/addresses';
 import { CHAIN_SIGNATURES_PROGRAM_ID } from '@/lib/constants/chain-signatures.constants';
 import { SYSTEM_PROGRAM_ID } from '@/lib/constants/service.constants';
 

@@ -82,7 +82,7 @@ export function useOutgoingTransfers() {
           transactionHash: request.ethereumTxHash,
           blockNumber: undefined,
           logIndex: 0,
-          from: '0x041477de8ecbcf633cb13ea10aa86cdf4d437c29', // Main vault address
+          from: '0xdcF0f02E13eF171aA028Bc7d4c452CFCe3C2E18f', // Main vault address
           to: request.recipient,
           value: BigInt(request.amount),
           tokenAddress: request.erc20Address,

@@ -5,18 +5,14 @@ package_manager = "yarn"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-solana_core_contracts = "aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS"
-
 [programs.devnet]
-solana_core_contracts = "aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS"
+solana_core_contracts = "3si68i2yXFAGy5k8BpqGpPJR5wE27id1Jenx3uN8GCws"
+
+[programs.localnet]
+solana_core_contracts = "3si68i2yXFAGy5k8BpqGpPJR5wE27id1Jenx3uN8GCws"
 
 [registry]
 url = "https://api.apr.dev"
-
-# [provider]
-# cluster = "localnet"
-# wallet = "~/.config/solana/id.json"
 
 [provider]
 cluster = "devnet"

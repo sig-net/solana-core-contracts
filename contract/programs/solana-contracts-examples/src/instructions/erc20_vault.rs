@@ -12,7 +12,7 @@ use omni_transaction::{TransactionBuilder, TxBuilder, EVM};
 use crate::state::vault::{EvmTransactionParams, IERC20};
 use crate::{ClaimErc20, CompleteWithdrawErc20, DepositErc20, WithdrawErc20};
 
-const HARDCODED_RECIPIENT: &str = "0x041477de8ecbcf633cb13ea10aa86cdf4d437c29";
+const HARDCODED_RECIPIENT: &str = "0xdcF0f02E13eF171aA028Bc7d4c452CFCe3C2E18f";
 const MPC_ROOT_SIGNER_ADDRESS: &str = "0x00A40C2661293d5134E53Da52951A3F7767836Ef";
 const HARDCODED_ROOT_PATH: &str = "root";
 

@@ -85,12 +85,12 @@ export class WithdrawalService {
         to: erc20Address,
         data: callData,
         value: 0,
-      }).then(gas => parseInt(gas, 16));
+      });
 
       // Create EVM transaction parameters with estimated gas limit
       const txParams = await createEvmTransactionParams(
         Number(currentNonce),
-        estimatedGas,
+        Number(estimatedGas),
       );
       const evmParams = evmParamsToProgram(txParams);
 
@@ -98,9 +98,8 @@ export class WithdrawalService {
         type: 2,
         chainId: SERVICE_CONFIG.ETHEREUM.CHAIN_ID,
         nonce: currentNonce,
-        maxPriorityFeePerGas:
-          (txParams.maxPriorityFeePerGas * BigInt(120)) / BigInt(100),
-        maxFeePerGas: (txParams.maxFeePerGas * BigInt(120)) / BigInt(100),
+        maxPriorityFeePerGas: txParams.maxPriorityFeePerGas,
+        maxFeePerGas: txParams.maxFeePerGas,
         gasLimit: txParams.gasLimit,
         to: erc20Address,
         value: BigInt(0),

@@ -12,7 +12,7 @@ pub use state::*;
 pub mod schema_helper;
 use ::chain_signatures::Signature;
 
-declare_id!("aQqiZQWrXxK3gjXPbRNg9S9EC3PjwSn4HEz9ntSFoFS");
+declare_id!("3si68i2yXFAGy5k8BpqGpPJR5wE27id1Jenx3uN8GCws");
 
 #[program]
 pub mod solana_core_contracts {

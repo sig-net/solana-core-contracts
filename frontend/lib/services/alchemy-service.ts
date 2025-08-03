@@ -1,4 +1,4 @@
-import { Alchemy, Network } from 'alchemy-sdk';
+import { Alchemy, BigNumber, Network } from 'alchemy-sdk';
 
 interface RetryOptions {
   maxRetries?: number;
@@ -227,7 +227,7 @@ export class AlchemyService {
       value?: number | string;
     },
     alchemy?: Alchemy,
-  ): Promise<string> {
+  ): Promise<BigNumber> {
     const instance = alchemy || AlchemyService.getInstance();
     return AlchemyService.withRetry(async () => {
       return await instance.core.estimateGas(transaction);

@@ -12,6 +12,9 @@ import {
   BRIDGE_PROGRAM_ID,
   BRIDGE_PDA_SEEDS,
   CHAIN_SIGNATURES_PROGRAM_ID,
+  deriveEthereumAddress,
+  CHAIN_SIGNATURES_CONFIG,
+  GLOBAL_VAULT_AUTHORITY_PDA,
 } from '@/lib/constants/addresses';
 
 /**
@@ -79,15 +82,6 @@ export class BridgeContract {
     );
   }
 
-  /**
-   * Derive global vault authority PDA
-   */
-  deriveGlobalVaultAuthorityPda(): [PublicKey, number] {
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from(BRIDGE_PDA_SEEDS.GLOBAL_VAULT_AUTHORITY)],
-      BRIDGE_PROGRAM_ID,
-    );
-  }
 
   /**
    * Derive user balance PDA for a given user and ERC20 token
@@ -271,7 +265,7 @@ export class BridgeContract {
     recipientAddressBytes: number[];
     evmParams: any;
   }): Promise<string> {
-    const [globalVaultAuthority] = this.deriveGlobalVaultAuthorityPda();
+    const globalVaultAuthority = GLOBAL_VAULT_AUTHORITY_PDA;
     const [pendingWithdrawalPda] =
       this.derivePendingWithdrawalPda(requestIdBytes);
     const erc20Bytes = Buffer.from(erc20AddressBytes);
@@ -526,9 +520,16 @@ export class BridgeContract {
   }
 
   /**
-   * Get program ID
+   * Derive deposit address for a given user public key
+   * This replaces the SolanaService.deriveDepositAddress method
    */
-  get programId(): PublicKey {
-    return BRIDGE_PROGRAM_ID;
+  deriveDepositAddress(publicKey: PublicKey): string {
+    const [vaultAuthority] = this.deriveVaultAuthorityPda(publicKey);
+    const path = publicKey.toString();
+    return deriveEthereumAddress(
+      path,
+      vaultAuthority.toString(),
+      CHAIN_SIGNATURES_CONFIG.BASE_PUBLIC_KEY,
+    );
   }
 }

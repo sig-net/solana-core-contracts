@@ -12,7 +12,10 @@ import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { TokenBalanceService } from '@/lib/services/token-balance-service';
 import { RelayerService } from '@/lib/services/relayer-service';
 import type { StatusCallback } from '@/lib/types/shared.types';
-import { VAULT_ETHEREUM_ADDRESS } from '@/lib/constants/addresses';
+import {
+  VAULT_ETHEREUM_ADDRESS,
+  GLOBAL_VAULT_AUTHORITY_PDA,
+} from '@/lib/constants/addresses';
 import { SERVICE_CONFIG } from '@/lib/constants/service.config';
 
 import { alchemy } from './alchemy-service';
@@ -43,8 +46,7 @@ export class WithdrawalService {
   ): Promise<string> {
     try {
       // Get the global vault authority (requester for withdrawals)
-      const [globalVaultAuthority] =
-        this.bridgeContract.deriveGlobalVaultAuthorityPda();
+      const globalVaultAuthority = GLOBAL_VAULT_AUTHORITY_PDA;
 
       // Get token decimals and convert amount to proper format
       const decimals =
@@ -122,17 +124,7 @@ export class WithdrawalService {
 
       const requestIdBytes = this.bridgeContract.hexToBytes(requestId);
 
-      // Call withdrawErc20 on Solana
-      await this.bridgeContract.withdrawErc20({
-        authority: publicKey,
-        requestIdBytes,
-        erc20AddressBytes,
-        amount: amountBN,
-        recipientAddressBytes,
-        evmParams,
-      });
-
-      // Notify relayer to monitor for this withdrawal with exact transaction parameters
+      // Notify relayer FIRST to set up event listeners before transaction
       await this.relayerService.notifyWithdrawal({
         requestId,
         erc20Address,
@@ -148,6 +140,21 @@ export class WithdrawalService {
           value: tempTx.value.toString(),
           data: callData,
         },
+      });
+
+      onStatusChange?.({
+        status: 'preparing',
+        note: 'Setting up withdrawal monitoring...',
+      });
+
+      // Call withdrawErc20 on Solana AFTER relayer is ready
+      await this.bridgeContract.withdrawErc20({
+        authority: publicKey,
+        requestIdBytes,
+        erc20AddressBytes,
+        amount: amountBN,
+        recipientAddressBytes,
+        evmParams,
       });
 
       onStatusChange?.({

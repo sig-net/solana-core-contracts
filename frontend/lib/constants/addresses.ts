@@ -142,31 +142,6 @@ export function deriveEthereumAddress(
   return ethers.computeAddress(derivedPublicKey);
 }
 
-/**
- * Derive vault authority PDA for a given user public key
- */
-function deriveVaultAuthorityPda(
-  userPublicKey: PublicKey,
-): [PublicKey, number] {
-  return PublicKey.findProgramAddressSync(
-    [Buffer.from(BRIDGE_PDA_SEEDS.VAULT_AUTHORITY), userPublicKey.toBuffer()],
-    BRIDGE_PROGRAM_ID,
-  );
-}
-
-/**
- * Derive deposit address for a given user public key
- * This replaces the SolanaService.deriveDepositAddress method
- */
-export function deriveDepositAddress(publicKey: PublicKey): string {
-  const [vaultAuthority] = deriveVaultAuthorityPda(publicKey);
-  const path = publicKey.toString();
-  return deriveEthereumAddress(
-    path,
-    vaultAuthority.toString(),
-    CHAIN_SIGNATURES_CONFIG.BASE_PUBLIC_KEY,
-  );
-}
 
 /**
  * Global Vault Authority PDA - used for withdrawals

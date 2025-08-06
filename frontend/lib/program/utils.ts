@@ -2,7 +2,7 @@ import { PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
 import { BN } from '@coral-xyz/anchor';
 
-import { alchemy } from '../services/alchemy-service';
+import { getAlchemyProvider } from '../utils/providers';
 
 export interface EvmTransactionParams {
   value: bigint;
@@ -65,7 +65,7 @@ export async function createEvmTransactionParams(
   nonce: number,
   gasLimit: number,
 ): Promise<EvmTransactionParams> {
-  const feeData = await alchemy.core.getFeeData();
+  const feeData = await getAlchemyProvider().core.getFeeData();
 
   const bufferMultiplier = 1.2;
 

@@ -7,6 +7,7 @@ interface TokenListItemProps {
   symbol: string;
   name: string;
   chain: string;
+  chainName?: string;
   balance?: string;
   balanceUsd?: string;
   selected?: boolean;
@@ -18,6 +19,7 @@ export function TokenListItem({
   symbol,
   name,
   chain,
+  chainName,
   balance,
   balanceUsd,
   onClick,
@@ -36,7 +38,7 @@ export function TokenListItem({
         <div className='flex flex-col'>
           <span className='font-medium text-stone-700'>{symbol}</span>
           <span className='text-dark-neutral-300 text-xs'>
-            {name} • on {chain}
+            {name} • on {chainName || chain}
           </span>
         </div>
       </div>

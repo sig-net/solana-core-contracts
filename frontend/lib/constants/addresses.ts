@@ -142,7 +142,6 @@ export function deriveEthereumAddress(
   return ethers.computeAddress(derivedPublicKey);
 }
 
-
 /**
  * Global Vault Authority PDA - used for withdrawals
  */

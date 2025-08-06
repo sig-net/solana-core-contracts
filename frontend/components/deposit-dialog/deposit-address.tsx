@@ -5,12 +5,12 @@ import { NetworkIcon } from '@web3icons/react';
 
 import { Button } from '@/components/ui/button';
 import { QRCode } from '@/components/ui/qr-code';
-import { DepositTokenMetadata } from '@/lib/constants/token-metadata';
+import { TokenMetadata } from '@/lib/constants/token-metadata';
 import { useCopyToClipboard } from '@/hooks';
 import { cn } from '@/lib/utils';
 
 interface DepositAddressProps {
-  token: DepositTokenMetadata;
+  token: TokenMetadata;
   depositAddress: string;
   onContinue: () => void;
 }
@@ -68,7 +68,7 @@ export function DepositAddress({
       <div className='flex items-center justify-center gap-2'>
         <Info className='h-4 w-4' />
         <p className='text-dark-neutral-400 text-center text-sm leading-relaxed'>
-          Use this address to deposit Ethereum
+          Use this address to deposit {token.symbol}
         </p>
       </div>
 

@@ -1,25 +1,27 @@
-// Base token information
-export interface BaseToken {
+// Core token interface with all required fields
+export interface Token {
   erc20Address: string;
+  symbol: string;
+  name: string;
   decimals: number;
-  symbol?: string;
-  name?: string;
+  chain: string;
 }
 
-// Token balance with amount
-export interface TokenBalance extends BaseToken {
+// Token balance with string amount (for service/API data)
+export interface TokenBalance extends Token {
   amount: string;
 }
 
-// Unclaimed token balance (includes required symbol and name)
-export interface UnclaimedTokenBalance extends TokenBalance {
-  symbol: string;
-  name: string;
+// Token with bigint balance (for UI components)
+export interface TokenWithBalance extends Token {
+  balance: bigint;
+  balanceUsd?: string;
 }
 
-// Token decimal information with cache metadata
-export interface TokenDecimalInfo {
+// Token formatting information (for utilities only)
+export interface TokenFormatInfo {
+  symbol: string;
   decimals: number;
-  symbol?: string;
-  timestamp: number;
+  name: string;
+  displaySymbol: string; // Normalized symbol for icon display
 }

@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Keypair } from '@solana/web3.js';
-import NodeWallet from '@coral-xyz/anchor/dist/esm/nodewallet.js';
 
-import {
-  CrossChainOrchestrator,
-  type EthereumTxParams,
-} from '@/lib/services/cross-chain-orchestrator';
-import { getFullEnv } from '@/lib/utils/env';
-import {
-  getSolanaConnection,
-  getEthereumProvider,
-} from '@/lib/utils/providers';
+import type { EthereumTxParams } from '@/lib/services/cross-chain-orchestrator';
+import { initializeRelayerSetup } from '@/lib/utils/relayer-setup';
 
 export async function POST(request: NextRequest) {
   try {
@@ -46,35 +37,13 @@ export async function POST(request: NextRequest) {
 async function processWithdrawalInBackground(
   requestId: string,
   erc20Address: string,
-  transactionParams: {
-    type: number;
-    chainId: number;
-    nonce: number;
-    maxPriorityFeePerGas: string;
-    maxFeePerGas: string;
-    gasLimit: string;
-    to: string;
-    value: string;
-    data: string;
-  },
+  transactionParams: EthereumTxParams,
 ) {
   try {
-    const env = getFullEnv();
-
-    const connection = getSolanaConnection();
-    const provider = getEthereumProvider();
-
-    const relayerKeypair = Keypair.fromSecretKey(
-      new Uint8Array(JSON.parse(env.RELAYER_PRIVATE_KEY)),
-    );
-    const relayerWallet = new NodeWallet(relayerKeypair);
-
-    const orchestrator = new CrossChainOrchestrator(
-      connection,
-      relayerWallet,
-      provider,
-      { operationName: 'WITHDRAW' },
-    );
+    // Initialize all relayer infrastructure with common setup
+    const { orchestrator } = await initializeRelayerSetup({
+      operationName: 'WITHDRAW',
+    });
 
     const result = await orchestrator.executeSignatureFlow(
       requestId,

@@ -1,31 +1,33 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
-import { TokenBalance } from './types/token.types';
-import { getTokenSymbol } from './constants/token-metadata';
+import { TokenBalance, TokenWithBalance } from './types/token.types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 /**
- * Convert TokenBalance data from blockchain service to Token format expected by BalanceDisplay
+ * Convert TokenBalance data from blockchain service to TokenWithBalance format expected by BalanceDisplay
  */
-export function convertTokenBalanceToDisplayToken(tokenBalance: TokenBalance) {
+export function convertTokenBalanceToDisplayToken(
+  tokenBalance: TokenBalance,
+): TokenWithBalance {
   return {
-    balance: BigInt(tokenBalance.amount),
-    token: getTokenSymbol(tokenBalance.erc20Address),
-    chain: 'ethereum', // ERC20 tokens are on Ethereum
-    decimals: tokenBalance.decimals,
     erc20Address: tokenBalance.erc20Address,
+    symbol: tokenBalance.symbol,
+    name: tokenBalance.name,
+    decimals: tokenBalance.decimals,
+    chain: tokenBalance.chain,
+    balance: BigInt(tokenBalance.amount),
   };
 }
 
 /**
- * Convert array of TokenBalance to array of display tokens
+ * Convert array of TokenBalance to array of TokenWithBalance for display
  */
 export function convertTokenBalancesToDisplayTokens(
   tokenBalances: TokenBalance[],
-) {
+): TokenWithBalance[] {
   return tokenBalances.map(convertTokenBalanceToDisplayToken);
 }

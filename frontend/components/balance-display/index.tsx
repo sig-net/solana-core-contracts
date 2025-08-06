@@ -7,21 +7,14 @@ import { formatTokenBalanceSync } from '@/lib/utils/balance-formatter';
 import { DepositDialog } from '@/components/deposit-dialog';
 import { WithdrawDialog, WithdrawToken } from '@/components/withdraw-dialog';
 import { useTokenPrices } from '@/hooks/use-token-prices';
+import type { TokenWithBalance } from '@/lib/types/token.types';
 
 import { BalanceBox } from './balance-box';
 import { CryptoIcon } from './crypto-icon';
 import { BalancesSectionHeader } from './balance-section-header';
 
-interface Token {
-  balance: bigint;
-  token: string;
-  chain: string;
-  decimals: number;
-  erc20Address: string;
-}
-
 interface BalanceDisplayProps {
-  tokens: Token[];
+  tokens: TokenWithBalance[];
   className?: string;
 }
 
@@ -35,7 +28,7 @@ export function BalanceDisplay({
     useState<WithdrawToken | null>(null);
 
   // Get unique token symbols for price fetching
-  const tokenSymbols = [...new Set(tokens.map(token => token.token))];
+  const tokenSymbols = [...new Set(tokens.map(token => token.symbol))];
   const { data: tokenPrices } = useTokenPrices(tokenSymbols);
 
   // Convert tokens to withdraw format
@@ -43,12 +36,12 @@ export function BalanceDisplay({
     const formattedBalance = formatTokenBalanceSync(
       token.balance,
       token.decimals,
-      token.token,
+      token.symbol,
     );
 
     return {
-      symbol: token.token,
-      name: token.token, // In a real app, you'd have a mapping
+      symbol: token.symbol,
+      name: token.name,
       chain: token.chain as 'ethereum' | 'solana',
       chainName:
         token.chain === 'ethereum' ? 'Ethereum Sepolia' : 'Solana Devnet',
@@ -74,24 +67,25 @@ export function BalanceDisplay({
           const displayAmount = formatTokenBalanceSync(
             tokenData.balance,
             tokenData.decimals,
-            tokenData.token,
+            tokenData.symbol,
             { precision: 1 },
           );
 
           // Calculate USD value using unified formatter
-          const tokenPrice = tokenPrices?.[tokenData.token.toUpperCase()];
+          const tokenPrice = tokenPrices?.[tokenData.symbol.toUpperCase()];
           const formattedUsdValue = tokenPrice
             ? formatTokenBalanceSync(
                 tokenData.balance,
                 tokenData.decimals,
-                tokenData.token,
+                tokenData.symbol,
                 { showUsd: true, usdPrice: tokenPrice.usd },
               )
             : '$0.00';
 
           // Find corresponding withdraw token
           const withdrawToken = withdrawTokens.find(
-            wt => wt.symbol === tokenData.token && wt.chain === tokenData.chain,
+            wt =>
+              wt.symbol === tokenData.symbol && wt.chain === tokenData.chain,
           );
 
           const handleSendClick = () => {
@@ -103,12 +97,12 @@ export function BalanceDisplay({
 
           return (
             <BalanceBox
-              key={`${tokenData.chain}-${tokenData.token}-${index}`}
+              key={`${tokenData.chain}-${tokenData.symbol}-${index}`}
               amount={displayAmount}
               usdValue={formattedUsdValue}
-              tokenSymbol={tokenData.token}
+              tokenSymbol={tokenData.symbol}
               icon={
-                <CryptoIcon chain={tokenData.chain} token={tokenData.token} />
+                <CryptoIcon chain={tokenData.chain} token={tokenData.symbol} />
               }
               onSendClick={handleSendClick}
               onSwapClick={() => {

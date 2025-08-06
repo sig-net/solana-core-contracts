@@ -82,7 +82,6 @@ export class BridgeContract {
     );
   }
 
-
   /**
    * Derive user balance PDA for a given user and ERC20 token
    */

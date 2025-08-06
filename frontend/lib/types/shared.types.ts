@@ -10,7 +10,7 @@ export interface StatusCallback {
   }): void;
 }
 
-export interface EvmTransactionRequest {
+export type EvmTransactionRequest = {
   type: number;
   chainId: number;
   nonce: number;
@@ -20,7 +20,17 @@ export interface EvmTransactionRequest {
   gasLimit: bigint;
   maxFeePerGas: bigint;
   maxPriorityFeePerGas: bigint;
-}
+};
+
+export type EvmTransactionRequestNotifyWithdrawal = Omit<
+  EvmTransactionRequest,
+  'value' | 'gasLimit' | 'maxFeePerGas' | 'maxPriorityFeePerGas'
+> & {
+  value: string;
+  gasLimit: string;
+  maxFeePerGas: string;
+  maxPriorityFeePerGas: string;
+};
 
 export interface EvmTransactionProgramParams {
   value: BN;

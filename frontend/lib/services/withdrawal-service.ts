@@ -128,7 +128,13 @@ export class WithdrawalService {
         requestId,
         erc20Address,
         // Pass the exact transaction parameters used for signing
-        transactionParams: txRequest,
+        transactionParams: {
+          ...txRequest,
+          maxPriorityFeePerGas: txRequest.maxPriorityFeePerGas.toString(),
+          maxFeePerGas: txRequest.maxFeePerGas.toString(),
+          gasLimit: txRequest.gasLimit.toString(),
+          value: txRequest.value.toString(),
+        },
       });
 
       onStatusChange?.({

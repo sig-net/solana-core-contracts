@@ -11,10 +11,6 @@ import type {
 } from '../types/chain-signatures.types';
 import { CHAIN_SIGNATURES_PROGRAM_IDl } from '../program/IDL_CHAIN_SIG';
 
-/**
- * ChainSignaturesContract class handles all interactions with the chain signatures program,
- * including event listening, signature extraction, and log searching.
- */
 export class ChainSignaturesContract {
   private connection: Connection;
   private wallet: Wallet;
@@ -24,9 +20,6 @@ export class ChainSignaturesContract {
     this.wallet = wallet;
   }
 
-  /**
-   * Get the chain signatures program instance
-   */
   getProgram(): ChainSignaturesProgram {
     const provider = new AnchorProvider(this.connection, this.wallet, {
       commitment: 'confirmed',
@@ -38,9 +31,6 @@ export class ChainSignaturesContract {
     ) as ChainSignaturesProgram;
   }
 
-  /**
-   * Setup event listeners for signature and read response events
-   */
   setupEventListeners(requestId: string): EventPromises {
     let signatureResolve: (value: SignatureRespondedEvent) => void;
     let readRespondResolve: (value: ReadRespondedEvent) => void;
@@ -95,10 +85,7 @@ export class ChainSignaturesContract {
     };
   }
 
-  /**
-   * Extract Ethereum signature from chain signatures signature
-   */
-  extractSignature(signature: ChainSignaturesSignature) {
+  static extractSignature(signature: ChainSignaturesSignature) {
     const r = ('0x' + Buffer.from(signature.bigR.x).toString('hex')) as Hex;
     const s = ('0x' + Buffer.from(signature.s).toString('hex')) as Hex;
     const v = BigInt(signature.recoveryId + 27);

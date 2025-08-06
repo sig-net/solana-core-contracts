@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
 import { ethers } from 'ethers';
+import { Hex } from 'viem';
 
-import type { EthereumTxParams } from '@/lib/services/cross-chain-orchestrator';
+import type { EvmTransactionRequest } from '@/lib/types/shared.types';
 import { initializeRelayerSetup } from '@/lib/utils/relayer-setup';
 import { generateRequestId, evmParamsToProgram } from '@/lib/program/utils';
 import { SERVICE_CONFIG } from '@/lib/constants/service.config';
@@ -101,7 +102,7 @@ async function processDepositInBackground(
       value: BigInt(0),
     });
 
-    const tempTx = {
+    const txRequest: EvmTransactionRequest = {
       type: 2,
       chainId: SERVICE_CONFIG.ETHEREUM.CHAIN_ID,
       nonce: currentNonce,
@@ -109,12 +110,12 @@ async function processDepositInBackground(
         feeData.maxPriorityFeePerGas || ethers.parseUnits('2', 'gwei'),
       maxFeePerGas: feeData.maxFeePerGas || ethers.parseUnits('20', 'gwei'),
       gasLimit: (gasEstimate * BigInt(120)) / BigInt(100),
-      to: erc20Address,
+      to: erc20Address as Hex,
       value: BigInt(0),
-      data: callData,
+      data: callData as Hex,
     };
 
-    const rlpEncodedTx = ethers.Transaction.from(tempTx).unsignedSerialized;
+    const rlpEncodedTx = ethers.Transaction.from(txRequest).unsignedSerialized;
     const requestId = generateRequestId(
       vaultAuthority,
       ethers.getBytes(rlpEncodedTx),
@@ -127,19 +128,12 @@ async function processDepositInBackground(
     );
 
     const requestIdBytes = bridgeContract.hexToBytes(requestId);
-    const evmParams = evmParamsToProgram({
-      value: tempTx.value,
-      gasLimit: tempTx.gasLimit,
-      maxFeePerGas: tempTx.maxFeePerGas,
-      maxPriorityFeePerGas: tempTx.maxPriorityFeePerGas,
-      nonce: BigInt(tempTx.nonce),
-      chainId: BigInt(tempTx.chainId),
-    });
+    const evmParams = evmParamsToProgram(txRequest);
     const amountBN = new BN(processAmount.toString());
 
     const result = await orchestrator.executeSignatureFlow(
       requestId,
-      tempTx as unknown as EthereumTxParams,
+      txRequest,
       async readEvent => {
         const requestIdBytes = bridgeContract.hexToBytes(requestId);
         const [pendingDepositPda] =

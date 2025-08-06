@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { formatUnits } from 'viem';
 
 import { TokenBalance, TokenWithBalance } from './types/token.types';
 
@@ -7,9 +8,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-/**
- * Convert TokenBalance data from blockchain service to TokenWithBalance format expected by BalanceDisplay
- */
 export function convertTokenBalanceToDisplayToken(
   tokenBalance: TokenBalance,
 ): TokenWithBalance {
@@ -23,11 +21,13 @@ export function convertTokenBalanceToDisplayToken(
   };
 }
 
-/**
- * Convert array of TokenBalance to array of TokenWithBalance for display
- */
 export function convertTokenBalancesToDisplayTokens(
   tokenBalances: TokenBalance[],
 ): TokenWithBalance[] {
-  return tokenBalances.map(convertTokenBalanceToDisplayToken);
+  return tokenBalances.map(convertTokenBalanceToDisplayToken).filter(token => {
+    const numericBalance = parseFloat(
+      formatUnits(token.balance, token.decimals),
+    );
+    return numericBalance >= 0.01;
+  });
 }

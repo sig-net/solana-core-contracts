@@ -1,4 +1,4 @@
-import type { EvmTransactionRequest } from '@/lib/types/shared.types';
+import type { EvmTransactionRequestNotifyWithdrawal } from '@/lib/types/shared.types';
 
 export class RelayerService {
   async notifyDeposit({
@@ -24,7 +24,7 @@ export class RelayerService {
   }: {
     requestId: string;
     erc20Address: string;
-    transactionParams?: EvmTransactionRequest;
+    transactionParams?: EvmTransactionRequestNotifyWithdrawal;
   }): Promise<void> {
     const response = await fetch('/api/relayer/notify-withdrawal', {
       method: 'POST',

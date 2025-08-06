@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-import type { EthereumTxParams } from '@/lib/services/cross-chain-orchestrator';
+import type { EvmTransactionRequest } from '@/lib/types/shared.types';
 import { initializeRelayerSetup } from '@/lib/utils/relayer-setup';
 
 export async function POST(request: NextRequest) {
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 async function processWithdrawalInBackground(
   requestId: string,
   erc20Address: string,
-  transactionParams: EthereumTxParams,
+  transactionParams: EvmTransactionRequest,
 ) {
   try {
     // Initialize all relayer infrastructure with common setup
@@ -47,7 +47,7 @@ async function processWithdrawalInBackground(
 
     const result = await orchestrator.executeSignatureFlow(
       requestId,
-      transactionParams as EthereumTxParams,
+      transactionParams,
       async readEvent => {
         const bridgeContract = orchestrator.getBridgeContract();
         const requestIdBytes = bridgeContract.hexToBytes(requestId);

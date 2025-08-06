@@ -3,15 +3,10 @@ import { ethers } from 'ethers';
 import { BN } from '@coral-xyz/anchor';
 
 import { getAlchemyProvider } from '../utils/providers';
-
-export interface EvmTransactionParams {
-  value: bigint;
-  gasLimit: bigint;
-  maxFeePerGas: bigint;
-  maxPriorityFeePerGas: bigint;
-  nonce: bigint;
-  chainId: bigint;
-}
+import type {
+  EvmTransactionRequest,
+  EvmTransactionProgramParams,
+} from '../types/shared.types';
 
 /**
  * Generate a request ID matching the Rust implementation
@@ -59,18 +54,30 @@ export function generateRequestId(
 }
 
 /**
- * Create EVM transaction parameters for Sepolia testnet with dynamic gas estimation
+ * Create base EVM transaction parameters for Sepolia testnet with dynamic gas estimation.
+ * Returns only the gas and fee parameters - caller must provide to, data, value, etc.
  */
-export async function createEvmTransactionParams(
+export async function createEvmTransactionBaseParams(
   nonce: number,
   gasLimit: number,
-): Promise<EvmTransactionParams> {
+): Promise<
+  Pick<
+    EvmTransactionRequest,
+    | 'nonce'
+    | 'gasLimit'
+    | 'maxFeePerGas'
+    | 'maxPriorityFeePerGas'
+    | 'chainId'
+    | 'type'
+  >
+> {
   const feeData = await getAlchemyProvider().core.getFeeData();
 
   const bufferMultiplier = 1.2;
 
   return {
-    value: BigInt(0),
+    type: 2, // EIP-1559
+    nonce,
     gasLimit: BigInt(gasLimit),
     maxFeePerGas: BigInt(
       Math.floor(Number(feeData.maxFeePerGas) * bufferMultiplier),
@@ -78,15 +85,24 @@ export async function createEvmTransactionParams(
     maxPriorityFeePerGas: BigInt(
       Math.floor(Number(feeData.maxPriorityFeePerGas) * bufferMultiplier),
     ),
-    nonce: BigInt(nonce),
-    chainId: BigInt(11155111), // Sepolia testnet
+    chainId: 11155111, // Sepolia testnet
   };
 }
 
 /**
- * Convert EVM transaction params to the format expected by the program
+ * Convert EVM transaction params to the format expected by the Solana program
  */
-export function evmParamsToProgram(params: EvmTransactionParams) {
+export function evmParamsToProgram(
+  params: Pick<
+    EvmTransactionRequest,
+    | 'value'
+    | 'gasLimit'
+    | 'maxFeePerGas'
+    | 'maxPriorityFeePerGas'
+    | 'nonce'
+    | 'chainId'
+  >,
+): EvmTransactionProgramParams {
   return {
     value: new BN(params.value.toString()),
     gasLimit: new BN(params.gasLimit.toString()),

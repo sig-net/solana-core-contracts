@@ -8,6 +8,7 @@ import {
 import { Program, AnchorProvider, BN, Wallet } from '@coral-xyz/anchor';
 
 import { IDL, type SolanaCoreContracts } from '@/lib/program/IDL_SOLANA_DEX';
+import type { EvmTransactionProgramParams } from '@/lib/types/shared.types';
 import {
   BRIDGE_PROGRAM_ID,
   BRIDGE_PDA_SEEDS,
@@ -16,6 +17,8 @@ import {
   CHAIN_SIGNATURES_CONFIG,
   GLOBAL_VAULT_AUTHORITY_PDA,
 } from '@/lib/constants/addresses';
+
+import { ChainSignaturesSignature } from '../types/chain-signatures.types';
 
 /**
  * BridgeContract class handles all low-level contract interactions,
@@ -182,7 +185,7 @@ export class BridgeContract {
     requestIdBytes: number[];
     erc20AddressBytes: number[];
     amount: BN;
-    evmParams: any;
+    evmParams: EvmTransactionProgramParams;
   }): Promise<string> {
     const payerKey = payer;
     const [requesterPda] = this.deriveVaultAuthorityPda(requester);
@@ -223,7 +226,7 @@ export class BridgeContract {
     payer?: PublicKey;
     requestIdBytes: number[];
     serializedOutput: number[];
-    signature: any;
+    signature: ChainSignaturesSignature;
     erc20AddressBytes: number[];
     requester: PublicKey;
   }): Promise<string> {
@@ -262,7 +265,7 @@ export class BridgeContract {
     erc20AddressBytes: number[];
     amount: BN;
     recipientAddressBytes: number[];
-    evmParams: any;
+    evmParams: EvmTransactionProgramParams;
   }): Promise<string> {
     const globalVaultAuthority = GLOBAL_VAULT_AUTHORITY_PDA;
     const [pendingWithdrawalPda] =
@@ -304,7 +307,7 @@ export class BridgeContract {
     payer?: PublicKey;
     requestIdBytes: number[];
     serializedOutput: number[];
-    signature: any;
+    signature: ChainSignaturesSignature;
     erc20AddressBytes: number[];
     requester: PublicKey;
   }): Promise<string> {

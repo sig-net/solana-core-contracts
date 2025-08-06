@@ -8,6 +8,7 @@ import type {
   EventPromises,
   ReadRespondedEvent,
 } from '@/lib/types/chain-signatures.types';
+import type { EvmTransactionRequest } from '@/lib/types/shared.types';
 
 export interface CrossChainConfig {
   eventTimeoutMs?: number;
@@ -19,18 +20,6 @@ export interface CrossChainResult {
   ethereumTxHash: string;
   success: boolean;
   error?: string;
-}
-
-export interface EthereumTxParams {
-  type: number;
-  chainId: number;
-  nonce: number;
-  maxPriorityFeePerGas: string;
-  maxFeePerGas: string;
-  gasLimit: string;
-  to: string;
-  value: string;
-  data: string;
 }
 
 export class CrossChainOrchestrator {
@@ -61,7 +50,7 @@ export class CrossChainOrchestrator {
 
   async executeSignatureFlow<T>(
     requestId: string,
-    ethereumTxParams: EthereumTxParams,
+    ethereumTxParams: EvmTransactionRequest,
     solanaCompletionFn: (readEvent: ReadRespondedEvent) => Promise<T>,
     initialSolanaFn?: () => Promise<string>,
   ): Promise<
@@ -125,7 +114,7 @@ export class CrossChainOrchestrator {
 
   private async executeEthereumTransaction(
     eventPromises: EventPromises,
-    txParams: EthereumTxParams,
+    txParams: EvmTransactionRequest,
   ): Promise<string> {
     const op = this.config.operationName;
     console.log(`[${op}] Waiting for signature...`);
@@ -148,11 +137,11 @@ export class CrossChainOrchestrator {
       type: txParams.type,
       chainId: txParams.chainId,
       nonce: txParams.nonce,
-      maxPriorityFeePerGas: BigInt(txParams.maxPriorityFeePerGas),
-      maxFeePerGas: BigInt(txParams.maxFeePerGas),
-      gasLimit: BigInt(txParams.gasLimit),
+      maxPriorityFeePerGas: txParams.maxPriorityFeePerGas,
+      maxFeePerGas: txParams.maxFeePerGas,
+      gasLimit: txParams.gasLimit,
       to: txParams.to,
-      value: BigInt(txParams.value),
+      value: txParams.value,
       data: txParams.data,
       signature: {
         r: ethereumSignature.r,

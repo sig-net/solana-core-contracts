@@ -1,13 +1,14 @@
 import { PublicKey } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
 import { ethers } from 'ethers';
-import { encodeFunctionData, erc20Abi } from 'viem';
+import { encodeFunctionData, erc20Abi, Hex } from 'viem';
 
 import {
   generateRequestId,
-  createEvmTransactionParams,
+  createEvmTransactionBaseParams,
   evmParamsToProgram,
 } from '@/lib/program/utils';
+import type { EvmTransactionRequest } from '@/lib/types/shared.types';
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { TokenBalanceService } from '@/lib/services/token-balance-service';
 import { RelayerService } from '@/lib/services/relayer-service';
@@ -80,7 +81,7 @@ export class WithdrawalService {
       const callData = encodeFunctionData({
         abi: erc20Abi,
         functionName: 'transfer',
-        args: [checksummedAddress as `0x${string}`, processAmountBigInt],
+        args: [checksummedAddress as Hex, processAmountBigInt],
       });
 
       const estimatedGas = await this.alchemy.core.estimateGas({
@@ -90,26 +91,23 @@ export class WithdrawalService {
         value: 0,
       });
 
-      // Create EVM transaction parameters with estimated gas limit
-      const txParams = await createEvmTransactionParams(
+      // Create comprehensive EVM transaction request
+      const baseParams = await createEvmTransactionBaseParams(
         Number(currentNonce),
         Number(estimatedGas),
       );
-      const evmParams = evmParamsToProgram(txParams);
 
-      const tempTx = {
-        type: 2,
-        chainId: SERVICE_CONFIG.ETHEREUM.CHAIN_ID,
-        nonce: currentNonce,
-        maxPriorityFeePerGas: txParams.maxPriorityFeePerGas,
-        maxFeePerGas: txParams.maxFeePerGas,
-        gasLimit: txParams.gasLimit,
-        to: erc20Address,
+      const txRequest: EvmTransactionRequest = {
+        ...baseParams,
+        to: erc20Address as Hex,
         value: BigInt(0),
         data: callData,
       };
 
-      const rlpEncodedTx = ethers.Transaction.from(tempTx).unsignedSerialized;
+      const evmParams = evmParamsToProgram(txRequest);
+
+      const rlpEncodedTx =
+        ethers.Transaction.from(txRequest).unsignedSerialized;
 
       // Generate proper request ID using root path for withdrawals
       const requestId = generateRequestId(
@@ -130,17 +128,7 @@ export class WithdrawalService {
         requestId,
         erc20Address,
         // Pass the exact transaction parameters used for signing
-        transactionParams: {
-          type: tempTx.type,
-          chainId: tempTx.chainId,
-          nonce: tempTx.nonce,
-          maxPriorityFeePerGas: tempTx.maxPriorityFeePerGas.toString(),
-          maxFeePerGas: tempTx.maxFeePerGas.toString(),
-          gasLimit: tempTx.gasLimit.toString(),
-          to: tempTx.to,
-          value: tempTx.value.toString(),
-          data: callData,
-        },
+        transactionParams: txRequest,
       });
 
       onStatusChange?.({

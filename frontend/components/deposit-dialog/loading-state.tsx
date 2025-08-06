@@ -1,10 +1,10 @@
 'use client';
 
 import { CryptoIcon } from '@/components/balance-display/crypto-icon';
-import { DepositTokenMetadata } from '@/lib/constants/token-metadata';
+import { TokenMetadata } from '@/lib/constants/token-metadata';
 
 interface LoadingStateProps {
-  token: DepositTokenMetadata;
+  token: TokenMetadata;
 }
 
 export function LoadingState({ token }: LoadingStateProps) {

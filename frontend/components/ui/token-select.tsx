@@ -11,20 +11,19 @@ import {
 } from '@/components/ui/popover';
 import { TokenListItem } from '@/components/deposit-dialog/token-list-item';
 import { CryptoIcon } from '@/components/balance-display/crypto-icon';
+import type { Token } from '@/lib/types/token.types';
 
-export interface Token {
-  symbol: string;
-  name: string;
-  chain: string;
+// Token with optional balance info for selection
+interface TokenSelectOption extends Token {
   chainName?: string;
   balance?: string;
   balanceUsd?: string;
 }
 
 interface TokenSelectProps {
-  tokens: Token[];
-  value?: Token;
-  onChange?: (token: Token) => void;
+  tokens: TokenSelectOption[];
+  value?: TokenSelectOption;
+  onChange?: (token: TokenSelectOption) => void;
   placeholder?: string;
   className?: string;
   showBalance?: boolean;

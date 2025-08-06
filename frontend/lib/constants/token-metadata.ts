@@ -38,9 +38,6 @@ export const ALL_TOKENS: TokenMetadata[] = [
 // Legacy exports for backward compatibility
 export const SUPPORTED_TOKENS = ALL_TOKENS;
 
-// Type alias for deposit tokens
-export type DepositTokenMetadata = TokenMetadata;
-
 // Create a lookup map for quick access
 export const TOKEN_METADATA_MAP = new Map<string, TokenMetadata>(
   ALL_TOKENS.map(token => [token.address.toLowerCase(), token]),

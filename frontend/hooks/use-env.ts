@@ -3,9 +3,7 @@
 import { useMemo } from 'react';
 import { getClientEnv, type ClientEnv } from '@/lib/utils/env';
 
-export type Env = ClientEnv;
-
-export function useEnv(): Env {
+export function useEnv(): ClientEnv {
   return useMemo(() => {
     return getClientEnv();
   }, []);

@@ -1,21 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PublicKey, Keypair } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { BN } from '@coral-xyz/anchor';
-import NodeWallet from '@coral-xyz/anchor/dist/esm/nodewallet.js';
 import { ethers } from 'ethers';
 
-import {
-  CrossChainOrchestrator,
-  type EthereumTxParams,
-} from '@/lib/services/cross-chain-orchestrator';
+import type { EthereumTxParams } from '@/lib/services/cross-chain-orchestrator';
+import { initializeRelayerSetup } from '@/lib/utils/relayer-setup';
 import { generateRequestId, evmParamsToProgram } from '@/lib/program/utils';
 import { SERVICE_CONFIG } from '@/lib/constants/service.config';
 import { VAULT_ETHEREUM_ADDRESS } from '@/lib/constants/addresses';
-import { getFullEnv } from '@/lib/utils/env';
-import {
-  getSolanaConnection,
-  getEthereumProvider,
-} from '@/lib/utils/providers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -65,22 +57,11 @@ async function processDepositInBackground(
   ethereumAddress: string,
 ) {
   try {
-    const env = getFullEnv();
-
-    const connection = getSolanaConnection();
-    const provider = getEthereumProvider();
-
-    const relayerKeypair = Keypair.fromSecretKey(
-      new Uint8Array(JSON.parse(env.RELAYER_PRIVATE_KEY)),
-    );
-    const relayerWallet = new NodeWallet(relayerKeypair);
-
-    const orchestrator = new CrossChainOrchestrator(
-      connection,
-      relayerWallet,
-      provider,
-      { operationName: 'DEPOSIT' },
-    );
+    // Initialize all relayer infrastructure with common setup
+    const { orchestrator, provider, relayerWallet } =
+      await initializeRelayerSetup({
+        operationName: 'DEPOSIT',
+      });
     const bridgeContract = orchestrator.getBridgeContract();
 
     const userPublicKey = new PublicKey(userAddress);
@@ -158,7 +139,7 @@ async function processDepositInBackground(
 
     const result = await orchestrator.executeSignatureFlow(
       requestId,
-      tempTx as EthereumTxParams,
+      tempTx as unknown as EthereumTxParams,
       async readEvent => {
         const requestIdBytes = bridgeContract.hexToBytes(requestId);
         const [pendingDepositPda] =

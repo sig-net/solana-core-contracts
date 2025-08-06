@@ -1,3 +1,5 @@
+import type { EthereumTxParams } from './cross-chain-orchestrator';
+
 export class RelayerService {
   async notifyDeposit({
     userAddress,
@@ -22,17 +24,7 @@ export class RelayerService {
   }: {
     requestId: string;
     erc20Address: string;
-    transactionParams?: {
-      type: number;
-      chainId: number;
-      nonce: number;
-      maxPriorityFeePerGas: string;
-      maxFeePerGas: string;
-      gasLimit: string;
-      to: string;
-      value: string;
-      data: string;
-    };
+    transactionParams?: EthereumTxParams;
   }): Promise<void> {
     const response = await fetch('/api/relayer/notify-withdrawal', {
       method: 'POST',

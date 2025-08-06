@@ -25,11 +25,11 @@ export interface EthereumTxParams {
   type: number;
   chainId: number;
   nonce: number;
-  maxPriorityFeePerGas: string | bigint;
-  maxFeePerGas: string | bigint;
-  gasLimit: string | bigint;
+  maxPriorityFeePerGas: string;
+  maxFeePerGas: string;
+  gasLimit: string;
   to: string;
-  value: string | bigint;
+  value: string;
   data: string;
 }
 

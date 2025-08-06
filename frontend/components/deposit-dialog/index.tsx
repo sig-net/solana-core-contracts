@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { DepositTokenMetadata } from '@/lib/constants/token-metadata';
+import { TokenMetadata } from '@/lib/constants/token-metadata';
 import { useDepositAddress } from '@/hooks';
 import { useDepositErc20Mutation } from '@/hooks/use-deposit-erc20-mutation';
 
@@ -31,14 +31,15 @@ enum DepositStep {
 export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
   const { publicKey } = useWallet();
   const [step, setStep] = useState<DepositStep>(DepositStep.SELECT_TOKEN);
-  const [selectedToken, setSelectedToken] =
-    useState<DepositTokenMetadata | null>(null);
+  const [selectedToken, setSelectedToken] = useState<TokenMetadata | null>(
+    null,
+  );
 
   const { data: depositAddress, isLoading: isGeneratingAddress } =
     useDepositAddress();
   const depositMutation = useDepositErc20Mutation();
 
-  const handleTokenSelect = (token: DepositTokenMetadata) => {
+  const handleTokenSelect = (token: TokenMetadata) => {
     if (token.chain !== 'ethereum') {
       return;
     }

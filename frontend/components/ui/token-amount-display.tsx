@@ -9,22 +9,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import type { Token } from '@/lib/types/token.types';
 
-export interface Token {
-  symbol: string;
-  name: string;
-  chain: 'ethereum' | 'solana';
-  address: string;
-  balance: string;
-  decimals: number;
+interface TokenAmountToken extends Token {
+  balance: string; // Required balance as string for this display component
 }
 
 interface TokenAmountDisplayProps {
   value: string;
   onChange: (value: string) => void;
-  tokens: Token[];
-  selectedToken?: Token;
-  onTokenSelect: (token: Token) => void;
+  tokens: TokenAmountToken[];
+  selectedToken?: TokenAmountToken;
+  onTokenSelect: (token: TokenAmountToken) => void;
   usdValue?: string;
   className?: string;
   placeholder?: string;
@@ -102,7 +98,7 @@ export function TokenAmountDisplay({
           >
             {tokens.map((token, index) => (
               <DropdownMenuItem
-                key={`${token.chain}-${token.address}-${index}`}
+                key={`${token.chain}-${token.erc20Address}-${index}`}
                 onClick={() => onTokenSelect(token)}
                 className='text-dark-neutral-400 flex cursor-pointer items-center gap-3 rounded-xs px-1 py-0 font-medium'
               >

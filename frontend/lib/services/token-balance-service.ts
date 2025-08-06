@@ -1,14 +1,11 @@
 import { PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
 
-import type {
-  TokenBalance,
-  UnclaimedTokenBalance,
-} from '@/lib/types/token.types';
+import type { TokenBalance } from '@/lib/types/token.types';
 import { getTokenMetadata, ALL_TOKENS } from '@/lib/constants/token-metadata';
 import type { BridgeContract } from '@/lib/contracts/bridge-contract';
 
-import { alchemy } from './alchemy-service';
+import { getAlchemyProvider } from '../utils/providers';
 
 /**
  * TokenBalanceService handles all token balance operations including
@@ -20,6 +17,7 @@ export class TokenBalanceService {
     { decimals: number; timestamp: number }
   >();
   private static readonly DECIMALS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+  private alchemy = getAlchemyProvider();
 
   constructor(private bridgeContract: BridgeContract) {}
 
@@ -40,7 +38,7 @@ export class TokenBalanceService {
     }
 
     try {
-      const metadata = await alchemy.core.getTokenMetadata(erc20Address);
+      const metadata = await this.alchemy.core.getTokenMetadata(erc20Address);
       const decimals = metadata?.decimals ?? 18;
 
       // Cache the result
@@ -78,7 +76,7 @@ export class TokenBalanceService {
   ): Promise<Array<{ address: string; balance: bigint; decimals: number }>> {
     try {
       // Use Alchemy's getTokenBalances for efficient batch fetching
-      const balances = await alchemy.core.getTokenBalances(
+      const balances = await this.alchemy.core.getTokenBalances(
         address,
         tokenAddresses,
       );
@@ -133,9 +131,10 @@ export class TokenBalanceService {
   ): Promise<Array<{ address: string; balance: bigint; decimals: number }>> {
     const balancePromises = tokenAddresses.map(async tokenAddress => {
       try {
-        const tokenBalances = await alchemy.core.getTokenBalances(address, [
-          tokenAddress,
-        ]);
+        const tokenBalances = await this.alchemy.core.getTokenBalances(
+          address,
+          [tokenAddress],
+        );
         const balance = tokenBalances?.tokenBalances?.[0]?.tokenBalance || '0';
         const balanceBigInt = BigInt(balance || '0');
 
@@ -159,7 +158,7 @@ export class TokenBalanceService {
    */
   async fetchUnclaimedBalances(
     derivedAddress: string,
-  ): Promise<UnclaimedTokenBalance[]> {
+  ): Promise<TokenBalance[]> {
     try {
       const tokenAddresses = ALL_TOKENS.map(token => token.address);
 
@@ -169,7 +168,7 @@ export class TokenBalanceService {
         tokenAddresses,
       );
 
-      const results: UnclaimedTokenBalance[] = [];
+      const results: TokenBalance[] = [];
 
       for (const result of batchResults) {
         if (result.balance > BigInt(0)) {
@@ -180,6 +179,7 @@ export class TokenBalanceService {
             symbol: tokenMetadata?.symbol || 'Unknown',
             name: tokenMetadata?.name || 'Unknown Token',
             decimals: result.decimals,
+            chain: tokenMetadata?.chain || 'ethereum',
           });
         }
       }
@@ -205,10 +205,14 @@ export class TokenBalanceService {
         );
         if (balance !== '0') {
           const decimals = await this.getTokenDecimals(erc20Address);
+          const tokenMetadata = getTokenMetadata(erc20Address);
           return {
             erc20Address,
             amount: balance,
             decimals,
+            symbol: tokenMetadata?.symbol || 'Unknown',
+            name: tokenMetadata?.name || 'Unknown Token',
+            chain: tokenMetadata?.chain || 'ethereum',
           };
         }
         return null;

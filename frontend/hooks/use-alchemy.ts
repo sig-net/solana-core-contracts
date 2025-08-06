@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react';
 
-import { getAlchemy } from '@/lib/services/alchemy-service';
+import { getAlchemyProvider } from '@/lib/utils/providers';
 
 export function useAlchemy() {
-  return useMemo(() => getAlchemy(), []);
+  return useMemo(() => getAlchemyProvider(), []);
 }

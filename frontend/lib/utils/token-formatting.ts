@@ -1,17 +1,12 @@
 import { erc20Abi } from 'viem';
 import { Contract } from 'alchemy-sdk';
 
-import { getAlchemy } from '@/lib/services/alchemy-service';
-
 // This file handles token metadata fetching and caching
 // For balance formatting, use @/lib/utils/balance-formatter instead
 
-export interface TokenInfo {
-  symbol: string;
-  decimals: number;
-  name: string;
-  displaySymbol: string; // Normalized symbol for icon display
-}
+import type { TokenFormatInfo } from '@/lib/types/token.types';
+
+import { getAlchemyProvider } from './providers';
 
 // Symbol normalization mapping for icon display
 // Maps contract symbols to standardized symbols that @web3icons/react recognizes
@@ -69,7 +64,7 @@ function normalizeSymbolForDisplay(symbol: string, name: string): string {
 const tokenInfoCache = new Map<
   string,
   {
-    data: TokenInfo;
+    data: TokenFormatInfo;
     timestamp: number;
   }
 >();
@@ -78,7 +73,7 @@ const tokenInfoCache = new Map<
 const CACHE_DURATION = 60 * 60 * 1000;
 
 // Default fallback token info
-const DEFAULT_TOKEN_INFO: TokenInfo = {
+const DEFAULT_TOKEN_INFO: TokenFormatInfo = {
   symbol: 'ERC20',
   decimals: 18,
   name: 'Unknown Token',
@@ -90,8 +85,8 @@ const DEFAULT_TOKEN_INFO: TokenInfo = {
  */
 async function fetchTokenInfoFromContract(
   tokenAddress: string,
-): Promise<TokenInfo> {
-  const alchemy = getAlchemy();
+): Promise<TokenFormatInfo> {
+  const alchemy = getAlchemyProvider();
   const provider = await alchemy.config.getProvider();
   const contract = new Contract(tokenAddress, erc20Abi, provider);
 
@@ -120,7 +115,9 @@ async function fetchTokenInfoFromContract(
 /**
  * Get token information with caching
  */
-export async function getTokenInfo(tokenAddress: string): Promise<TokenInfo> {
+export async function getTokenInfo(
+  tokenAddress: string,
+): Promise<TokenFormatInfo> {
   const normalizedAddress = tokenAddress.toLowerCase();
   const cached = tokenInfoCache.get(normalizedAddress);
 
@@ -145,7 +142,7 @@ export async function getTokenInfo(tokenAddress: string): Promise<TokenInfo> {
  * Get token information synchronously (returns cached data or default)
  * Use this when you need immediate results and can handle defaults
  */
-export function getTokenInfoSync(tokenAddress: string): TokenInfo {
+export function getTokenInfoSync(tokenAddress: string): TokenFormatInfo {
   const normalizedAddress = tokenAddress.toLowerCase();
   const cached = tokenInfoCache.get(normalizedAddress);
 

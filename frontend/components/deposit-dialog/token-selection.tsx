@@ -2,13 +2,13 @@
 
 import {
   SUPPORTED_TOKENS,
-  DepositTokenMetadata,
+  TokenMetadata,
 } from '@/lib/constants/token-metadata';
 
 import { TokenListItem } from './token-list-item';
 
 interface TokenSelectionProps {
-  onTokenSelect: (token: DepositTokenMetadata) => void;
+  onTokenSelect: (token: TokenMetadata) => void;
 }
 
 export function TokenSelection({ onTokenSelect }: TokenSelectionProps) {
@@ -26,6 +26,7 @@ export function TokenSelection({ onTokenSelect }: TokenSelectionProps) {
             symbol={token.symbol}
             name={token.name}
             chain={token.chain}
+            chainName={token.chainName}
             onClick={() => onTokenSelect(token)}
           />
         ))}

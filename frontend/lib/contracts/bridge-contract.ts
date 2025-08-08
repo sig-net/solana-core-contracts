@@ -17,6 +17,7 @@ import {
   CHAIN_SIGNATURES_CONFIG,
   GLOBAL_VAULT_AUTHORITY_PDA,
 } from '@/lib/constants/addresses';
+import { getAllErc20Tokens } from '@/lib/constants/token-metadata';
 
 import { ChainSignaturesSignature } from '../types/chain-signatures.types';
 
@@ -533,5 +534,237 @@ export class BridgeContract {
       vaultAuthority.toString(),
       CHAIN_SIGNATURES_CONFIG.BASE_PUBLIC_KEY,
     );
+  }
+
+  /**
+   * Fetch recent claimErc20 events for a user and map them to ERC20 token addresses with timestamps
+   */
+  async fetchRecentUserClaims(
+    userPublicKey: PublicKey,
+    maxTransactions = 50,
+  ): Promise<Record<string, number>> {
+    try {
+      const claimsByToken: Record<string, number> = {};
+
+      const signatures = await this.connection.getSignaturesForAddress(
+        userPublicKey,
+        { limit: maxTransactions },
+      );
+
+      const program = this.getBridgeProgram();
+      const coder = program.coder;
+
+      for (const sig of signatures) {
+        try {
+          const tx = await this.connection.getTransaction(sig.signature, {
+            maxSupportedTransactionVersion: 0,
+          });
+          if (!tx || !tx.meta || tx.meta.err) continue;
+
+          const accountKeys = tx.transaction.message.staticAccountKeys;
+          const instructions = tx.transaction.message.compiledInstructions;
+
+          for (const ix of instructions) {
+            const programId = accountKeys[ix.programIdIndex];
+            if (!programId.equals(BRIDGE_PROGRAM_ID)) continue;
+
+            let decodedInstruction: { name: string; data: unknown } | null =
+              null;
+            try {
+              const instructionDataBuf = Buffer.from(ix.data);
+              decodedInstruction = (coder.instruction as any).decode(
+                instructionDataBuf,
+              );
+            } catch {
+              continue;
+            }
+            if (!decodedInstruction) continue;
+
+            if (decodedInstruction.name === 'claimErc20') {
+              // userBalance is the 3rd account in claimErc20 accounts
+              const userBalanceAccountIndex = ix.accountKeyIndexes[2];
+              const userBalanceAccount = accountKeys[userBalanceAccountIndex];
+
+              // Determine which token this userBalance PDA corresponds to
+              for (const token of getAllErc20Tokens()) {
+                const erc20Bytes = Buffer.from(
+                  token.address.replace('0x', ''),
+                  'hex',
+                );
+                const [expectedPda] = this.deriveUserBalancePda(
+                  userPublicKey,
+                  erc20Bytes,
+                );
+                if (expectedPda.equals(userBalanceAccount)) {
+                  const ts = sig.blockTime || Math.floor(Date.now() / 1000);
+                  // Record earliest claim time per token (or update if newer)
+                  const existing = claimsByToken[token.address];
+                  if (!existing || ts > existing) {
+                    claimsByToken[token.address] = ts;
+                  }
+                  break;
+                }
+              }
+            }
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      return claimsByToken;
+    } catch (error) {
+      console.error('Error fetching recent user claims:', error);
+      return {};
+    }
+  }
+
+  /**
+   * Fetch all user deposits (pending + completed) by scanning Solana transactions.
+   * A deposit becomes "initiated" when depositErc20 is called (pending_erc20_deposit created).
+   * It becomes "completed" when claimErc20 is executed for the same requestId.
+   */
+  async fetchAllUserDeposits(userPublicKey: PublicKey): Promise<
+    {
+      requestId: string;
+      amount: string;
+      erc20Address: string;
+      timestamp: number;
+      status: 'pending' | 'completed';
+    }[]
+  > {
+    const deposits: Map<
+      string,
+      {
+        requestId: string;
+        amount: string;
+        erc20Address: string;
+        timestamp: number;
+        status: 'pending' | 'completed';
+      }
+    > = new Map();
+
+    try {
+      const program = this.getBridgeProgram();
+      const coder = program.coder;
+
+      // 1) Scan requester PDA transactions for depositErc20
+      const [requesterPda] = this.deriveVaultAuthorityPda(userPublicKey);
+      const requesterSignatures = await this.connection.getSignaturesForAddress(
+        requesterPda,
+        {
+          limit: 50,
+        },
+      );
+      for (const sig of requesterSignatures) {
+        try {
+          const tx = await this.connection.getTransaction(sig.signature, {
+            maxSupportedTransactionVersion: 0,
+          });
+          if (!tx || !tx.meta || tx.meta.err) continue;
+          const accountKeys = tx.transaction.message.staticAccountKeys;
+          const instructions = tx.transaction.message.compiledInstructions;
+
+          for (const ix of instructions) {
+            const programId = accountKeys[ix.programIdIndex];
+            if (!programId.equals(BRIDGE_PROGRAM_ID)) continue;
+            let decodedInstruction: { name: string; data: any } | null = null;
+            try {
+              const instructionDataBuf = Buffer.from(ix.data, 'base64');
+              decodedInstruction = coder.instruction.decode(instructionDataBuf);
+            } catch {
+              continue;
+            }
+            if (!decodedInstruction) continue;
+
+            if (decodedInstruction.name === 'depositErc20') {
+              const data = decodedInstruction.data as any;
+              const requesterHex = new PublicKey(data.requester).toString();
+              if (requesterHex !== userPublicKey.toString()) continue;
+
+              const requestId = Buffer.from(data.requestId).toString('hex');
+              const erc20Address =
+                '0x' + Buffer.from(data.erc20Address).toString('hex');
+              const amount = data.amount.toString();
+              const timestamp = sig.blockTime || Math.floor(Date.now() / 1000);
+
+              deposits.set(requestId, {
+                requestId,
+                amount,
+                erc20Address,
+                timestamp,
+                status: 'pending',
+              });
+            }
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      // 2) Scan user balance PDAs per token for claimErc20 and flip status
+      for (const token of getAllErc20Tokens()) {
+        try {
+          const erc20Bytes = Buffer.from(
+            token.address.replace('0x', ''),
+            'hex',
+          );
+          const [userBalancePda] = this.deriveUserBalancePda(
+            userPublicKey,
+            erc20Bytes,
+          );
+          const signatures = await this.connection.getSignaturesForAddress(
+            userBalancePda,
+            { limit: 50 },
+          );
+          for (const sig of signatures) {
+            try {
+              const tx = await this.connection.getTransaction(sig.signature, {
+                maxSupportedTransactionVersion: 0,
+              });
+              if (!tx || !tx.meta || tx.meta.err) continue;
+              const accountKeys = tx.transaction.message.staticAccountKeys;
+              const instructions = tx.transaction.message.compiledInstructions;
+              for (const ix of instructions) {
+                const programId = accountKeys[ix.programIdIndex];
+                if (!programId.equals(BRIDGE_PROGRAM_ID)) continue;
+                let decodedInstruction: { name: string; data: any } | null =
+                  null;
+                try {
+                  const instructionDataBuf = Buffer.from(ix.data, 'base64');
+                  decodedInstruction =
+                    coder.instruction.decode(instructionDataBuf);
+                } catch {
+                  continue;
+                }
+                if (!decodedInstruction) continue;
+                if (decodedInstruction.name === 'claimErc20') {
+                  const data = decodedInstruction.data as any;
+                  const requestId = Buffer.from(data.requestId).toString('hex');
+                  const existing = deposits.get(requestId);
+                  if (existing) {
+                    existing.status = 'completed';
+                    // Keep earliest deposit timestamp
+                    deposits.set(requestId, existing);
+                  }
+                }
+              }
+            } catch {
+              continue;
+            }
+          }
+        } catch {
+          continue;
+        }
+      }
+
+      const list = Array.from(deposits.values()).sort(
+        (a, b) => b.timestamp - a.timestamp,
+      );
+      return list;
+    } catch (error) {
+      console.error('Error fetching all user deposits:', error);
+      return [];
+    }
   }
 }

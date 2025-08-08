@@ -31,6 +31,8 @@ export const queryKeys = {
       [...queryKeys.solana.all, 'unclaimedBalances', publicKey] as const,
     outgoingTransfers: (publicKey: string) =>
       [...queryKeys.solana.all, 'outgoingTransfers', publicKey] as const,
+    incomingDeposits: (publicKey: string) =>
+      [...queryKeys.solana.all, 'incomingDeposits', publicKey] as const,
   },
   ethereum: {
     all: ['ethereum'] as const,

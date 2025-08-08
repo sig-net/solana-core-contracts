@@ -1,5 +1,5 @@
 // Import token addresses from unified token metadata
-import { ALL_TOKENS } from './token-metadata';
+import { getAllErc20Addresses } from './token-metadata';
 
 // Ethereum Network Configuration
 export const ETHEREUM_CONFIG = {
@@ -8,4 +8,4 @@ export const ETHEREUM_CONFIG = {
 } as const;
 
 // All ERC20 addresses as an array for compatibility
-export const COMMON_ERC20_ADDRESSES = ALL_TOKENS.map(token => token.address);
+export const COMMON_ERC20_ADDRESSES = getAllErc20Addresses();

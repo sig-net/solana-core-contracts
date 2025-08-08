@@ -1,35 +1,57 @@
 'use client';
 
-import {
-  SUPPORTED_TOKENS,
+import { useState } from 'react';
+
+import type {
+  NetworkData,
   TokenMetadata,
 } from '@/lib/constants/token-metadata';
+import { getErc20Networks } from '@/lib/constants/token-metadata';
 
-import { TokenListItem } from './token-list-item';
+import { NetworkAccordionItem } from './network-accordion-item';
 
 interface TokenSelectionProps {
-  onTokenSelect: (token: TokenMetadata) => void;
+  onTokenSelect: (token: TokenMetadata, network: NetworkData) => void;
 }
 
 export function TokenSelection({ onTokenSelect }: TokenSelectionProps) {
+  const [expandedNetworkId, setExpandedNetworkId] = useState<string | null>(
+    null,
+  );
+
+  const networks = getErc20Networks();
+
+  const handleNetworkClick = (networkId: string) => {
+    setExpandedNetworkId(expandedNetworkId === networkId ? null : networkId);
+  };
+
+  const handleTokenSelect = (token: TokenMetadata, network: NetworkData) => {
+    onTokenSelect(token, network);
+    setExpandedNetworkId(null); // Collapse after selection
+  };
+
   return (
     <div className='space-y-3'>
-      <p className='text-dark-neutral-400 text-sm font-medium uppercase'>
-        Top Tokens
+      <p className='text-wf-base-700 text-sm font-medium tracking-wider uppercase'>
+        Select Network
       </p>
 
-      {/* Token List */}
-      <div className='space-y-3 overflow-y-auto'>
-        {SUPPORTED_TOKENS.map((token, index) => (
-          <TokenListItem
-            key={`${token.chain}-${token.address}-${index}`}
-            symbol={token.symbol}
-            name={token.name}
-            chain={token.chain}
-            chainName={token.chainName}
-            onClick={() => onTokenSelect(token)}
-          />
-        ))}
+      {/* Network Accordion List */}
+      <div className='max-h-96 space-y-3 overflow-y-auto'>
+        {networks.map(network => {
+          const networkId = network.chain;
+          const isExpanded = expandedNetworkId === networkId;
+
+          return (
+            <NetworkAccordionItem
+              key={networkId}
+              network={network}
+              isExpanded={isExpanded}
+              onNetworkClick={() => handleNetworkClick(networkId)}
+              onTokenSelect={handleTokenSelect}
+            />
+          );
+        })}
       </div>
     </div>
   );

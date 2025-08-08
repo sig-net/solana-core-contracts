@@ -1,101 +1,68 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { AssetTransfersCategory, SortingOrder } from 'alchemy-sdk';
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+import type { Wallet } from '@coral-xyz/anchor';
 
-import { ALL_TOKENS } from '@/lib/constants/token-metadata';
 import { queryKeys } from '@/lib/query-client';
+import { BridgeContract } from '@/lib/contracts/bridge-contract';
 
-import { useDepositAddress } from './use-deposit-address';
-import { useAlchemy } from './use-alchemy';
+// Removed Ethereum-based tracking; deposits are derived from Solana state only
 
 export interface TransferEvent {
-  transactionHash: string;
-  blockNumber: bigint;
-  blockHash: string;
-  logIndex: number;
-  from: string;
-  to: string;
-  value: bigint;
+  requestId: string;
   tokenAddress: string;
+  value: bigint;
   timestamp?: number;
+  status: 'pending' | 'completed';
 }
 
-async function fetchTransfersFromAlchemy(
-  toAddress: string,
-  alchemy: any,
-): Promise<TransferEvent[]> {
-  const supportedTokens = ALL_TOKENS.map(token => token.address.toLowerCase());
+// We no longer fetch from Ethereum. Deposits are driven from Solana state.
 
-  const response = await alchemy.core.getAssetTransfers({
-    fromBlock: '0x0',
-    toBlock: 'latest',
-    toAddress: toAddress.toLowerCase(),
-    category: [AssetTransfersCategory.ERC20],
-    withMetadata: true,
-    excludeZeroValue: true,
-    maxCount: 10,
-    order: SortingOrder.DESCENDING,
-  });
-
-  const transfers: TransferEvent[] = [];
-
-  for (const transfer of response.transfers) {
-    if (
-      !supportedTokens.includes(
-        transfer.rawContract?.address?.toLowerCase() || '',
-      )
-    ) {
-      continue;
-    }
-
-    const blockNumber = BigInt(transfer.blockNum || '0');
-    const value = BigInt(transfer.rawContract?.value || '0');
-
-    // Get block timestamp using SDK
-    let timestamp: number | undefined;
-    try {
-      const block = await alchemy.core.getBlock(Number(blockNumber));
-      timestamp = block?.timestamp;
-    } catch {
-      // Ignore timestamp errors
-    }
-
-    const transferEvent: TransferEvent = {
-      transactionHash: transfer.hash || '',
-      blockNumber,
-      blockHash: '',
-      logIndex: 0,
-      from: transfer.from || '',
-      to: transfer.to || '',
-      value,
-      tokenAddress: transfer.rawContract?.address || '',
-      timestamp,
-    };
-
-    transfers.push(transferEvent);
-  }
-
-  return transfers;
-}
+// Intentionally left here for potential future use in per-transfer status checks
+// function hasClaimedOnSolana(
+//   bridgeContract: BridgeContract,
+//   userPublicKey: PublicKey,
+//   erc20Address: string,
+// ): Promise<boolean> {
+//   return bridgeContract
+//     .fetchUserBalance(userPublicKey, erc20Address)
+//     .then(balance => balance !== '0')
+//     .catch(() => false);
+// }
 
 export function useIncomingTransfers() {
-  const { publicKey } = useWallet();
-  const { data: depositAddress } = useDepositAddress();
-  const alchemy = useAlchemy();
+  const { connection } = useConnection();
+  const wallet = useWallet();
+  const { publicKey } = wallet;
+  // No Ethereum dependency needed here anymore
 
   const query = useQuery({
-    queryKey:
-      publicKey && depositAddress
-        ? queryKeys.ethereum.incomingTransfers(depositAddress)
-        : [],
+    queryKey: publicKey
+      ? queryKeys.solana.incomingDeposits(publicKey.toString())
+      : [],
     queryFn: async (): Promise<TransferEvent[]> => {
-      if (!depositAddress) throw new Error('No deposit address available');
+      if (!publicKey) throw new Error('No public key available');
 
-      return await fetchTransfersFromAlchemy(depositAddress, alchemy);
+      const anchorWallet: Wallet = {
+        publicKey,
+        signTransaction: wallet.signTransaction,
+        signAllTransactions: wallet.signAllTransactions,
+        payer: publicKey ? { publicKey } : undefined,
+      } as unknown as Wallet;
+
+      const bridgeContract = new BridgeContract(connection, anchorWallet);
+
+      const deposits = await bridgeContract.fetchAllUserDeposits(publicKey);
+      return deposits.map(d => ({
+        requestId: d.requestId,
+        tokenAddress: d.erc20Address,
+        value: BigInt(d.amount),
+        timestamp: d.timestamp,
+        status: d.status,
+      }));
     },
-    enabled: !!publicKey && !!depositAddress,
+    enabled: !!publicKey,
     staleTime: 30000,
     refetchInterval: 45000,
     refetchIntervalInBackground: false,

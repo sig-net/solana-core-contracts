@@ -5,13 +5,12 @@ import { ArrowDown } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import {
-  TokenMetadata,
-  SUPPORTED_TOKENS,
+  Erc20TokenMetadata,
+  getAllErc20Tokens,
+  getTokenMetadata,
 } from '@/lib/constants/token-metadata';
-import {
-  TokenAmountDisplay,
-  Token,
-} from '@/components/ui/token-amount-display';
+import { TokenAmountDisplay } from '@/components/ui/token-amount-display';
+import type { Token } from '@/lib/types/token.types';
 
 import { Button } from '../ui/button';
 
@@ -19,21 +18,24 @@ import { SwapHeader } from './swap-header';
 
 interface SwapWidgetProps {
   className?: string;
-  availableTokens?: TokenMetadata[];
+  availableTokens?: Erc20TokenMetadata[];
   onSwap?: (
-    fromToken: TokenMetadata | null,
-    toToken: TokenMetadata | null,
+    fromToken: Erc20TokenMetadata | null,
+    toToken: Erc20TokenMetadata | null,
     fromAmount: string,
     toAmount: string,
   ) => void;
-  onTokenSelect?: (token: TokenMetadata | null, side: 'from' | 'to') => void;
+  onTokenSelect?: (
+    token: Erc20TokenMetadata | null,
+    side: 'from' | 'to',
+  ) => void;
   loading?: boolean;
   error?: string | null;
 }
 
 interface SwapState {
-  fromToken: TokenMetadata | null;
-  toToken: TokenMetadata | null;
+  fromToken: Erc20TokenMetadata | null;
+  toToken: Erc20TokenMetadata | null;
   fromAmount: string;
   toAmount: string;
   isSwapping: boolean;
@@ -48,23 +50,26 @@ export function SwapWidget({ className }: Pick<SwapWidgetProps, 'className'>) {
     isSwapping: false,
   });
 
-  // Helper function to convert TokenMetadata to Token
-  const tokenMetadataToToken = (tokenMetadata: TokenMetadata): Token => ({
+  // Helper function to convert metadata to Token (UI type)
+  const tokenMetadataToToken = (
+    tokenMetadata: Erc20TokenMetadata,
+  ): Token & { balance: string } => ({
     symbol: tokenMetadata.symbol,
     name: tokenMetadata.name,
     chain: 'ethereum' as const,
-    address: tokenMetadata.address,
-    balance: '0', // Placeholder - in real app you'd fetch actual balance
+    erc20Address: tokenMetadata.address,
     decimals: tokenMetadata.decimals,
+    balance: '0',
   });
 
-  // Helper function to convert Token to TokenMetadata
-  const tokenToTokenMetadata = (token: Token): TokenMetadata | null => {
-    return SUPPORTED_TOKENS.find(t => t.symbol === token.symbol) || null;
+  // Helper function to convert UI Token to metadata (by address)
+  const tokenToTokenMetadata = (token: Token): Erc20TokenMetadata | null => {
+    return getTokenMetadata(token.erc20Address) || null;
   };
 
   // Convert supported tokens
-  const supportedTokens: Token[] = SUPPORTED_TOKENS.map(tokenMetadataToToken);
+  const supportedTokens: Array<Token & { balance: string }> =
+    getAllErc20Tokens().map(tokenMetadataToToken);
 
   const handleFromAmountChange = (amount: string) => {
     setSwapState(prev => ({ ...prev, fromAmount: amount }));

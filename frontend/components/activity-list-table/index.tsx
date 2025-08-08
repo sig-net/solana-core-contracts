@@ -4,6 +4,7 @@ import { ExternalLink } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { useIncomingTransfers } from '@/hooks/use-incoming-transfers';
+import { useDepositAddress } from '@/hooks/use-deposit-address';
 import { useOutgoingTransfers } from '@/hooks/use-outgoing-transfers';
 import {
   getTokenInfoSync,
@@ -53,6 +54,7 @@ interface ActivityListTableProps {
 
 export function ActivityListTable({ className }: ActivityListTableProps) {
   const { connected } = useWallet();
+  const { data: depositAddress } = useDepositAddress();
   const {
     data: incomingTransfers,
     isLoading: isLoadingIncoming,
@@ -80,12 +82,12 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
       );
       preloadTokenInfo(tokenAddresses);
     }
-  }, [incomingTransfers, outgoingTransfers]);
+  }, [incomingTransfers, outgoingTransfers, depositAddress]);
 
   const realTransactions: ActivityTransaction[] = useMemo(() => {
     const allTransactions: ActivityTransaction[] = [];
 
-    // Process incoming transfers (deposits)
+    // Process incoming transfers (deposits) - now driven from Solana deposits
     if (incomingTransfers) {
       const incomingTxs = incomingTransfers.map(transfer => {
         const tokenInfo = getTokenInfoSync(transfer.tokenAddress);
@@ -109,31 +111,30 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
             : '$0.00';
 
         return {
-          id: `${transfer.transactionHash}-${transfer.logIndex}`,
+          id: transfer.requestId,
           type: 'Deposit' as const,
-          fromToken: {
-            symbol: 'WALLET',
-            chain: 'ethereum',
-            amount: transfer.from,
-            usdValue: '',
-          },
+          fromToken: depositAddress
+            ? {
+                symbol: 'WALLET',
+                chain: 'ethereum',
+                amount: depositAddress,
+                usdValue: '',
+              }
+            : undefined,
           toToken: {
             symbol: tokenInfo.displaySymbol,
             chain: 'ethereum',
             amount: formattedAmount,
             usdValue: usdValue,
           },
-          address: transfer.from,
+          address: undefined,
           timestamp: transfer.timestamp
             ? formatActivityDate(transfer.timestamp)
             : 'Unknown',
           timestampRaw: transfer.timestamp,
-          status: 'completed' as const,
-          transactionHash: transfer.transactionHash,
-          explorerUrl: getTransactionExplorerUrl(
-            transfer.transactionHash,
-            'sepolia',
-          ),
+          status: transfer.status,
+          transactionHash: undefined,
+          explorerUrl: undefined,
         };
       });
       allTransactions.push(...incomingTxs);

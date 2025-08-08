@@ -35,6 +35,8 @@
   --color-stone-600: var(--stone-600);
   --color-stone-700: var(--stone-700);
   --color-red-500: var(--red-500);
+  --color-clam-shell-300: var(--clam-shell-300);
+  --color-wf-base-700: var(--wf-base-700);
 }
 
 :root {
@@ -68,6 +70,8 @@
   --stone-600: #625757;
   --stone-700: #4c4646;
   --red-500: #fb2c36;
+  --clam-shell-300: #dfd2cb;
+  --wf-base-700: #4a5468;
 }
 @layer base {
   * {

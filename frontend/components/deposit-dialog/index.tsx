@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { TokenMetadata } from '@/lib/constants/token-metadata';
+import { TokenMetadata, NetworkData } from '@/lib/constants/token-metadata';
 import { useDepositAddress } from '@/hooks';
 import { useDepositErc20Mutation } from '@/hooks/use-deposit-erc20-mutation';
 
@@ -34,26 +34,22 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
   const [selectedToken, setSelectedToken] = useState<TokenMetadata | null>(
     null,
   );
+  const [selectedNetwork, setSelectedNetwork] = useState<NetworkData | null>(
+    null,
+  );
 
   const { data: depositAddress, isLoading: isGeneratingAddress } =
     useDepositAddress();
   const depositMutation = useDepositErc20Mutation();
 
-  const handleTokenSelect = (token: TokenMetadata) => {
-    if (token.chain !== 'ethereum') {
-      return;
-    }
-
+  const handleTokenSelect = (token: TokenMetadata, network: NetworkData) => {
     setSelectedToken(token);
+    setSelectedNetwork(network);
     setStep(DepositStep.GENERATING_ADDRESS);
-
-    if (depositAddress) {
-      setStep(DepositStep.SHOW_ADDRESS);
-    }
   };
 
   const handleNotifyRelayer = async () => {
-    if (!publicKey || !selectedToken) return;
+    if (!publicKey || !selectedToken || !selectedNetwork) return;
 
     try {
       // Notify relayer and close dialog - processing happens in background
@@ -75,6 +71,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
   const handleClose = () => {
     setStep(DepositStep.SELECT_TOKEN);
     setSelectedToken(null);
+    setSelectedNetwork(null);
     onOpenChange(false);
   };
 
@@ -90,14 +87,16 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className='gradient-popover max-w-md p-6 sm:p-10'>
+      <DialogContent className='gradient-popover max-w-md rounded-sm p-10 shadow-[0px_4px_9.3px_0px_rgba(41,86,70,0.35)]'>
         {step === DepositStep.SELECT_TOKEN && (
-          <>
-            <DialogHeader>
-              <DialogTitle>Deposit Tokens</DialogTitle>
+          <div className='space-y-5'>
+            <DialogHeader className='space-y-0 p-0'>
+              <DialogTitle className='text-dark-neutral-400 text-xl font-semibold'>
+                Select an asset
+              </DialogTitle>
             </DialogHeader>
             <TokenSelection onTokenSelect={handleTokenSelect} />
-          </>
+          </div>
         )}
 
         {step === DepositStep.GENERATING_ADDRESS && selectedToken && (
@@ -106,17 +105,24 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
 
         {step === DepositStep.SHOW_ADDRESS &&
           selectedToken &&
+          selectedNetwork &&
           depositAddress && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Deposit Address</DialogTitle>
+            <div className='space-y-5'>
+              <DialogHeader className='space-y-0 p-0'>
+                <DialogTitle className='text-dark-neutral-400 text-xl font-semibold'>
+                  Deposit Address
+                </DialogTitle>
               </DialogHeader>
               <DepositAddress
                 token={selectedToken}
+                network={selectedNetwork}
                 depositAddress={depositAddress}
                 onContinue={handleNotifyRelayer}
               />
-            </>
+              <p className='text-dark-neutral-300 text-xs'>
+                Network: {selectedNetwork.chainName}
+              </p>
+            </div>
           )}
       </DialogContent>
     </Dialog>

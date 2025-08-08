@@ -9,7 +9,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { TokenListItem } from '@/components/deposit-dialog/token-list-item';
 import { CryptoIcon } from '@/components/balance-display/crypto-icon';
 import type { Token } from '@/lib/types/token.types';
 
@@ -81,24 +80,52 @@ export function TokenSelect({
           <div className='text-dark-neutral-300 p-2 text-xs font-medium uppercase'>
             In your wallet
           </div>
-          {tokens.map((token, index) => (
-            <TokenListItem
-              key={`${token.chain}-${token.symbol}-${index}`}
-              symbol={token.symbol}
-              name={token.name}
-              chain={token.chainName || token.chain}
-              balance={showBalance ? token.balance : undefined}
-              balanceUsd={showBalance ? token.balanceUsd : undefined}
-              selected={
-                value?.symbol === token.symbol && value?.chain === token.chain
-              }
-              onClick={() => {
-                onChange?.(token);
-                setOpen(false);
-              }}
-              className='rounded-none border-0'
-            />
-          ))}
+          {tokens.map((token, index) => {
+            const isSelected =
+              value?.symbol === token.symbol && value?.chain === token.chain;
+            return (
+              <button
+                key={`${token.chain}-${token.symbol}-${index}`}
+                type='button'
+                onClick={() => {
+                  onChange?.(token);
+                  setOpen(false);
+                }}
+                className={cn(
+                  'hover:bg-pastels-green-white-300 flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left transition-colors',
+                  isSelected && 'bg-pastels-green-white-300',
+                )}
+              >
+                <div className='flex items-center gap-3'>
+                  <CryptoIcon
+                    chain={token.chain}
+                    token={token.symbol}
+                    className='size-6 shrink-0'
+                  />
+                  <div className='flex flex-col'>
+                    <span className='text-sm font-medium text-stone-700'>
+                      {token.symbol}
+                    </span>
+                    <span className='text-dark-neutral-300 text-xs'>
+                      {token.name} • on {token.chainName || token.chain}
+                    </span>
+                  </div>
+                </div>
+                {showBalance && token.balance && (
+                  <div className='text-right'>
+                    <div className='text-sm text-stone-700'>
+                      {token.balance}
+                    </div>
+                    {token.balanceUsd && (
+                      <div className='text-dark-neutral-300 text-xs'>
+                        {token.balanceUsd}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </button>
+            );
+          })}
         </div>
       </PopoverContent>
     </Popover>

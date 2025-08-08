@@ -2,7 +2,10 @@ import { PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
 
 import type { TokenBalance } from '@/lib/types/token.types';
-import { getTokenMetadata, ALL_TOKENS } from '@/lib/constants/token-metadata';
+import {
+  getTokenMetadata,
+  getAllErc20Tokens,
+} from '@/lib/constants/token-metadata';
 import type { BridgeContract } from '@/lib/contracts/bridge-contract';
 
 import { getAlchemyProvider } from '../utils/providers';
@@ -160,7 +163,7 @@ export class TokenBalanceService {
     derivedAddress: string,
   ): Promise<TokenBalance[]> {
     try {
-      const tokenAddresses = ALL_TOKENS.map(token => token.address);
+      const tokenAddresses = getAllErc20Tokens().map(token => token.address);
 
       // Use batch fetching to reduce RPC calls
       const batchResults = await this.batchFetchErc20Balances(
@@ -196,7 +199,7 @@ export class TokenBalanceService {
    */
   async fetchUserBalances(publicKey: PublicKey): Promise<TokenBalance[]> {
     try {
-      const tokenAddresses = ALL_TOKENS.map(token => token.address);
+      const tokenAddresses = getAllErc20Tokens().map(token => token.address);
 
       const balancesPromises = tokenAddresses.map(async erc20Address => {
         const balance = await this.bridgeContract.fetchUserBalance(

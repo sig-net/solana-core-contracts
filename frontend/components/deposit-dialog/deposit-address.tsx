@@ -5,18 +5,20 @@ import { NetworkIcon } from '@web3icons/react';
 
 import { Button } from '@/components/ui/button';
 import { QRCode } from '@/components/ui/qr-code';
-import { TokenMetadata } from '@/lib/constants/token-metadata';
+import { TokenMetadata, NetworkData } from '@/lib/constants/token-metadata';
 import { useCopyToClipboard } from '@/hooks';
 import { cn } from '@/lib/utils';
 
 interface DepositAddressProps {
   token: TokenMetadata;
+  network: NetworkData;
   depositAddress: string;
   onContinue: () => void;
 }
 
 export function DepositAddress({
   token,
+  network,
   depositAddress,
   onContinue,
 }: DepositAddressProps) {
@@ -33,14 +35,14 @@ export function DepositAddress({
   return (
     <div className='gradient-popover w-full space-y-5'>
       <p className='text-dark-neutral-400 font-semibold capitalize'>
-        {token.chainName} Address
+        {network.chainName} Address
       </p>
 
       <div className='border-dark-neutral-400/80 gradient-bg-main flex flex-col justify-center gap-5 rounded-xs border p-5'>
         <QRCode
           value={depositAddress}
           size={242}
-          icon={<NetworkIcon name={token.chain} />}
+          icon={<NetworkIcon name={network.chain} />}
           className='mx-auto border-none bg-white'
           errorCorrectionLevel='M'
           margin={16}

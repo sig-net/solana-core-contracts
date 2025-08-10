@@ -2,6 +2,8 @@ import { Connection } from '@solana/web3.js';
 import { Program, AnchorProvider, Wallet } from '@coral-xyz/anchor';
 import type { Hex } from 'viem';
 
+import { CHAIN_SIGNATURES_PROGRAM_IDl } from '@/lib/program/IDL_CHAIN_SIG';
+
 import type {
   ChainSignaturesProgram,
   ChainSignaturesSignature,
@@ -9,7 +11,6 @@ import type {
   ReadRespondedEvent,
   EventPromises,
 } from '../types/chain-signatures.types';
-import { CHAIN_SIGNATURES_PROGRAM_IDl } from '../program/IDL_CHAIN_SIG';
 
 export class ChainSignaturesContract {
   private connection: Connection;

@@ -4,6 +4,8 @@ import {
   Connection,
   PublicKey,
   SYSVAR_INSTRUCTIONS_PUBKEY,
+  type ConfirmedSignatureInfo,
+  type VersionedTransactionResponse,
 } from '@solana/web3.js';
 import { Program, AnchorProvider, BN, Wallet } from '@coral-xyz/anchor';
 
@@ -328,41 +330,24 @@ export class BridgeContract {
       }[] = [];
 
       // Get historical transactions by parsing user's transaction history
-      const signatures = await cachedGetSignaturesForAddress(
-        this.connection,
-        userPublicKey,
-        { limit: this.SIGNATURE_SCAN_LIMIT },
-      );
-
       const program = this.getBridgeProgram();
       const coder = program.coder;
 
-      const txs = await this.mapWithConcurrency(
-        signatures,
-        this.TRANSACTION_FETCH_CONCURRENCY,
-        sig =>
-          cachedGetTransaction(this.connection, sig.signature, {
-            maxSupportedTransactionVersion: 0,
-          }),
-      );
+      const { signatures: userSigs, transactions: txs } =
+        await this.fetchTxsForAddress(userPublicKey, this.SIGNATURE_SCAN_LIMIT);
 
       for (let i = 0; i < txs.length; i++) {
-        const sig = signatures[i];
+        const sig = userSigs[i];
         const tx = txs[i];
         if (!tx || !tx.meta || tx.meta.err) continue;
 
-        const accountKeys = tx.transaction.message.staticAccountKeys;
-        const instructions = tx.transaction.message.compiledInstructions;
-
-        for (const ix of instructions) {
-          const programId = accountKeys[ix.programIdIndex];
-          if (!programId.equals(BRIDGE_PROGRAM_ID)) continue;
-
-          const decoded = this.safeDecodeInstruction(coder, ix.data);
-          if (!decoded) continue;
-
-          const { name, data } = decoded as DecodedIx;
-
+        const decodedIxs = this.extractProgramInstructionsFromTx(tx, coder);
+        for (const {
+          name,
+          data,
+          accountKeys,
+          accountKeyIndexes,
+        } of decodedIxs) {
           if (name === 'withdrawErc20') {
             const requestId = Buffer.from(data.requestId).toString('hex');
             const erc20Address = '0x' + this.toHex(data.erc20Address ?? []);
@@ -372,7 +357,7 @@ export class BridgeContract {
             const userAccountIndex = accountKeys.findIndex(key =>
               key.equals(userPublicKey),
             );
-            const ixAccounts = ix.accountKeyIndexes;
+            const ixAccounts = accountKeyIndexes;
             if (
               userAccountIndex !== -1 &&
               ixAccounts.includes(userAccountIndex)
@@ -399,6 +384,62 @@ export class BridgeContract {
               withdrawals[existingIndex].status = 'completed';
             }
           }
+        }
+      }
+
+      // Additionally, scan the user's userBalance PDAs per token used in withdrawals
+      // to detect completion transactions that are not signed by the user (relayer-signed).
+      const tokensToCheck = new Set<string>();
+      for (const w of withdrawals) {
+        tokensToCheck.add(w.erc20Address.toLowerCase());
+      }
+
+      for (const tokenAddress of tokensToCheck) {
+        try {
+          const erc20Bytes = Buffer.from(tokenAddress.replace('0x', ''), 'hex');
+          const [userBalancePda] = deriveUserBalancePda(
+            userPublicKey,
+            erc20Bytes,
+          );
+
+          const ubSignatures = await cachedGetSignaturesForAddress(
+            this.connection,
+            userBalancePda,
+            { limit: this.SIGNATURE_SCAN_LIMIT },
+          );
+
+          const ubTxs = await this.mapWithConcurrency(
+            ubSignatures,
+            this.TRANSACTION_FETCH_CONCURRENCY,
+            sig =>
+              cachedGetTransaction(this.connection, sig.signature, {
+                maxSupportedTransactionVersion: 0,
+              }),
+          );
+
+          for (let i = 0; i < ubTxs.length; i++) {
+            const tx = ubTxs[i];
+            try {
+              if (!tx || !tx.meta || tx.meta.err) continue;
+              const decodedIxs = this.extractProgramInstructionsFromTx(
+                tx,
+                coder,
+              );
+              for (const di of decodedIxs) {
+                if (di.name === 'completeWithdrawErc20') {
+                  const reqId = Buffer.from(di.data.requestId).toString('hex');
+                  const idx = withdrawals.findIndex(w => w.requestId === reqId);
+                  if (idx !== -1) {
+                    withdrawals[idx].status = 'completed';
+                  }
+                }
+              }
+            } catch {
+              continue;
+            }
+          }
+        } catch {
+          continue;
         }
       }
 
@@ -438,6 +479,73 @@ export class BridgeContract {
 
     await Promise.all(workers);
     return results;
+  }
+
+  /**
+   * Fetch recent signatures and their corresponding transactions for an address
+   */
+  private async fetchTxsForAddress(
+    address: PublicKey,
+    limit: number,
+  ): Promise<{
+    signatures: ConfirmedSignatureInfo[];
+    transactions: (VersionedTransactionResponse | null)[];
+  }> {
+    const signatures = await cachedGetSignaturesForAddress(
+      this.connection,
+      address,
+      {
+        limit,
+      },
+    );
+    const transactions = await this.mapWithConcurrency(
+      signatures,
+      this.TRANSACTION_FETCH_CONCURRENCY,
+      sig =>
+        cachedGetTransaction(this.connection, sig.signature, {
+          maxSupportedTransactionVersion: 0,
+        }),
+    );
+    return { signatures, transactions };
+  }
+
+  /**
+   * Extract and decode this program's instructions from a transaction
+   */
+  private extractProgramInstructionsFromTx(
+    tx: VersionedTransactionResponse,
+    coder: Program<SolanaCoreContracts>['coder'],
+  ): Array<{
+    name: string;
+    data: DecodedIx['data'];
+    accountKeys: PublicKey[];
+    accountKeyIndexes: number[];
+  }> {
+    const accountKeys = tx.transaction.message.staticAccountKeys;
+    const instructions = tx.transaction.message.compiledInstructions;
+    const decodedEvents: Array<{
+      name: string;
+      data: DecodedIx['data'];
+      accountKeys: PublicKey[];
+      accountKeyIndexes: number[];
+    }> = [];
+
+    for (const ix of instructions) {
+      const programId = accountKeys[ix.programIdIndex];
+      if (!programId.equals(BRIDGE_PROGRAM_ID)) continue;
+      const decoded = this.safeDecodeInstruction(
+        coder,
+        ix.data,
+      ) as DecodedIx | null;
+      if (!decoded) continue;
+      decodedEvents.push({
+        name: decoded.name,
+        data: decoded.data,
+        accountKeys,
+        accountKeyIndexes: ix.accountKeyIndexes as number[],
+      });
+    }
+    return decodedEvents;
   }
 
   /**
@@ -574,54 +682,37 @@ export class BridgeContract {
 
       // 1) Scan requester PDA transactions for depositErc20
       const [requesterPda] = deriveVaultAuthorityPda(userPublicKey);
-      const requesterSignatures = await cachedGetSignaturesForAddress(
-        this.connection,
+      const fetched = await this.fetchTxsForAddress(
         requesterPda,
-        { limit: this.SIGNATURE_SCAN_LIMIT },
+        this.SIGNATURE_SCAN_LIMIT,
       );
-
-      // Fetch transactions concurrently with a safe cap
-      const requesterTxs = await this.mapWithConcurrency(
-        requesterSignatures,
-        this.TRANSACTION_FETCH_CONCURRENCY,
-        sig =>
-          cachedGetTransaction(this.connection, sig.signature, {
-            maxSupportedTransactionVersion: 0,
-          }),
-      );
+      const requesterSignatures = fetched.signatures;
+      const requesterTxs = fetched.transactions;
 
       for (let i = 0; i < requesterTxs.length; i++) {
         const sig = requesterSignatures[i];
         const tx = requesterTxs[i];
         try {
           if (!tx || !tx.meta || tx.meta.err) continue;
-          const accountKeys = tx.transaction.message.staticAccountKeys;
-          const instructions = tx.transaction.message.compiledInstructions;
+          const decodedIxs = this.extractProgramInstructionsFromTx(tx, coder);
+          for (const di of decodedIxs) {
+            if (di.name !== 'depositErc20') continue;
+            const data = di.data;
+            const requesterHex = toPublicKey(data.requester).toString();
+            if (requesterHex !== userPublicKey.toString()) continue;
 
-          for (const ix of instructions) {
-            const programId = accountKeys[ix.programIdIndex];
-            if (!programId.equals(BRIDGE_PROGRAM_ID)) continue;
-            const decoded = this.safeDecodeInstruction(coder, ix.data);
-            if (!decoded) continue;
+            const requestId = Buffer.from(data.requestId).toString('hex');
+            const erc20Address = '0x' + this.toHex(data.erc20Address ?? []);
+            const amount = toStringSafe(data.amount);
+            const timestamp = sig.blockTime || Math.floor(Date.now() / 1000);
 
-            if (decoded.name === 'depositErc20') {
-              const data = decoded.data;
-              const requesterHex = toPublicKey(data.requester).toString();
-              if (requesterHex !== userPublicKey.toString()) continue;
-
-              const requestId = Buffer.from(data.requestId).toString('hex');
-              const erc20Address = '0x' + this.toHex(data.erc20Address ?? []);
-              const amount = toStringSafe(data.amount);
-              const timestamp = sig.blockTime || Math.floor(Date.now() / 1000);
-
-              deposits.set(requestId, {
-                requestId,
-                amount,
-                erc20Address,
-                timestamp,
-                status: 'pending',
-              });
-            }
+            deposits.set(requestId, {
+              requestId,
+              amount,
+              erc20Address,
+              timestamp,
+              status: 'pending',
+            });
           }
         } catch {
           continue;
@@ -665,21 +756,18 @@ export class BridgeContract {
             const tx = txs[i];
             try {
               if (!tx || !tx.meta || tx.meta.err) continue;
-              const accountKeys = tx.transaction.message.staticAccountKeys;
-              const instructions = tx.transaction.message.compiledInstructions;
-              for (const ix of instructions) {
-                const programId = accountKeys[ix.programIdIndex];
-                if (!programId.equals(BRIDGE_PROGRAM_ID)) continue;
-                const decoded = this.safeDecodeInstruction(coder, ix.data);
-                if (!decoded) continue;
-                if (decoded.name === 'claimErc20') {
-                  const data = decoded.data;
-                  const requestId = Buffer.from(data.requestId).toString('hex');
-                  const existing = deposits.get(requestId);
-                  if (existing) {
-                    existing.status = 'completed';
-                    deposits.set(requestId, existing);
-                  }
+              const decodedIxs = this.extractProgramInstructionsFromTx(
+                tx,
+                coder,
+              );
+              for (const di of decodedIxs) {
+                if (di.name !== 'claimErc20') continue;
+                const data = di.data;
+                const requestId = Buffer.from(data.requestId).toString('hex');
+                const existing = deposits.get(requestId);
+                if (existing) {
+                  existing.status = 'completed';
+                  deposits.set(requestId, existing);
                 }
               }
             } catch {

@@ -30,13 +30,6 @@ export const TIMEOUT_CONFIG = {
   MAX_SUBSCRIPTION_AGE: 7200000,
 } as const;
 
-export const INTERVAL_CONFIG = {
-  /** Event polling interval (10 seconds) */
-  EVENT_POLLING_INTERVAL: 10000,
-  /** Brief delay to ensure event listeners are registered (500ms) */
-  EVENT_LISTENER_DELAY: 500,
-} as const;
-
 export const BALANCE_CONFIG = {
   /** Range for random subtraction to work around contract constraints */
   RANDOM_SUBTRACTION_RANGE: 1000,
@@ -60,7 +53,6 @@ export const SERVICE_CONFIG = {
   ETHEREUM: ETHEREUM_CONFIG,
   CRYPTOGRAPHY: CRYPTOGRAPHY_CONFIG,
   TIMEOUTS: TIMEOUT_CONFIG,
-  INTERVALS: INTERVAL_CONFIG,
   BALANCE: BALANCE_CONFIG,
   RETRY: RETRY_CONFIG,
 } as const;

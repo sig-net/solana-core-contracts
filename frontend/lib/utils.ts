@@ -28,6 +28,7 @@ export function convertTokenBalancesToDisplayTokens(
     const numericBalance = parseFloat(
       formatUnits(token.balance, token.decimals),
     );
-    return numericBalance >= 0.01;
+    // Always display Solana assets, even with zero balance; for others keep small-balance filter
+    return token.chain === 'solana' || numericBalance >= 0.01;
   });
 }

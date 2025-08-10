@@ -82,7 +82,7 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
       );
       preloadTokenInfo(tokenAddresses);
     }
-  }, [incomingTransfers, outgoingTransfers, depositAddress]);
+  }, [incomingTransfers, outgoingTransfers]);
 
   const realTransactions: ActivityTransaction[] = useMemo(() => {
     const allTransactions: ActivityTransaction[] = [];
@@ -199,7 +199,7 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
       const bTime = b.timestampRaw || 0;
       return bTime - aTime;
     });
-  }, [incomingTransfers, outgoingTransfers]);
+  }, [depositAddress, incomingTransfers, outgoingTransfers]);
 
   // TODO: Add pagination for better UX when there are many transactions
   // Currently showing only the last 5 transactions to keep the UI clean

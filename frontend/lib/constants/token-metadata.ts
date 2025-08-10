@@ -13,7 +13,6 @@ export interface NetworkData {
   tokens: TokenMetadata[];
 }
 
-// Network-first organization matching Figma design
 export const NETWORKS_WITH_TOKENS: NetworkData[] = [
   {
     chain: 'ethereum',
@@ -48,32 +47,36 @@ export const NETWORKS_WITH_TOKENS: NetworkData[] = [
     color: '#9945FF',
     tokens: [
       {
-        address: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
-        symbol: 'USDT',
-        name: 'Tether',
+        address: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
+        symbol: 'USDC',
+        name: 'USD Coin',
         decimals: 6,
       },
       {
-        address: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-        symbol: 'USDC',
-        name: 'USD Coin',
+        address: 'HzwqbKZw8HxMN6bF2yFZNrht3c2iXXzpKcFu7uBEDKtr',
+        symbol: 'EURC',
+        name: 'Euro',
         decimals: 6,
       },
     ],
   },
 ];
 
-// Legacy interface for backward compatibility
-// Flattened ERC20 token interface (with chain context)
 export interface Erc20TokenMetadata extends TokenMetadata {
   chain: string;
   chainName: string;
 }
 
-// Utility functions derived from the single source of truth (NETWORKS_WITH_TOKENS)
 export function getErc20Networks(): NetworkData[] {
-  // We don't include native tokens in NETWORKS_WITH_TOKENS, so just filter networks
   return NETWORKS_WITH_TOKENS.filter(network => network.chain === 'ethereum');
+}
+
+export function getSolanaNetworks(): NetworkData[] {
+  return NETWORKS_WITH_TOKENS.filter(network => network.chain === 'solana');
+}
+
+export function getAllNetworks(): NetworkData[] {
+  return NETWORKS_WITH_TOKENS;
 }
 
 export function getAllErc20Tokens(): Erc20TokenMetadata[] {
@@ -90,26 +93,12 @@ export function getAllErc20Addresses(): string[] {
   return getAllErc20Tokens().map(t => t.address);
 }
 
-// Create a lookup map for quick access
 export const TOKEN_METADATA_MAP = new Map<string, Erc20TokenMetadata>(
   getAllErc20Tokens().map(token => [token.address.toLowerCase(), token]),
 );
 
-// Helper function to get token metadata
 export function getTokenMetadata(
   address: string,
 ): Erc20TokenMetadata | undefined {
   return TOKEN_METADATA_MAP.get(address.toLowerCase());
-}
-
-// Helper function to get token symbol
-export function getTokenSymbol(address: string): string {
-  const metadata = getTokenMetadata(address);
-  return metadata?.symbol || 'Unknown';
-}
-
-// Helper function to get token decimals
-export function getTokenDecimals(address: string): number {
-  const metadata = getTokenMetadata(address);
-  return metadata?.decimals || 18; // Default to 18 decimals like ETH
 }

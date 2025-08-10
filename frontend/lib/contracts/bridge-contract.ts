@@ -18,6 +18,10 @@ import {
   GLOBAL_VAULT_AUTHORITY_PDA,
 } from '@/lib/constants/addresses';
 import { getAllErc20Tokens } from '@/lib/constants/token-metadata';
+import {
+  cachedGetSignaturesForAddress,
+  cachedGetTransaction,
+} from '@/lib/utils/rpc-cache';
 
 import { ChainSignaturesSignature } from '../types/chain-signatures.types';
 
@@ -32,6 +36,13 @@ export class BridgeContract {
     private connection: Connection,
     private wallet: Wallet,
   ) {}
+
+  /**
+   * Expose the underlying Solana connection for consumers that need direct RPC access
+   */
+  getConnection(): Connection {
+    return this.connection;
+  }
 
   /**
    * Get the core contracts program instance
@@ -209,7 +220,7 @@ export class BridgeContract {
         chainSignaturesState: chainSignaturesStatePda,
         chainSignaturesProgram: CHAIN_SIGNATURES_PROGRAM_ID,
         instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
-      } as any)
+      } as never)
       .rpc();
   }
 
@@ -246,7 +257,7 @@ export class BridgeContract {
         payer: payerKey,
         pendingDeposit: pendingDepositPda,
         userBalance: userBalancePda,
-      } as any)
+      } as never)
       .rpc();
   }
 
@@ -290,7 +301,7 @@ export class BridgeContract {
         chainSignaturesState: this.deriveChainSignaturesStatePda()[0],
         chainSignaturesProgram: CHAIN_SIGNATURES_PROGRAM_ID,
         instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
-      } as any)
+      } as never)
       .rpc();
   }
 
@@ -328,7 +339,7 @@ export class BridgeContract {
         payer: payerKey,
         pendingWithdrawal: pendingWithdrawalPda,
         userBalance: userBalancePda,
-      } as any)
+      } as never)
       .rpc();
   }
 
@@ -372,18 +383,25 @@ export class BridgeContract {
       try {
         const signatures = await this.connection.getSignaturesForAddress(
           userPublicKey,
-          { limit: 50 }, // Get last 50 transactions
+          { limit: this.SIGNATURE_SCAN_LIMIT },
         );
 
         const program = this.getBridgeProgram();
         const coder = program.coder;
 
-        for (const sig of signatures) {
-          try {
-            const tx = await this.connection.getTransaction(sig.signature, {
+        const txs = await this.mapWithConcurrency(
+          signatures,
+          this.TRANSACTION_FETCH_CONCURRENCY,
+          sig =>
+            this.connection.getTransaction(sig.signature, {
               maxSupportedTransactionVersion: 0,
-            });
+            }),
+        );
 
+        for (let i = 0; i < txs.length; i++) {
+          const sig = signatures[i];
+          const tx = txs[i];
+          try {
             if (!tx || !tx.meta || tx.meta.err) continue;
 
             // Check if this transaction involves the core contracts program
@@ -416,8 +434,14 @@ export class BridgeContract {
 
                   if (!decodedInstruction) continue;
 
-                  const { name: instructionName, data: decodedData } =
+                  const { name: instructionName, data: decodedDataUntyped } =
                     decodedInstruction;
+                  const decodedData = decodedDataUntyped as {
+                    requestId: Uint8Array | number[];
+                    erc20Address?: Uint8Array | number[];
+                    amount?: { toString(): string } | number | string;
+                    recipientAddress?: Uint8Array | number[];
+                  };
 
                   // Handle withdrawErc20 instruction
                   if (instructionName === 'withdrawErc20') {
@@ -427,11 +451,23 @@ export class BridgeContract {
                     ).toString('hex');
                     const erc20Address =
                       '0x' +
-                      Buffer.from(decodedData.erc20Address).toString('hex');
-                    const amount = decodedData.amount.toString();
+                      Buffer.from(
+                        (decodedData.erc20Address ?? ([] as number[])) as
+                          | number[]
+                          | Uint8Array,
+                      ).toString('hex');
+                    const amount = (
+                      (decodedData.amount ?? (0 as unknown)) as {
+                        toString(): string;
+                      }
+                    ).toString();
                     const recipient =
                       '0x' +
-                      Buffer.from(decodedData.recipientAddress).toString('hex');
+                      Buffer.from(
+                        (decodedData.recipientAddress ?? ([] as number[])) as
+                          | number[]
+                          | Uint8Array,
+                      ).toString('hex');
 
                     // Check if this withdrawal is for the current user
                     const userAccountIndex = accountKeys.findIndex(key =>
@@ -479,7 +515,7 @@ export class BridgeContract {
                       withdrawals[existingIndex].status = 'completed';
                     }
                   }
-                } catch (decodeError) {
+                } catch {
                   // Skip instructions we can't decode
                   continue;
                 }
@@ -506,6 +542,38 @@ export class BridgeContract {
   // ================================
   // Helper Methods
   // ================================
+
+  /**
+   * Internal utility to run async map operations with a concurrency cap.
+   */
+  private async mapWithConcurrency<T, R>(
+    items: T[],
+    concurrency: number,
+    mapper: (item: T, index: number) => Promise<R>,
+  ): Promise<R[]> {
+    const results: R[] = new Array(items.length) as R[];
+    let nextIndex = 0;
+
+    const workers = Array.from(
+      { length: Math.max(1, concurrency) },
+      async () => {
+        while (true) {
+          const current = nextIndex++;
+          if (current >= items.length) break;
+          results[current] = await mapper(items[current], current);
+        }
+      },
+    );
+
+    await Promise.all(workers);
+    return results;
+  }
+
+  /**
+   * Reasonable defaults to avoid RPC saturation while keeping UI responsive.
+   */
+  private readonly TRANSACTION_FETCH_CONCURRENCY = 6;
+  private readonly SIGNATURE_SCAN_LIMIT = 20; // reduce from 50 → 20 for faster initial loads
 
   /**
    * Convert hex string to bytes array
@@ -650,17 +718,26 @@ export class BridgeContract {
 
       // 1) Scan requester PDA transactions for depositErc20
       const [requesterPda] = this.deriveVaultAuthorityPda(userPublicKey);
-      const requesterSignatures = await this.connection.getSignaturesForAddress(
+      const requesterSignatures = await cachedGetSignaturesForAddress(
+        this.connection,
         requesterPda,
-        {
-          limit: 50,
-        },
+        { limit: this.SIGNATURE_SCAN_LIMIT },
       );
-      for (const sig of requesterSignatures) {
-        try {
-          const tx = await this.connection.getTransaction(sig.signature, {
+
+      // Fetch transactions concurrently with a safe cap
+      const requesterTxs = await this.mapWithConcurrency(
+        requesterSignatures,
+        this.TRANSACTION_FETCH_CONCURRENCY,
+        sig =>
+          cachedGetTransaction(this.connection, sig.signature, {
             maxSupportedTransactionVersion: 0,
-          });
+          }),
+      );
+
+      for (let i = 0; i < requesterTxs.length; i++) {
+        const sig = requesterSignatures[i];
+        const tx = requesterTxs[i];
+        try {
           if (!tx || !tx.meta || tx.meta.err) continue;
           const accountKeys = tx.transaction.message.staticAccountKeys;
           const instructions = tx.transaction.message.compiledInstructions;
@@ -668,10 +745,13 @@ export class BridgeContract {
           for (const ix of instructions) {
             const programId = accountKeys[ix.programIdIndex];
             if (!programId.equals(BRIDGE_PROGRAM_ID)) continue;
-            let decodedInstruction: { name: string; data: any } | null = null;
+            let decodedInstruction: { name: string; data: unknown } | null =
+              null;
             try {
-              const instructionDataBuf = Buffer.from(ix.data, 'base64');
-              decodedInstruction = coder.instruction.decode(instructionDataBuf);
+              const instructionDataBuf = Buffer.from(ix.data);
+              decodedInstruction = (coder.instruction as any).decode(
+                instructionDataBuf,
+              );
             } catch {
               continue;
             }
@@ -713,27 +793,37 @@ export class BridgeContract {
             userPublicKey,
             erc20Bytes,
           );
-          const signatures = await this.connection.getSignaturesForAddress(
+          const signatures = await cachedGetSignaturesForAddress(
+            this.connection,
             userBalancePda,
-            { limit: 50 },
+            { limit: this.SIGNATURE_SCAN_LIMIT },
           );
-          for (const sig of signatures) {
-            try {
-              const tx = await this.connection.getTransaction(sig.signature, {
+
+          const txs = await this.mapWithConcurrency(
+            signatures,
+            this.TRANSACTION_FETCH_CONCURRENCY,
+            sig =>
+              cachedGetTransaction(this.connection, sig.signature, {
                 maxSupportedTransactionVersion: 0,
-              });
+              }),
+          );
+
+          for (let i = 0; i < txs.length; i++) {
+            const tx = txs[i];
+            try {
               if (!tx || !tx.meta || tx.meta.err) continue;
               const accountKeys = tx.transaction.message.staticAccountKeys;
               const instructions = tx.transaction.message.compiledInstructions;
               for (const ix of instructions) {
                 const programId = accountKeys[ix.programIdIndex];
                 if (!programId.equals(BRIDGE_PROGRAM_ID)) continue;
-                let decodedInstruction: { name: string; data: any } | null =
+                let decodedInstruction: { name: string; data: unknown } | null =
                   null;
                 try {
-                  const instructionDataBuf = Buffer.from(ix.data, 'base64');
-                  decodedInstruction =
-                    coder.instruction.decode(instructionDataBuf);
+                  const instructionDataBuf = Buffer.from(ix.data);
+                  decodedInstruction = (coder.instruction as any).decode(
+                    instructionDataBuf,
+                  );
                 } catch {
                   continue;
                 }
@@ -744,7 +834,6 @@ export class BridgeContract {
                   const existing = deposits.get(requestId);
                   if (existing) {
                     existing.status = 'completed';
-                    // Keep earliest deposit timestamp
                     deposits.set(requestId, existing);
                   }
                 }

@@ -63,9 +63,11 @@ export function useIncomingTransfers() {
       }));
     },
     enabled: !!publicKey,
-    staleTime: 30000,
-    refetchInterval: 45000,
-    refetchIntervalInBackground: false,
+    // Deposits history rarely changes per block; cache longer
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchInterval: 60 * 1000,
+    refetchIntervalInBackground: true,
   });
 
   return query;

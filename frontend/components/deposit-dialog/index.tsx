@@ -51,19 +51,21 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
   const handleNotifyRelayer = async () => {
     if (!publicKey || !selectedToken || !selectedNetwork) return;
 
+    // For Solana assets, no relayer notification is needed; user deposits directly to own wallet
+    if (selectedNetwork.chain === 'solana') {
+      handleClose();
+      return;
+    }
+
     try {
-      // Notify relayer and close dialog - processing happens in background
       await depositMutation.mutateAsync({
         erc20Address: selectedToken.address,
-        amount: '', // Empty amount since user determines actual amount sent
+        amount: '',
         decimals: selectedToken.decimals,
       });
-
-      // Close dialog immediately after notification
       handleClose();
     } catch (err) {
       console.error('Failed to notify relayer:', err);
-      // Still close dialog - user can check activity table later
       handleClose();
     }
   };
@@ -76,14 +78,19 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
   };
 
   useEffect(() => {
-    if (
-      step === DepositStep.GENERATING_ADDRESS &&
-      depositAddress &&
-      !isGeneratingAddress
-    ) {
+    if (step !== DepositStep.GENERATING_ADDRESS) return;
+    if (!selectedNetwork) return;
+
+    // For Solana network, we already have the user's own wallet address; no generation needed
+    if (selectedNetwork.chain === 'solana' && publicKey) {
+      setStep(DepositStep.SHOW_ADDRESS);
+      return;
+    }
+
+    if (depositAddress && !isGeneratingAddress) {
       setStep(DepositStep.SHOW_ADDRESS);
     }
-  }, [step, depositAddress, isGeneratingAddress]);
+  }, [step, selectedNetwork, publicKey, depositAddress, isGeneratingAddress]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -105,8 +112,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
 
         {step === DepositStep.SHOW_ADDRESS &&
           selectedToken &&
-          selectedNetwork &&
-          depositAddress && (
+          selectedNetwork && (
             <div className='space-y-5'>
               <DialogHeader className='space-y-0 p-0'>
                 <DialogTitle className='text-dark-neutral-400 text-xl font-semibold'>
@@ -116,7 +122,11 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
               <DepositAddress
                 token={selectedToken}
                 network={selectedNetwork}
-                depositAddress={depositAddress}
+                depositAddress={
+                  selectedNetwork.chain === 'solana'
+                    ? publicKey?.toString() || ''
+                    : depositAddress || ''
+                }
                 onContinue={handleNotifyRelayer}
               />
               <p className='text-dark-neutral-300 text-xs'>

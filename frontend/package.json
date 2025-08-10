@@ -29,7 +29,7 @@
     "@tanstack/react-query": "^5.83.0",
     "@tanstack/react-query-devtools": "^5.83.0",
     "@walletconnect/solana-adapter": "^0.0.8",
-    "@web3icons/react": "^4.0.19",
+    "@web3icons/react": "^4.0.20",
     "alchemy-sdk": "^3.6.1",
     "borsh": "^2.0.0",
     "class-variance-authority": "^0.7.1",

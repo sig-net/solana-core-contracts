@@ -1,10 +1,11 @@
-import { PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
 
 import type { TokenBalance } from '@/lib/types/token.types';
 import {
   getTokenMetadata,
   getAllErc20Tokens,
+  NETWORKS_WITH_TOKENS,
 } from '@/lib/constants/token-metadata';
 import type { BridgeContract } from '@/lib/contracts/bridge-contract';
 
@@ -221,8 +222,58 @@ export class TokenBalanceService {
         return null;
       });
 
-      const results = await Promise.all(balancesPromises);
-      return results.filter(result => result !== null);
+      const erc20Results = (await Promise.all(balancesPromises)).filter(
+        (result): result is TokenBalance => result !== null,
+      );
+
+      // Also include SPL balances for the user's own Solana wallet for tokens listed under Solana
+      const connection: Connection = this.bridgeContract.getConnection();
+      const solanaNetwork = NETWORKS_WITH_TOKENS.find(
+        n => n.chain === 'solana',
+      );
+
+      const splResults: TokenBalance[] = [];
+      if (solanaNetwork) {
+        for (const token of solanaNetwork.tokens) {
+          try {
+            // Fetch associated token account balance; if token is native SOL (none here), we'd use getBalance
+            // For USDC/USDT on Solana, we can use getParsedTokenAccountsByOwner
+            const parsed = await connection.getParsedTokenAccountsByOwner(
+              publicKey,
+              { mint: new PublicKey(token.address) },
+            );
+
+            let amount = '0';
+            if (parsed.value.length > 0) {
+              const info = parsed.value[0].account.data as any;
+              amount = (info.parsed?.info?.tokenAmount?.amount ??
+                '0') as string;
+            }
+
+            // Always include, even if zero, so Solana assets display with user's own balance
+            splResults.push({
+              erc20Address: token.address, // reuse field for identifier
+              amount,
+              decimals: token.decimals,
+              symbol: token.symbol,
+              name: token.name,
+              chain: 'solana',
+            });
+          } catch (e) {
+            // If RPC fails for a token, still include zero balance entry
+            splResults.push({
+              erc20Address: token.address,
+              amount: '0',
+              decimals: token.decimals,
+              symbol: token.symbol,
+              name: token.name,
+              chain: 'solana',
+            });
+          }
+        }
+      }
+
+      return [...erc20Results, ...splResults];
     } catch (error) {
       console.error('Failed to fetch user balances:', error);
       throw new Error(

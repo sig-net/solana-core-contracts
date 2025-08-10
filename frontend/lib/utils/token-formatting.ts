@@ -60,7 +60,7 @@ function normalizeSymbolForDisplay(symbol: string, name: string): string {
   return symbol;
 }
 
-// Cache for token information to avoid repeated contract calls
+// Cache for token information to avoid repeated contract calls (memory)
 const tokenInfoCache = new Map<
   string,
   {
@@ -69,8 +69,36 @@ const tokenInfoCache = new Map<
   }
 >();
 
-// Cache duration: 1 hour
-const CACHE_DURATION = 60 * 60 * 1000;
+// Cache duration: 24 hours for token metadata (stable)
+const CACHE_DURATION = 24 * 60 * 60 * 1000;
+
+function getLocalStorageKey(address: string) {
+  return `tokenInfo:${address.toLowerCase()}`;
+}
+
+function readFromLocalStorage(address: string): TokenFormatInfo | null {
+  try {
+    const raw = localStorage.getItem(getLocalStorageKey(address));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as {
+      data: TokenFormatInfo;
+      timestamp: number;
+    };
+    if (Date.now() - parsed.timestamp > CACHE_DURATION) return null;
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function writeToLocalStorage(address: string, data: TokenFormatInfo) {
+  try {
+    const payload = JSON.stringify({ data, timestamp: Date.now() });
+    localStorage.setItem(getLocalStorageKey(address), payload);
+  } catch {
+    // ignore quota / SSR
+  }
+}
 
 // Default fallback token info
 const DEFAULT_TOKEN_INFO: TokenFormatInfo = {
@@ -126,7 +154,15 @@ export async function getTokenInfo(
     return cached.data;
   }
 
-  // Fetch fresh data from contract
+  // Try localStorage cache (client only)
+  const ls =
+    typeof window !== 'undefined' ? readFromLocalStorage(tokenAddress) : null;
+  if (ls) {
+    tokenInfoCache.set(normalizedAddress, { data: ls, timestamp: Date.now() });
+    return ls;
+  }
+
+  // Fetch fresh data from contract (Alchemy)
   const tokenInfo = await fetchTokenInfoFromContract(tokenAddress);
 
   // Cache the result
@@ -134,6 +170,8 @@ export async function getTokenInfo(
     data: tokenInfo,
     timestamp: Date.now(),
   });
+  if (typeof window !== 'undefined')
+    writeToLocalStorage(tokenAddress, tokenInfo);
 
   return tokenInfo;
 }

@@ -94,9 +94,11 @@ export function useOutgoingTransfers() {
       );
     },
     enabled: !!publicKey,
-    staleTime: 30000,
-    refetchInterval: 45000,
-    refetchIntervalInBackground: false,
+    // Outgoing updates are slower; cache aggressively
+    staleTime: 2 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchInterval: 60 * 1000,
+    refetchIntervalInBackground: true,
     retry: 3,
     retryDelay: 1000,
   });

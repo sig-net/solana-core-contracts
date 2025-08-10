@@ -7,9 +7,11 @@ import { BalanceSection } from '@/components/balance-section';
 import { SwapWidget } from '@/components/swap-widget';
 import { ActivityListTable } from '@/components/activity-list-table';
 import { EmptyStateWallet } from '@/components/empty-state-wallet';
+import { useBridgeAutoRefetch } from '@/hooks/use-bridge-auto-refetch';
 
 export default function Home() {
   const { publicKey } = useWallet();
+  useBridgeAutoRefetch();
 
   const handleSettingsClick = () => {
     // TODO: Implement settings functionality

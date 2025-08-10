@@ -26,7 +26,9 @@ export function StatusBadge({ status }: StatusBadgeProps) {
             ? 'bg-red-500'
             : status === 'processing'
               ? 'animate-pulse bg-blue-500'
-              : 'bg-success-500',
+              : status === 'pending'
+                ? 'bg-yellow-500'
+                : 'bg-success-500',
         )}
       />
       <span className='text-colors-dark-neutral-500 text-xs font-medium'>

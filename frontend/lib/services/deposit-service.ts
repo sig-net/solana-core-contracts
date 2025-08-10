@@ -1,9 +1,10 @@
 import { PublicKey } from '@solana/web3.js';
-import { Wallet } from '@coral-xyz/anchor';
 
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
-import { deriveEthereumAddress } from '@/lib/constants/addresses';
-import { TokenBalanceService } from '@/lib/services/token-balance-service';
+import {
+  deriveEthereumAddress,
+  deriveVaultAuthorityPda,
+} from '@/lib/constants/addresses';
 import { RelayerService } from '@/lib/services/relayer-service';
 import type { StatusCallback } from '@/lib/types/shared.types';
 import { CHAIN_SIGNATURES_CONFIG } from '@/lib/constants/addresses';
@@ -15,11 +16,7 @@ import { CHAIN_SIGNATURES_CONFIG } from '@/lib/constants/addresses';
 export class DepositService {
   private relayerService: RelayerService;
 
-  constructor(
-    private bridgeContract: BridgeContract,
-    private tokenBalanceService: TokenBalanceService,
-    private wallet: Wallet,
-  ) {
+  constructor(private bridgeContract: BridgeContract) {
     this.relayerService = new RelayerService();
   }
 
@@ -34,8 +31,7 @@ export class DepositService {
     onStatusChange?: StatusCallback,
   ): Promise<string> {
     try {
-      const [vaultAuthority] =
-        this.bridgeContract.deriveVaultAuthorityPda(publicKey);
+      const [vaultAuthority] = deriveVaultAuthorityPda(publicKey);
       const path = publicKey.toString();
       const derivedAddress = deriveEthereumAddress(
         path,

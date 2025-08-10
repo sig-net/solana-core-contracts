@@ -48,13 +48,3 @@ export async function cachedGetSignaturesForAddress(
   sigsCache.set(key, { value: result, at: Date.now() });
   return result;
 }
-
-export function clearRpcCaches(): void {
-  txCache.clear();
-  sigsCache.clear();
-}
-
-export const RPC_CACHE_CONSTANTS = {
-  TX_TTL_MS,
-  SIGS_TTL_MS,
-} as const;

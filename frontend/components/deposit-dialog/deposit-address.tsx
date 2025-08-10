@@ -6,6 +6,7 @@ import { NetworkIcon } from '@web3icons/react';
 import { Button } from '@/components/ui/button';
 import { QRCode } from '@/components/ui/qr-code';
 import { TokenMetadata, NetworkData } from '@/lib/constants/token-metadata';
+import { formatAddress } from '@/lib/address-utils';
 import { useCopyToClipboard } from '@/hooks';
 import { cn } from '@/lib/utils';
 
@@ -26,10 +27,6 @@ export function DepositAddress({
 
   const handleCopy = () => {
     copyToClipboard(depositAddress);
-  };
-
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
   };
 
   return (

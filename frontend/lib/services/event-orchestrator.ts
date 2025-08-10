@@ -113,6 +113,8 @@ export class EventOrchestrator {
       signature: eventPromises.signature,
       readRespond: eventPromises.readRespond,
       cleanup: enhancedCleanup,
+      backfillSignature: eventPromises.backfillSignature,
+      backfillRead: eventPromises.backfillRead,
     };
   }
 

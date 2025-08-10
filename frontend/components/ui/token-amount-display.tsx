@@ -38,12 +38,8 @@ export function TokenAmountDisplay({
   placeholder = '0.00',
   disabled = false,
 }: TokenAmountDisplayProps) {
-  const formatBalance = (balance: string) => {
-    const num = parseFloat(balance);
-    if (num === 0) return '0';
-    if (num < 0.01) return '< 0.01';
-    return num.toFixed(6).replace(/\.?0+$/, '');
-  };
+  // Expect pre-formatted balance from callers to avoid duplication
+  const formatBalance = (balance: string) => balance;
 
   const handleMaxClick = () => {
     if (selectedToken) {

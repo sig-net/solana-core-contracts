@@ -11,11 +11,15 @@ import { IDL, type SolanaCoreContracts } from '@/lib/program/IDL_SOLANA_DEX';
 import type { EvmTransactionProgramParams } from '@/lib/types/shared.types';
 import {
   BRIDGE_PROGRAM_ID,
-  BRIDGE_PDA_SEEDS,
   CHAIN_SIGNATURES_PROGRAM_ID,
   deriveEthereumAddress,
   CHAIN_SIGNATURES_CONFIG,
   GLOBAL_VAULT_AUTHORITY_PDA,
+  deriveVaultAuthorityPda,
+  derivePendingDepositPda,
+  derivePendingWithdrawalPda,
+  deriveUserBalancePda,
+  deriveChainSignaturesStatePda,
 } from '@/lib/constants/addresses';
 import { getAllErc20Tokens } from '@/lib/constants/token-metadata';
 import {
@@ -68,68 +72,7 @@ export class BridgeContract {
   // PDA Derivation Methods
   // ================================
 
-  /**
-   * Derive vault authority PDA for a given user
-   */
-  deriveVaultAuthorityPda(userPublicKey: PublicKey): [PublicKey, number] {
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from(BRIDGE_PDA_SEEDS.VAULT_AUTHORITY), userPublicKey.toBuffer()],
-      BRIDGE_PROGRAM_ID,
-    );
-  }
-
-  /**
-   * Derive pending deposit PDA for a given request ID
-   */
-  derivePendingDepositPda(requestIdBytes: number[]): [PublicKey, number] {
-    return PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(BRIDGE_PDA_SEEDS.PENDING_ERC20_DEPOSIT),
-        Buffer.from(requestIdBytes),
-      ],
-      BRIDGE_PROGRAM_ID,
-    );
-  }
-
-  /**
-   * Derive pending withdrawal PDA for a given request ID
-   */
-  derivePendingWithdrawalPda(requestIdBytes: number[]): [PublicKey, number] {
-    return PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(BRIDGE_PDA_SEEDS.PENDING_ERC20_WITHDRAWAL),
-        Buffer.from(requestIdBytes),
-      ],
-      BRIDGE_PROGRAM_ID,
-    );
-  }
-
-  /**
-   * Derive user balance PDA for a given user and ERC20 token
-   */
-  deriveUserBalancePda(
-    userPublicKey: PublicKey,
-    erc20AddressBytes: Buffer,
-  ): [PublicKey, number] {
-    return PublicKey.findProgramAddressSync(
-      [
-        Buffer.from(BRIDGE_PDA_SEEDS.USER_ERC20_BALANCE),
-        userPublicKey.toBuffer(),
-        erc20AddressBytes,
-      ],
-      BRIDGE_PROGRAM_ID,
-    );
-  }
-
-  /**
-   * Derive chain signatures state PDA
-   */
-  deriveChainSignaturesStatePda(): [PublicKey, number] {
-    return PublicKey.findProgramAddressSync(
-      [Buffer.from(BRIDGE_PDA_SEEDS.PROGRAM_STATE)],
-      CHAIN_SIGNATURES_PROGRAM_ID,
-    );
-  }
+  // Removed one-line PDA wrappers; call centralized helpers directly where needed
 
   // ================================
   // Account Fetching Methods
@@ -153,10 +96,7 @@ export class BridgeContract {
   ): Promise<string> {
     try {
       const erc20Bytes = Buffer.from(erc20Address.replace('0x', ''), 'hex');
-      const [userBalancePda] = this.deriveUserBalancePda(
-        userPublicKey,
-        erc20Bytes,
-      );
+      const [userBalancePda] = deriveUserBalancePda(userPublicKey, erc20Bytes);
 
       // Use Anchor's account fetching mechanism instead of manual parsing
       const userBalanceAccount =
@@ -207,9 +147,9 @@ export class BridgeContract {
     evmParams: EvmTransactionProgramParams;
   }): Promise<string> {
     const payerKey = payer || this.wallet.publicKey;
-    const [requesterPda] = this.deriveVaultAuthorityPda(requester);
-    const [pendingDepositPda] = this.derivePendingDepositPda(requestIdBytes);
-    const [chainSignaturesStatePda] = this.deriveChainSignaturesStatePda();
+    const [requesterPda] = deriveVaultAuthorityPda(requester);
+    const [pendingDepositPda] = derivePendingDepositPda(requestIdBytes);
+    const [chainSignaturesStatePda] = deriveChainSignaturesStatePda();
 
     return await this.getBridgeProgram()
       .methods.depositErc20(
@@ -250,9 +190,9 @@ export class BridgeContract {
     requester: PublicKey;
   }): Promise<string> {
     const payerKey = payer || this.wallet.publicKey;
-    const [pendingDepositPda] = this.derivePendingDepositPda(requestIdBytes);
+    const [pendingDepositPda] = derivePendingDepositPda(requestIdBytes);
     const erc20Bytes = Buffer.from(erc20AddressBytes);
-    const [userBalancePda] = this.deriveUserBalancePda(requester, erc20Bytes);
+    const [userBalancePda] = deriveUserBalancePda(requester, erc20Bytes);
 
     return await this.getBridgeProgram()
       .methods.claimErc20(
@@ -287,10 +227,9 @@ export class BridgeContract {
     evmParams: EvmTransactionProgramParams;
   }): Promise<string> {
     const globalVaultAuthority = GLOBAL_VAULT_AUTHORITY_PDA;
-    const [pendingWithdrawalPda] =
-      this.derivePendingWithdrawalPda(requestIdBytes);
+    const [pendingWithdrawalPda] = derivePendingWithdrawalPda(requestIdBytes);
     const erc20Bytes = Buffer.from(erc20AddressBytes);
-    const [userBalancePda] = this.deriveUserBalancePda(authority, erc20Bytes);
+    const [userBalancePda] = deriveUserBalancePda(authority, erc20Bytes);
 
     return await this.getBridgeProgram()
       .methods.withdrawErc20(
@@ -306,7 +245,7 @@ export class BridgeContract {
         pendingWithdrawal: pendingWithdrawalPda,
         userBalance: userBalancePda,
         feePayer: this.wallet.publicKey,
-        chainSignaturesState: this.deriveChainSignaturesStatePda()[0],
+        chainSignaturesState: deriveChainSignaturesStatePda()[0],
         chainSignaturesProgram: CHAIN_SIGNATURES_PROGRAM_ID,
         instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       } as never)
@@ -332,10 +271,9 @@ export class BridgeContract {
     requester: PublicKey;
   }): Promise<string> {
     const payerKey = payer || this.wallet.publicKey;
-    const [pendingWithdrawalPda] =
-      this.derivePendingWithdrawalPda(requestIdBytes);
+    const [pendingWithdrawalPda] = derivePendingWithdrawalPda(requestIdBytes);
     const erc20Bytes = Buffer.from(erc20AddressBytes);
-    const [userBalancePda] = this.deriveUserBalancePda(requester, erc20Bytes);
+    const [userBalancePda] = deriveUserBalancePda(requester, erc20Bytes);
 
     return await this.getBridgeProgram()
       .methods.completeWithdrawErc20(
@@ -512,23 +450,19 @@ export class BridgeContract {
    * Convert hex string to bytes array
    */
   hexToBytes(hex: string): number[] {
-    const cleanHex = hex.replace('0x', '');
+    // Prefer viem's toBytes in call sites; keep minimal fallback here
+    const cleanHex = hex.replace(/^0x/, '');
     return Array.from(Buffer.from(cleanHex, 'hex'));
   }
 
-  /**
-   * Convert ERC20 address to bytes
-   */
-  erc20AddressToBytes(erc20Address: string): number[] {
-    return this.hexToBytes(erc20Address);
-  }
+  // Removed trivial wrappers like erc20AddressToBytes; prefer viem's toBytes at call sites
 
   /**
    * Derive deposit address for a given user public key
    * This replaces the SolanaService.deriveDepositAddress method
    */
   deriveDepositAddress(publicKey: PublicKey): string {
-    const [vaultAuthority] = this.deriveVaultAuthorityPda(publicKey);
+    const [vaultAuthority] = deriveVaultAuthorityPda(publicKey);
     const path = publicKey.toString();
     return deriveEthereumAddress(
       path,
@@ -557,7 +491,7 @@ export class BridgeContract {
       const pdaToTokenAddress = new Map<string, string>();
       for (const token of getAllErc20Tokens()) {
         const erc20Bytes = Buffer.from(token.address.replace('0x', ''), 'hex');
-        const [pda] = this.deriveUserBalancePda(userPublicKey, erc20Bytes);
+        const [pda] = deriveUserBalancePda(userPublicKey, erc20Bytes);
         pdaToTokenAddress.set(pda.toBase58(), token.address);
       }
 
@@ -639,7 +573,7 @@ export class BridgeContract {
       const coder = program.coder;
 
       // 1) Scan requester PDA transactions for depositErc20
-      const [requesterPda] = this.deriveVaultAuthorityPda(userPublicKey);
+      const [requesterPda] = deriveVaultAuthorityPda(userPublicKey);
       const requesterSignatures = await cachedGetSignaturesForAddress(
         this.connection,
         requesterPda,
@@ -708,7 +642,7 @@ export class BridgeContract {
             token.address.replace('0x', ''),
             'hex',
           );
-          const [userBalancePda] = this.deriveUserBalancePda(
+          const [userBalancePda] = deriveUserBalancePda(
             userPublicKey,
             erc20Bytes,
           );

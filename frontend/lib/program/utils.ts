@@ -2,7 +2,6 @@ import { PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
 import { BN } from '@coral-xyz/anchor';
 
-import { getAlchemyProvider } from '../utils/providers';
 import type {
   EvmTransactionRequest,
   EvmTransactionProgramParams,
@@ -54,42 +53,6 @@ export function generateRequestId(
 }
 
 /**
- * Create base EVM transaction parameters for Sepolia testnet with dynamic gas estimation.
- * Returns only the gas and fee parameters - caller must provide to, data, value, etc.
- */
-export async function createEvmTransactionBaseParams(
-  nonce: number,
-  gasLimit: number,
-): Promise<
-  Pick<
-    EvmTransactionRequest,
-    | 'nonce'
-    | 'gasLimit'
-    | 'maxFeePerGas'
-    | 'maxPriorityFeePerGas'
-    | 'chainId'
-    | 'type'
-  >
-> {
-  const feeData = await getAlchemyProvider().core.getFeeData();
-
-  const bufferMultiplier = 1.2;
-
-  return {
-    type: 2, // EIP-1559
-    nonce,
-    gasLimit: BigInt(gasLimit),
-    maxFeePerGas: BigInt(
-      Math.floor(Number(feeData.maxFeePerGas) * bufferMultiplier),
-    ),
-    maxPriorityFeePerGas: BigInt(
-      Math.floor(Number(feeData.maxPriorityFeePerGas) * bufferMultiplier),
-    ),
-    chainId: 11155111, // Sepolia testnet
-  };
-}
-
-/**
  * Convert EVM transaction params to the format expected by the Solana program
  */
 export function evmParamsToProgram(
@@ -111,16 +74,4 @@ export function evmParamsToProgram(
     nonce: new BN(params.nonce.toString()),
     chainId: new BN(params.chainId.toString()),
   };
-}
-
-/**
- * Convert hex string to byte array
- */
-export function hexToBytes(hex: string): Uint8Array {
-  const cleaned = hex.replace(/^0x/, '');
-  const bytes = new Uint8Array(cleaned.length / 2);
-  for (let i = 0; i < cleaned.length; i += 2) {
-    bytes[i / 2] = parseInt(cleaned.substr(i, 2), 16);
-  }
-  return bytes;
 }

@@ -5,23 +5,23 @@ import { useWallet } from '@solana/wallet-adapter-react';
 
 import { queryKeys } from '@/lib/query-client';
 
-import { useDepositService } from './use-deposit-service';
+import { useWithdrawalService } from './use-withdrawal-service';
 
-export function useDepositErc20Mutation() {
+export function useWithdrawEvmMutation() {
   const { publicKey } = useWallet();
-  const depositService = useDepositService();
+  const withdrawalService = useWithdrawalService();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
       erc20Address,
       amount,
-      decimals,
+      recipientAddress,
       onStatusChange,
     }: {
       erc20Address: string;
       amount: string;
-      decimals: number;
+      recipientAddress: string;
       onStatusChange?: (status: {
         status: string;
         txHash?: string;
@@ -30,11 +30,11 @@ export function useDepositErc20Mutation() {
       }) => void;
     }) => {
       if (!publicKey) throw new Error('No public key available');
-      return depositService.depositErc20(
+      return withdrawalService.withdrawEvm(
         publicKey,
         erc20Address,
         amount,
-        decimals,
+        recipientAddress,
         onStatusChange,
       );
     },
@@ -51,8 +51,14 @@ export function useDepositErc20Mutation() {
         });
       }
     },
-    onError: error => {
-      console.error('Deposit ERC20 mutation failed:', error);
+    onError: (error, variables) => {
+      console.error('Withdraw EVM mutation failed:', error);
+      if (variables.onStatusChange) {
+        variables.onStatusChange({
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Withdrawal failed',
+        });
+      }
     },
   });
 }

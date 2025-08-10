@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { LoadingState } from '@/components/states';
-import { useWithdrawMutation } from '@/hooks';
+import { useWithdrawEvmMutation, useWithdrawSolMutation } from '@/hooks';
 
 import { AmountInput } from './amount-input';
 
@@ -33,8 +33,9 @@ export function WithdrawDialog({
 }: WithdrawDialogProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Withdrawal mutation
-  const withdrawMutation = useWithdrawMutation();
+  // Withdrawal mutations
+  const withdrawEvmMutation = useWithdrawEvmMutation();
+  const withdrawSolMutation = useWithdrawSolMutation();
 
   const handleAmountSubmit = async (data: {
     token: WithdrawToken;
@@ -44,12 +45,20 @@ export function WithdrawDialog({
     setIsProcessing(true);
 
     try {
-      // Execute withdrawal - for Solana tokens, this will send SPL transfer; for Ethereum, it will go through relayer flow
-      await withdrawMutation.mutateAsync({
-        erc20Address: data.token.address,
-        amount: data.amount,
-        recipientAddress: data.receiverAddress,
-      });
+      if (data.token.chain === 'solana') {
+        await withdrawSolMutation.mutateAsync({
+          mintAddress: data.token.address,
+          amount: data.amount,
+          recipientAddress: data.receiverAddress,
+          decimals: data.token.decimals,
+        });
+      } else {
+        await withdrawEvmMutation.mutateAsync({
+          erc20Address: data.token.address,
+          amount: data.amount,
+          recipientAddress: data.receiverAddress,
+        });
+      }
 
       // Close dialog immediately after successful submission
       handleClose();

@@ -36,6 +36,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Avoid duplicate concurrent processing for the same deposit address
+    if (inflightDeposits.has(ethereumAddress)) {
+      return NextResponse.json({
+        success: true,
+        message: 'Already processing',
+      });
+    }
     processDepositInBackground(userAddress, erc20Address, ethereumAddress);
 
     return NextResponse.json({
@@ -52,16 +59,23 @@ export async function POST(request: NextRequest) {
   }
 }
 
+// Track in-flight deposit processes by derived deposit address
+const inflightDeposits = new Set<string>();
+
 async function processDepositInBackground(
   userAddress: string,
   erc20Address: string,
   ethereumAddress: string,
 ) {
+  if (inflightDeposits.has(ethereumAddress)) return;
+  inflightDeposits.add(ethereumAddress);
   try {
     // Initialize all relayer infrastructure with common setup
     const { orchestrator, provider, relayerWallet } =
       await initializeRelayerSetup({
         operationName: 'DEPOSIT',
+        // Enforce 60s event timeout as requested
+        eventTimeoutMs: 60000,
       });
     const bridgeContract = orchestrator.getBridgeContract();
 
@@ -69,12 +83,15 @@ async function processDepositInBackground(
     const [vaultAuthority] =
       bridgeContract.deriveVaultAuthorityPda(userPublicKey);
 
+    // Brief grace period to ensure any prior transactions or mempool updates propagate
     await new Promise(resolve => setTimeout(resolve, 12000));
 
     const actualAmount = await monitorTokenBalance(
       ethereumAddress,
       erc20Address,
       provider,
+      60000,
+      10000,
     );
 
     if (!actualAmount) {
@@ -83,7 +100,10 @@ async function processDepositInBackground(
     }
 
     const randomReduction = BigInt(Math.floor(Math.random() * 100) + 1);
-    const processAmount = actualAmount - randomReduction;
+    const processAmount =
+      actualAmount > randomReduction
+        ? actualAmount - randomReduction
+        : actualAmount;
 
     const path = userAddress;
     const erc20AddressBytes = bridgeContract.erc20AddressToBytes(erc20Address);
@@ -138,16 +158,28 @@ async function processDepositInBackground(
         const requestIdBytes = bridgeContract.hexToBytes(requestId);
         const [pendingDepositPda] =
           bridgeContract.derivePendingDepositPda(requestIdBytes);
-        const pendingDeposit =
-          await bridgeContract.fetchPendingDeposit(pendingDepositPda);
+        try {
+          const pendingDeposit =
+            await bridgeContract.fetchPendingDeposit(pendingDepositPda);
 
-        return await bridgeContract.claimErc20({
-          requester: pendingDeposit.requester,
-          requestIdBytes,
-          serializedOutput: readEvent.serializedOutput,
-          signature: readEvent.signature,
-          erc20AddressBytes: pendingDeposit.erc20Address,
-        });
+          return await bridgeContract.claimErc20({
+            requester: pendingDeposit.requester,
+            requestIdBytes,
+            serializedOutput: readEvent.serializedOutput,
+            signature: readEvent.signature,
+            erc20AddressBytes: pendingDeposit.erc20Address,
+          });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          if (
+            msg.includes('Account does not exist') ||
+            msg.includes('AccountNotFound')
+          ) {
+            // Already claimed; treat as idempotent success
+            return 'already-claimed';
+          }
+          throw e;
+        }
       },
       // Initial Solana transaction (optional 4th parameter)
       async () => {
@@ -175,6 +207,8 @@ async function processDepositInBackground(
     console.error('[DEPOSIT] Processing failed:', {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
+  } finally {
+    inflightDeposits.delete(ethereumAddress);
   }
 }
 

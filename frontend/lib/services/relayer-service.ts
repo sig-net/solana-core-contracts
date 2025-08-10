@@ -10,11 +10,17 @@ export class RelayerService {
     erc20Address: string;
     ethereumAddress: string;
   }): Promise<void> {
-    await fetch('/api/relayer/notify-deposit', {
+    const res = await fetch('/api/relayer/notify-deposit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userAddress, erc20Address, ethereumAddress }),
     });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(
+        `Relayer notifyDeposit failed: ${res.status} ${res.statusText} - ${text}`,
+      );
+    }
   }
 
   async notifyWithdrawal({

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TokenAmountDisplay } from '@/components/ui/token-amount-display';
+import type { Token } from '@/lib/types/token.types';
 import { cn } from '@/lib/utils';
 
 import { WithdrawToken } from './index';
@@ -75,10 +76,40 @@ export function AmountInput({
         <TokenAmountDisplay
           value={watchedAmount}
           onChange={value => setValue('amount', value)}
-          tokens={availableTokens}
-          selectedToken={selectedToken}
+          tokens={availableTokens.map(t => ({
+            erc20Address: t.address,
+            symbol: t.symbol,
+            name: t.name,
+            decimals: t.decimals,
+            chain: t.chain,
+            balance: t.balance,
+          }))}
+          selectedToken={
+            selectedToken
+              ? ({
+                  erc20Address: selectedToken.address,
+                  symbol: selectedToken.symbol,
+                  name: selectedToken.name,
+                  decimals: selectedToken.decimals,
+                  chain: selectedToken.chain,
+                  balance: selectedToken.balance,
+                } as Token & { balance: string })
+              : undefined
+          }
           onTokenSelect={token => {
-            setSelectedToken(token as WithdrawToken);
+            const mapped: WithdrawToken = {
+              symbol: token.symbol,
+              name: token.name,
+              chain: token.chain as 'ethereum' | 'solana',
+              chainName:
+                token.chain === 'ethereum'
+                  ? 'Ethereum Sepolia'
+                  : 'Solana Devnet',
+              address: token.erc20Address,
+              balance: token.balance,
+              decimals: token.decimals,
+            };
+            setSelectedToken(mapped);
             setValue('amount', '');
             setError('');
           }}

@@ -1,19 +1,23 @@
 'use client';
 
 import { CryptoIcon } from '@/components/balance-display/crypto-icon';
-import { TokenMetadata } from '@/lib/constants/token-metadata';
+import type {
+  TokenMetadata,
+  NetworkData,
+} from '@/lib/constants/token-metadata';
 
 interface LoadingStateProps {
   token: TokenMetadata;
+  network: NetworkData;
 }
 
-export function LoadingState({ token }: LoadingStateProps) {
+export function LoadingState({ token, network }: LoadingStateProps) {
   return (
     <div className='space-y-6 text-center'>
       {/* Token Info */}
       <div className='flex flex-col items-center gap-4'>
         <CryptoIcon
-          chain={token.chain}
+          chain={network.chain}
           token={token.symbol}
           className='size-12'
         />
@@ -22,7 +26,7 @@ export function LoadingState({ token }: LoadingStateProps) {
             Generating Deposit Address
           </h3>
           <p className='text-tundora-50 text-sm font-medium'>
-            {token.symbol} on {token.chainName}
+            {token.symbol} on {network.chainName}
           </p>
         </div>
       </div>

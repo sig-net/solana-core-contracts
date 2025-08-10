@@ -9,7 +9,6 @@ export interface NetworkData {
   chain: string;
   chainName: string;
   symbol: string;
-  color: string;
   tokens: TokenMetadata[];
 }
 
@@ -18,7 +17,6 @@ export const NETWORKS_WITH_TOKENS: NetworkData[] = [
     chain: 'ethereum',
     chainName: 'Ethereum',
     symbol: 'ethereum',
-    color: '#000000',
     tokens: [
       {
         address: '0xbe72e441bf55620febc26715db68d3494213d8cb',
@@ -44,7 +42,6 @@ export const NETWORKS_WITH_TOKENS: NetworkData[] = [
     chain: 'solana',
     chainName: 'Solana',
     symbol: 'solana',
-    color: '#9945FF',
     tokens: [
       {
         address: '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU',
@@ -67,25 +64,18 @@ export interface Erc20TokenMetadata extends TokenMetadata {
   chainName: string;
 }
 
-export function getErc20Networks(): NetworkData[] {
-  return NETWORKS_WITH_TOKENS.filter(network => network.chain === 'ethereum');
-}
-
-export function getSolanaNetworks(): NetworkData[] {
-  return NETWORKS_WITH_TOKENS.filter(network => network.chain === 'solana');
-}
-
 export function getAllNetworks(): NetworkData[] {
   return NETWORKS_WITH_TOKENS;
 }
 
 export function getAllErc20Tokens(): Erc20TokenMetadata[] {
-  return getErc20Networks().flatMap(network =>
-    network.tokens.map(token => ({
-      ...token,
-      chain: network.chain,
-      chainName: network.chainName,
-    })),
+  return NETWORKS_WITH_TOKENS.filter(n => n.chain === 'ethereum').flatMap(
+    network =>
+      network.tokens.map(token => ({
+        ...token,
+        chain: network.chain,
+        chainName: network.chainName,
+      })),
   );
 }
 

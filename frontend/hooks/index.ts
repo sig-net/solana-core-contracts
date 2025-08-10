@@ -1,7 +1,9 @@
 export { useDepositAddress } from './use-deposit-address';
 export { useUserBalances } from './use-user-balances';
-export { useDepositErc20Mutation } from './use-deposit-erc20-mutation';
-export { useWithdrawMutation } from './use-withdraw-mutation';
+export { useDepositEvmMutation } from './use-deposit-evm-mutation';
+export { useDepositSol } from './use-deposit-sol';
+export { useWithdrawEvmMutation } from './use-withdraw-evm-mutation';
+export { useWithdrawSolMutation } from './use-withdraw-sol-mutation';
 export { useTokenPrices, useTokenPrice } from './use-token-prices';
 export { useIncomingTransfers } from './use-incoming-transfers';
 export { useOutgoingTransfers } from './use-outgoing-transfers';

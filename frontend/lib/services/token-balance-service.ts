@@ -245,9 +245,13 @@ export class TokenBalanceService {
 
             let amount = '0';
             if (parsed.value.length > 0) {
-              const info = parsed.value[0].account.data as any;
-              amount = (info.parsed?.info?.tokenAmount?.amount ??
-                '0') as string;
+              const info = parsed.value[0].account.data as unknown as {
+                parsed?: {
+                  info?: { tokenAmount?: { amount?: string } };
+                };
+              };
+              const tokenAmount = info.parsed?.info?.tokenAmount?.amount;
+              amount = typeof tokenAmount === 'string' ? tokenAmount : '0';
             }
 
             // Always include, even if zero, so Solana assets display with user's own balance

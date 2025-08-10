@@ -10,8 +10,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { TokenMetadata, NetworkData } from '@/lib/constants/token-metadata';
-import { useDepositAddress } from '@/hooks';
-import { useDepositErc20Mutation } from '@/hooks/use-deposit-erc20-mutation';
+import { useDepositAddress, useDepositSol } from '@/hooks';
+import { useDepositEvmMutation } from '@/hooks/use-deposit-evm-mutation';
 
 import { TokenSelection } from './token-selection';
 import { DepositAddress } from './deposit-address';
@@ -40,7 +40,8 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
 
   const { data: depositAddress, isLoading: isGeneratingAddress } =
     useDepositAddress();
-  const depositMutation = useDepositErc20Mutation();
+  const depositEvmMutation = useDepositEvmMutation();
+  const { depositAddress: solDepositAddress } = useDepositSol();
 
   const handleTokenSelect = (token: TokenMetadata, network: NetworkData) => {
     setSelectedToken(token);
@@ -58,7 +59,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
     }
 
     try {
-      await depositMutation.mutateAsync({
+      await depositEvmMutation.mutateAsync({
         erc20Address: selectedToken.address,
         amount: '',
         decimals: selectedToken.decimals,
@@ -107,7 +108,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
         )}
 
         {step === DepositStep.GENERATING_ADDRESS && selectedToken && (
-          <LoadingState token={selectedToken} />
+          <LoadingState token={selectedToken} network={selectedNetwork!} />
         )}
 
         {step === DepositStep.SHOW_ADDRESS &&
@@ -124,7 +125,7 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
                 network={selectedNetwork}
                 depositAddress={
                   selectedNetwork.chain === 'solana'
-                    ? publicKey?.toString() || ''
+                    ? solDepositAddress
                     : depositAddress || ''
                 }
                 onContinue={handleNotifyRelayer}

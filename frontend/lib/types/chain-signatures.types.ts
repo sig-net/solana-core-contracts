@@ -30,6 +30,8 @@ export interface EventPromises {
   signature: Promise<SignatureRespondedEvent>;
   readRespond: Promise<ReadRespondedEvent>;
   cleanup: () => void;
+  backfillSignature: () => Promise<void>;
+  backfillRead: () => Promise<void>;
 }
 
 // Chain Signatures Program Interface

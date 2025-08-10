@@ -7,21 +7,23 @@ import { queryKeys } from '@/lib/query-client';
 
 import { useWithdrawalService } from './use-withdrawal-service';
 
-export function useWithdrawMutation() {
+export function useWithdrawSolMutation() {
   const { publicKey } = useWallet();
   const withdrawalService = useWithdrawalService();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({
-      erc20Address,
+      mintAddress,
       amount,
       recipientAddress,
+      decimals,
       onStatusChange,
     }: {
-      erc20Address: string;
+      mintAddress: string;
       amount: string;
       recipientAddress: string;
+      decimals?: number;
       onStatusChange?: (status: {
         status: string;
         txHash?: string;
@@ -30,11 +32,12 @@ export function useWithdrawMutation() {
       }) => void;
     }) => {
       if (!publicKey) throw new Error('No public key available');
-      return withdrawalService.withdraw(
+      return withdrawalService.withdrawSol(
         publicKey,
-        erc20Address,
+        mintAddress,
         amount,
         recipientAddress,
+        decimals ?? 6,
         onStatusChange,
       );
     },
@@ -46,14 +49,10 @@ export function useWithdrawMutation() {
         queryClient.invalidateQueries({
           queryKey: queryKeys.solana.unclaimedBalances(publicKey.toString()),
         });
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.solana.outgoingTransfers(publicKey.toString()),
-        });
       }
     },
     onError: (error, variables) => {
-      console.error('Withdraw mutation failed:', error);
-      // Call onStatusChange to notify the UI of the error
+      console.error('Withdraw SOL mutation failed:', error);
       if (variables.onStatusChange) {
         variables.onStatusChange({
           status: 'failed',

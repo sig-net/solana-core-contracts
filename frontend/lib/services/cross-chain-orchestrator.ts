@@ -9,6 +9,7 @@ import type {
   ReadRespondedEvent,
 } from '@/lib/types/chain-signatures.types';
 import type { EvmTransactionRequest } from '@/lib/types/shared.types';
+import { retryWithBackoff } from '@/lib/utils/retry';
 
 export interface CrossChainConfig {
   eventTimeoutMs?: number;
@@ -42,6 +43,7 @@ export class CrossChainOrchestrator {
     this.provider = provider;
 
     this.config = {
+      // When eventTimeoutMs <= 0, we will wait indefinitely for events
       eventTimeoutMs: config.eventTimeoutMs ?? 300000,
       ethereumConfirmations: config.ethereumConfirmations ?? 1,
       operationName: config.operationName ?? 'OPERATION',
@@ -119,11 +121,16 @@ export class CrossChainOrchestrator {
     const op = this.config.operationName;
     console.log(`[${op}] Waiting for signature...`);
 
+    // Start a 30s delayed backfill for signature if it hasn't arrived yet
+    const signatureBackfillTimeout = setTimeout(() => {
+      void eventPromises.backfillSignature();
+    }, 30000);
+
     const signatureEvent = await this.waitWithTimeout(
       eventPromises.signature,
       this.config.eventTimeoutMs,
       `Signature event timeout for ${op}`,
-    );
+    ).finally(() => clearTimeout(signatureBackfillTimeout));
 
     console.log(`[${op}] Signature received`);
 
@@ -150,8 +157,8 @@ export class CrossChainOrchestrator {
       },
     });
 
-    const txResponse = await this.provider.broadcastTransaction(
-      signedTx.serialized,
+    const txResponse = await retryWithBackoff(() =>
+      this.provider.broadcastTransaction(signedTx.serialized),
     );
     const txReceipt = await txResponse.wait(this.config.ethereumConfirmations);
 
@@ -169,11 +176,16 @@ export class CrossChainOrchestrator {
   ): Promise<ReadRespondedEvent> {
     const op = this.config.operationName;
 
+    // Start a 30s delayed backfill for read event if it hasn't arrived yet
+    const readBackfillTimeout = setTimeout(() => {
+      void eventPromises.backfillRead();
+    }, 30000);
+
     return await this.waitWithTimeout(
       eventPromises.readRespond,
       this.config.eventTimeoutMs,
       `Read response timeout for ${op}`,
-    );
+    ).finally(() => clearTimeout(readBackfillTimeout));
   }
 
   private async waitWithTimeout<T>(

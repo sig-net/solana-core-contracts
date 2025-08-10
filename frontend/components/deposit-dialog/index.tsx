@@ -130,9 +130,6 @@ export function DepositDialog({ open, onOpenChange }: DepositDialogProps) {
                 }
                 onContinue={handleNotifyRelayer}
               />
-              <p className='text-dark-neutral-300 text-xs'>
-                Network: {selectedNetwork.chainName}
-              </p>
             </div>
           )}
       </DialogContent>

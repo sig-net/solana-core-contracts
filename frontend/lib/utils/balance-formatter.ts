@@ -3,18 +3,12 @@ import { formatUnits } from 'viem';
 export interface FormatBalanceOptions {
   /** Manual precision override (decimal places to show) */
   precision?: number;
-  /** Use compact notation with K/M suffixes */
-  compact?: boolean;
   /** Include token symbol in output */
   showSymbol?: boolean;
   /** Show USD value instead of token amount */
   showUsd?: boolean;
   /** USD price per token for conversion */
   usdPrice?: number;
-  /** Fallback decimals if contract call fails */
-  fallbackDecimals?: number;
-  /** Override token symbol (useful for display symbols) */
-  symbol?: string;
 }
 
 /**
@@ -37,20 +31,6 @@ function calculateSmartPrecision(
 }
 
 /**
- * Apply compact formatting with K/M suffixes
- */
-function applyCompactFormatting(amount: number): string {
-  if (amount >= 1_000_000_000) {
-    return `${(amount / 1_000_000_000).toFixed(2)}B`;
-  } else if (amount >= 1_000_000) {
-    return `${(amount / 1_000_000).toFixed(2)}M`;
-  } else if (amount >= 1_000) {
-    return `${(amount / 1_000).toFixed(2)}K`;
-  }
-  return amount.toString();
-}
-
-/**
  * Core formatting logic (used by both sync and async versions)
  */
 function formatBalanceCore(
@@ -59,14 +39,7 @@ function formatBalanceCore(
   symbol: string | undefined,
   options: FormatBalanceOptions = {},
 ): string {
-  const {
-    precision,
-    compact = false,
-    showSymbol = false,
-    showUsd = false,
-    usdPrice,
-    symbol: symbolOverride,
-  } = options;
+  const { precision, showSymbol = false, showUsd = false, usdPrice } = options;
 
   // Convert amount to bigint if needed
   const amountBigInt = typeof amount === 'string' ? BigInt(amount) : amount;
@@ -76,20 +49,10 @@ function formatBalanceCore(
   const numericAmount = parseFloat(formattedAmount);
 
   // Handle USD conversion
-  if (showUsd && usdPrice) {
+  if (showUsd && typeof usdPrice === 'number') {
     const usdValue = numericAmount * usdPrice;
     if (usdValue === 0) return '$0.00';
     if (usdValue < 0.01) return '<$0.01';
-
-    if (compact) {
-      return `$${applyCompactFormatting(usdValue)}`;
-    }
-
-    if (usdValue >= 1_000_000) {
-      return `$${(usdValue / 1_000_000).toFixed(1)}M`;
-    } else if (usdValue >= 1_000) {
-      return `$${(usdValue / 1_000).toFixed(1)}K`;
-    }
 
     return `$${usdValue.toFixed(2)}`;
   }
@@ -100,24 +63,17 @@ function formatBalanceCore(
       ? Math.min(precision, decimals)
       : calculateSmartPrecision(numericAmount, decimals);
 
-  // Format the number
-  let result: string;
+  // Format the number using toFixed and remove trailing zeros
+  let result = numericAmount.toFixed(actualPrecision).replace(/\.?0+$/, '');
 
-  if (compact) {
-    result = applyCompactFormatting(numericAmount);
-  } else {
-    // Use toFixed and remove trailing zeros
-    result = numericAmount.toFixed(actualPrecision).replace(/\.?0+$/, '');
-
-    // Add thousand separators for large whole numbers
-    if (!result.includes('.') && numericAmount >= 1000) {
-      result = parseInt(result).toLocaleString();
-    }
+  // Add thousand separators for large whole numbers
+  if (!result.includes('.') && numericAmount >= 1000) {
+    result = parseInt(result).toLocaleString();
   }
 
   // Add symbol if requested
-  if (showSymbol && (symbolOverride || symbol)) {
-    result = `${result} ${symbolOverride || symbol}`;
+  if (showSymbol && symbol) {
+    result = `${result} ${symbol}`;
   }
 
   return result;

@@ -8,6 +8,7 @@ import {
   NETWORKS_WITH_TOKENS,
 } from '@/lib/constants/token-metadata';
 import type { BridgeContract } from '@/lib/contracts/bridge-contract';
+import { getTokenInfo } from '@/lib/utils/token-formatting';
 
 import { getAlchemyProvider } from '../utils/providers';
 
@@ -16,58 +17,18 @@ import { getAlchemyProvider } from '../utils/providers';
  * fetching and processing ERC20 token balances.
  */
 export class TokenBalanceService {
-  private static decimalsCache = new Map<
-    string,
-    { decimals: number; timestamp: number }
-  >();
-  private static readonly DECIMALS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
   private alchemy = getAlchemyProvider();
 
   constructor(private bridgeContract: BridgeContract) {}
 
-  /**
-   * Get token decimals from contract with caching
-   */
-  async getTokenDecimals(erc20Address: string): Promise<number> {
-    const cacheKey = erc20Address.toLowerCase();
-    const now = Date.now();
-
-    // Check cache first
-    const cached = TokenBalanceService.decimalsCache.get(cacheKey);
-    if (
-      cached &&
-      now - cached.timestamp < TokenBalanceService.DECIMALS_CACHE_TTL
-    ) {
-      return cached.decimals;
-    }
-
+  // Decimals resolution delegated to shared token info (Alchemy-backed)
+  private async resolveDecimals(erc20Address: string): Promise<number> {
     try {
-      const metadata = await this.alchemy.core.getTokenMetadata(erc20Address);
-      const decimals = metadata?.decimals ?? 18;
-
-      // Cache the result
-      TokenBalanceService.decimalsCache.set(cacheKey, {
-        decimals,
-        timestamp: now,
-      });
-      return decimals;
-    } catch (error) {
-      console.warn(
-        `[TOKEN_BALANCE] Failed to fetch decimals for ${erc20Address}:`,
-        error,
-      );
-
-      // Fallback to hardcoded metadata
+      const info = await getTokenInfo(erc20Address);
+      return info.decimals;
+    } catch {
       const tokenMetadata = getTokenMetadata(erc20Address);
-      const fallbackDecimals = tokenMetadata?.decimals || 18;
-
-      // Cache fallback result with shorter TTL
-      TokenBalanceService.decimalsCache.set(cacheKey, {
-        decimals: fallbackDecimals,
-        timestamp: now - TokenBalanceService.DECIMALS_CACHE_TTL * 0.8, // 80% TTL for fallbacks
-      });
-
-      return fallbackDecimals;
+      return tokenMetadata?.decimals || 18;
     }
   }
 
@@ -100,7 +61,7 @@ export class TokenBalanceService {
 
         if (balance > BigInt(0)) {
           // Only fetch decimals for non-zero balances
-          const decimals = await this.getTokenDecimals(
+          const decimals = await this.resolveDecimals(
             tokenBalance.contractAddress,
           );
           results.push({
@@ -143,7 +104,7 @@ export class TokenBalanceService {
         const balanceBigInt = BigInt(balance || '0');
 
         if (balanceBigInt > BigInt(0)) {
-          const decimals = await this.getTokenDecimals(tokenAddress);
+          const decimals = await this.resolveDecimals(tokenAddress);
           return { address: tokenAddress, balance: balanceBigInt, decimals };
         } else {
           return { address: tokenAddress, balance: BigInt(0), decimals: 18 };
@@ -208,7 +169,7 @@ export class TokenBalanceService {
           erc20Address,
         );
         if (balance !== '0') {
-          const decimals = await this.getTokenDecimals(erc20Address);
+          const decimals = await this.resolveDecimals(erc20Address);
           const tokenMetadata = getTokenMetadata(erc20Address);
           return {
             erc20Address,
@@ -263,7 +224,7 @@ export class TokenBalanceService {
               name: token.name,
               chain: 'solana',
             });
-          } catch (e) {
+          } catch {
             // If RPC fails for a token, still include zero balance entry
             splResults.push({
               erc20Address: token.address,

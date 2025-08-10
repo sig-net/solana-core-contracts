@@ -1,6 +1,4 @@
 'use client';
-import { clusterApiUrl } from '@solana/web3.js';
-import { WalletAdapterNetwork } from '@solana/wallet-adapter-base';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import {
   ConnectionProvider,
@@ -15,6 +13,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 import { wagmiConfig } from '@/lib/wagmi/config';
+import { getSolanaRpcUrl } from '@/lib/utils/env';
 
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -32,9 +31,7 @@ const queryClient = new QueryClient({
 });
 
 export function Providers({ children }: ProvidersProps) {
-  const network = WalletAdapterNetwork.Devnet;
-  const endpoint =
-    process.env.NEXT_PUBLIC_SOLANA_RPC_URL || clusterApiUrl(network);
+  const endpoint = getSolanaRpcUrl();
 
   const wallets = [new PhantomWalletAdapter(), new SolflareWalletAdapter()];
 

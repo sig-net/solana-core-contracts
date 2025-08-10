@@ -8,13 +8,11 @@ import {
 } from '@solana/spl-token';
 import { BN } from '@coral-xyz/anchor';
 import { ethers } from 'ethers';
-import { encodeFunctionData, erc20Abi, Hex } from 'viem';
+import { encodeFunctionData, erc20Abi, Hex, toBytes } from 'viem';
 
-import {
-  generateRequestId,
-  createEvmTransactionBaseParams,
-  evmParamsToProgram,
-} from '@/lib/program/utils';
+import { getTokenInfo } from '@/lib/utils/token-formatting';
+import { buildErc20TransferTx } from '@/lib/evm/tx-builder';
+import { generateRequestId, evmParamsToProgram } from '@/lib/program/utils';
 import type { EvmTransactionRequest } from '@/lib/types/shared.types';
 import { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { TokenBalanceService } from '@/lib/services/token-balance-service';
@@ -26,7 +24,7 @@ import {
 } from '@/lib/constants/addresses';
 import { SERVICE_CONFIG } from '@/lib/constants/service.config';
 
-import { getAlchemyProvider } from '../utils/providers';
+import { getAlchemyProvider, getEthereumProvider } from '../utils/providers';
 
 /**
  * WithdrawalService handles ERC20 withdrawal initiation.
@@ -146,8 +144,7 @@ export class WithdrawalService {
       const globalVaultAuthority = GLOBAL_VAULT_AUTHORITY_PDA;
 
       // Get token decimals and convert amount to proper format
-      const decimals =
-        await this.tokenBalanceService.getTokenDecimals(erc20Address);
+      const decimals = (await getTokenInfo(erc20Address)).decimals;
 
       const amountBigInt = ethers.parseUnits(amount, decimals);
 
@@ -156,7 +153,7 @@ export class WithdrawalService {
       const processAmountBigInt = amountBigInt - randomReduction;
 
       const amountBN = new BN(processAmountBigInt.toString());
-      const erc20AddressBytes = this.bridgeContract.hexToBytes(erc20Address);
+      const erc20AddressBytes = Array.from(toBytes(erc20Address));
 
       // Validate and convert recipient address (must be Ethereum format)
       if (!ethers.isAddress(recipientAddress)) {
@@ -164,40 +161,27 @@ export class WithdrawalService {
       }
 
       const checksummedAddress = ethers.getAddress(recipientAddress);
-      const recipientAddressBytes =
-        this.bridgeContract.hexToBytes(checksummedAddress);
+      const recipientAddressBytes = Array.from(toBytes(checksummedAddress));
 
       // Get current nonce from the hardcoded recipient address (for withdrawals)
-      const currentNonce = await this.alchemy.core.getTransactionCount(
+      const _nonce = await this.alchemy.core.getTransactionCount(
         VAULT_ETHEREUM_ADDRESS,
       );
 
       // Build EVM transaction call data first
-      const callData = encodeFunctionData({
+      const _callData = encodeFunctionData({
         abi: erc20Abi,
         functionName: 'transfer',
         args: [checksummedAddress as Hex, processAmountBigInt],
       });
 
-      const estimatedGas = await this.alchemy.core.estimateGas({
+      const txRequest: EvmTransactionRequest = await buildErc20TransferTx({
+        provider: getEthereumProvider(),
         from: VAULT_ETHEREUM_ADDRESS,
-        to: erc20Address,
-        data: callData,
-        value: 0,
+        erc20Address,
+        recipient: checksummedAddress,
+        amount: processAmountBigInt,
       });
-
-      // Create comprehensive EVM transaction request
-      const baseParams = await createEvmTransactionBaseParams(
-        Number(currentNonce),
-        Number(estimatedGas),
-      );
-
-      const txRequest: EvmTransactionRequest = {
-        ...baseParams,
-        to: erc20Address as Hex,
-        value: BigInt(0),
-        data: callData,
-      };
 
       const evmParams = evmParamsToProgram(txRequest);
 
@@ -216,7 +200,7 @@ export class WithdrawalService {
         '',
       );
 
-      const requestIdBytes = this.bridgeContract.hexToBytes(requestId);
+      const requestIdBytes = Array.from(toBytes(requestId));
 
       // Notify relayer FIRST to set up event listeners before transaction
       await this.relayerService.notifyWithdrawal({

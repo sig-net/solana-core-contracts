@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { toBytes } from 'viem';
 import { PublicKey } from '@solana/web3.js';
 
 import type { EvmTransactionRequest } from '@/lib/types/shared.types';
 import { initializeRelayerSetup } from '@/lib/utils/relayer-setup';
+import { derivePendingWithdrawalPda } from '@/lib/constants/addresses';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,13 +20,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (inflightWithdrawals.has(requestId)) {
-      return NextResponse.json({
-        success: true,
-        message: 'Already processing',
-        requestId,
-      });
-    }
+    // Fire-and-forget: accept duplicate calls; relayer flow is idempotent downstream
     processWithdrawalInBackground(requestId, erc20Address, transactionParams);
 
     return NextResponse.json({
@@ -42,16 +38,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Track in-flight withdrawals by requestId
-const inflightWithdrawals = new Set<string>();
-
 async function processWithdrawalInBackground(
   requestId: string,
   erc20Address: string,
   transactionParams: EvmTransactionRequest,
 ) {
-  if (inflightWithdrawals.has(requestId)) return;
-  inflightWithdrawals.add(requestId);
   try {
     // Initialize all relayer infrastructure with common setup
     const { orchestrator } = await initializeRelayerSetup({
@@ -65,13 +56,13 @@ async function processWithdrawalInBackground(
       transactionParams,
       async readEvent => {
         const bridgeContract = orchestrator.getBridgeContract();
-        const requestIdBytes = bridgeContract.hexToBytes(requestId);
+        const requestIdBytes = Array.from(toBytes(requestId));
         const [pendingWithdrawalPda] =
-          bridgeContract.derivePendingWithdrawalPda(requestIdBytes);
+          derivePendingWithdrawalPda(requestIdBytes);
         const pendingWithdrawal = (await bridgeContract.fetchPendingWithdrawal(
           pendingWithdrawalPda,
         )) as unknown as { requester: string };
-        const erc20AddressBytes = bridgeContract.hexToBytes(erc20Address);
+        const erc20AddressBytes = Array.from(toBytes(erc20Address));
 
         return await bridgeContract.completeWithdrawErc20({
           requester: new PublicKey(pendingWithdrawal.requester),
@@ -95,6 +86,6 @@ async function processWithdrawalInBackground(
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   } finally {
-    inflightWithdrawals.delete(requestId);
+    // no-op
   }
 }

@@ -2,12 +2,6 @@ import { PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
 import { secp256k1 } from '@noble/curves/secp256k1';
 
-// Single source of truth for all contract addresses and configuration
-
-// ============================================================================
-// CORE PROGRAM CONFIGURATION
-// ============================================================================
-
 /**
  * The deployed Solana program ID
  * Update this when deploying a new contract
@@ -38,10 +32,6 @@ export const MPC_ROOT_SIGNER_ADDRESS = ethers.computeAddress(
   CHAIN_SIGNATURES_CONFIG.BASE_PUBLIC_KEY,
 );
 
-// ============================================================================
-// PDA CONFIGURATION
-// ============================================================================
-
 /**
  * Seeds for Program Derived Addresses (PDAs)
  */
@@ -54,9 +44,62 @@ export const BRIDGE_PDA_SEEDS = {
   PROGRAM_STATE: 'program-state',
 } as const;
 
-// ============================================================================
-// DERIVED ADDRESSES
-// ============================================================================
+/**
+ * Centralized PDA derivation helpers
+ */
+export function deriveVaultAuthorityPda(
+  userPublicKey: PublicKey,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(BRIDGE_PDA_SEEDS.VAULT_AUTHORITY), userPublicKey.toBuffer()],
+    BRIDGE_PROGRAM_ID,
+  );
+}
+
+export function derivePendingDepositPda(
+  requestIdBytes: number[],
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(BRIDGE_PDA_SEEDS.PENDING_ERC20_DEPOSIT),
+      Buffer.from(requestIdBytes),
+    ],
+    BRIDGE_PROGRAM_ID,
+  );
+}
+
+export function derivePendingWithdrawalPda(
+  requestIdBytes: number[],
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(BRIDGE_PDA_SEEDS.PENDING_ERC20_WITHDRAWAL),
+      Buffer.from(requestIdBytes),
+    ],
+    BRIDGE_PROGRAM_ID,
+  );
+}
+
+export function deriveUserBalancePda(
+  userPublicKey: PublicKey,
+  erc20AddressBytes: Buffer,
+): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [
+      Buffer.from(BRIDGE_PDA_SEEDS.USER_ERC20_BALANCE),
+      userPublicKey.toBuffer(),
+      erc20AddressBytes,
+    ],
+    BRIDGE_PROGRAM_ID,
+  );
+}
+
+export function deriveChainSignaturesStatePda(): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from(BRIDGE_PDA_SEEDS.PROGRAM_STATE)],
+    CHAIN_SIGNATURES_PROGRAM_ID,
+  );
+}
 
 /**
  * Derive epsilon value for key derivation

@@ -1,5 +1,3 @@
-// Network configuration and utilities
-
 export interface NetworkInfo {
   chainId: number;
   name: string;
@@ -8,9 +6,7 @@ export interface NetworkInfo {
   explorerName: string;
 }
 
-// Supported networks
 export const NETWORKS: Record<string, NetworkInfo> = {
-  // Ethereum networks
   mainnet: {
     chainId: 1,
     name: 'Ethereum Mainnet',
@@ -27,14 +23,10 @@ export const NETWORKS: Record<string, NetworkInfo> = {
   },
 };
 
-// Get current network info (for now, hardcoded to Sepolia)
 export function getCurrentNetwork(): NetworkInfo {
-  // FUTURE: Make this configurable via environment variables or user settings
-  // Consider adding NEXT_PUBLIC_NETWORK_NAME env var support
   return NETWORKS.sepolia;
 }
 
-// Get explorer URL for a transaction
 export function getTransactionExplorerUrl(
   transactionHash: string,
   networkName?: string,
@@ -46,18 +38,4 @@ export function getTransactionExplorerUrl(
   }
 
   return `${network.explorerUrl}/tx/${transactionHash}`;
-}
-
-// Get explorer URL for an address
-export function getAddressExplorerUrl(
-  address: string,
-  networkName?: string,
-): string {
-  const network = networkName ? NETWORKS[networkName] : getCurrentNetwork();
-
-  if (!network) {
-    return `${NETWORKS.sepolia.explorerUrl}/address/${address}`;
-  }
-
-  return `${network.explorerUrl}/address/${address}`;
 }

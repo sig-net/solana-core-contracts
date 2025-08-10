@@ -1,5 +1,4 @@
-import { erc20Abi } from 'viem';
-import { Contract } from 'alchemy-sdk';
+// Simplified token metadata utilities: fetch minimal info via Alchemy
 
 // This file handles token metadata fetching and caching
 // For balance formatting, use @/lib/utils/balance-formatter instead
@@ -60,45 +59,11 @@ function normalizeSymbolForDisplay(symbol: string, name: string): string {
   return symbol;
 }
 
-// Cache for token information to avoid repeated contract calls (memory)
-const tokenInfoCache = new Map<
-  string,
-  {
-    data: TokenFormatInfo;
-    timestamp: number;
-  }
->();
+// Memory cache for token metadata
+const tokenInfoCache = new Map<string, { data: TokenFormatInfo; at: number }>();
 
-// Cache duration: 24 hours for token metadata (stable)
+// 24h TTL for relatively stable metadata
 const CACHE_DURATION = 24 * 60 * 60 * 1000;
-
-function getLocalStorageKey(address: string) {
-  return `tokenInfo:${address.toLowerCase()}`;
-}
-
-function readFromLocalStorage(address: string): TokenFormatInfo | null {
-  try {
-    const raw = localStorage.getItem(getLocalStorageKey(address));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as {
-      data: TokenFormatInfo;
-      timestamp: number;
-    };
-    if (Date.now() - parsed.timestamp > CACHE_DURATION) return null;
-    return parsed.data;
-  } catch {
-    return null;
-  }
-}
-
-function writeToLocalStorage(address: string, data: TokenFormatInfo) {
-  try {
-    const payload = JSON.stringify({ data, timestamp: Date.now() });
-    localStorage.setItem(getLocalStorageKey(address), payload);
-  } catch {
-    // ignore quota / SSR
-  }
-}
 
 // Default fallback token info
 const DEFAULT_TOKEN_INFO: TokenFormatInfo = {
@@ -108,30 +73,17 @@ const DEFAULT_TOKEN_INFO: TokenFormatInfo = {
   displaySymbol: 'ERC20',
 };
 
-/**
- * Fetch token information from ERC20 contract
- */
-async function fetchTokenInfoFromContract(
-  tokenAddress: string,
-): Promise<TokenFormatInfo> {
-  const alchemy = getAlchemyProvider();
-  const provider = await alchemy.config.getProvider();
-  const contract = new Contract(tokenAddress, erc20Abi, provider);
-
+async function fetchTokenInfo(tokenAddress: string): Promise<TokenFormatInfo> {
   try {
-    const [symbol, name, decimals] = await Promise.all([
-      contract.symbol(),
-      contract.name(),
-      contract.decimals(),
-    ]);
-
-    const symbolStr = symbol as string;
-    const nameStr = name as string;
-
+    const alchemy = getAlchemyProvider();
+    const meta = await alchemy.core.getTokenMetadata(tokenAddress);
+    const symbolStr = meta?.symbol ?? DEFAULT_TOKEN_INFO.symbol;
+    const nameStr = meta?.name ?? DEFAULT_TOKEN_INFO.name;
+    const decimalsNum = typeof meta?.decimals === 'number' ? meta.decimals : 18;
     return {
       symbol: symbolStr,
       name: nameStr,
-      decimals: Number(decimals),
+      decimals: decimalsNum,
       displaySymbol: normalizeSymbolForDisplay(symbolStr, nameStr),
     };
   } catch (error) {
@@ -148,32 +100,11 @@ export async function getTokenInfo(
 ): Promise<TokenFormatInfo> {
   const normalizedAddress = tokenAddress.toLowerCase();
   const cached = tokenInfoCache.get(normalizedAddress);
+  if (cached && Date.now() - cached.at < CACHE_DURATION) return cached.data;
 
-  // Return cached data if it's still valid
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.data;
-  }
-
-  // Try localStorage cache (client only)
-  const ls =
-    typeof window !== 'undefined' ? readFromLocalStorage(tokenAddress) : null;
-  if (ls) {
-    tokenInfoCache.set(normalizedAddress, { data: ls, timestamp: Date.now() });
-    return ls;
-  }
-
-  // Fetch fresh data from contract (Alchemy)
-  const tokenInfo = await fetchTokenInfoFromContract(tokenAddress);
-
-  // Cache the result
-  tokenInfoCache.set(normalizedAddress, {
-    data: tokenInfo,
-    timestamp: Date.now(),
-  });
-  if (typeof window !== 'undefined')
-    writeToLocalStorage(tokenAddress, tokenInfo);
-
-  return tokenInfo;
+  const info = await fetchTokenInfo(tokenAddress);
+  tokenInfoCache.set(normalizedAddress, { data: info, at: Date.now() });
+  return info;
 }
 
 /**
@@ -183,12 +114,9 @@ export async function getTokenInfo(
 export function getTokenInfoSync(tokenAddress: string): TokenFormatInfo {
   const normalizedAddress = tokenAddress.toLowerCase();
   const cached = tokenInfoCache.get(normalizedAddress);
-
-  if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
-    return cached.data;
-  }
-
-  return DEFAULT_TOKEN_INFO;
+  return cached && Date.now() - cached.at < CACHE_DURATION
+    ? cached.data
+    : DEFAULT_TOKEN_INFO;
 }
 
 /**
@@ -200,5 +128,3 @@ export async function preloadTokenInfo(
   const promises = tokenAddresses.map(address => getTokenInfo(address));
   await Promise.allSettled(promises);
 }
-
-export { formatActivityDate } from './date-formatting';

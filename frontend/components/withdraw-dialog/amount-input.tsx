@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { TokenAmountDisplay } from '@/components/ui/token-amount-display';
+import { useTokenPrice } from '@/hooks/use-token-prices';
 import type { Token } from '@/lib/types/token.types';
 import { cn } from '@/lib/utils';
 
@@ -37,6 +38,8 @@ export function AmountInput({
     preSelectedToken || availableTokens[0] || undefined,
   );
   const [error, setError] = useState<string>('');
+
+  const { data: priceData } = useTokenPrice(selectedToken?.symbol ?? '');
 
   const { register, handleSubmit, setValue, watch } = useForm<FormData>({
     defaultValues: {
@@ -113,7 +116,11 @@ export function AmountInput({
             setValue('amount', '');
             setError('');
           }}
-          usdValue={`≈ $${watchedAmount ? (parseFloat(watchedAmount) * 113718.77).toFixed(2) : '0.00'}`}
+          usdValue={`≈ $${
+            watchedAmount && priceData?.usd
+              ? (parseFloat(watchedAmount) * priceData.usd).toFixed(2)
+              : '0.00'
+          }`}
           placeholder='0.00'
         />
       </div>

@@ -3,6 +3,7 @@ import { twMerge } from 'tailwind-merge';
 import { formatUnits } from 'viem';
 
 import { TokenBalance, TokenWithBalance } from './types/token.types';
+import { SERVICE_CONFIG } from './constants/service.config';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -28,7 +29,6 @@ export function convertTokenBalancesToDisplayTokens(
     const numericBalance = parseFloat(
       formatUnits(token.balance, token.decimals),
     );
-    // Always display Solana assets, even with zero balance; for others keep small-balance filter
-    return token.chain === 'solana' || numericBalance >= 0.01;
+    return numericBalance >= SERVICE_CONFIG.BALANCE.MINIMUM_BALANCE;
   });
 }

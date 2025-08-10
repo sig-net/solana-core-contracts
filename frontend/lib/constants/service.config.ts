@@ -42,8 +42,8 @@ export const BALANCE_CONFIG = {
   RANDOM_SUBTRACTION_RANGE: 1000,
   /** Default token decimals when contract call fails */
   DEFAULT_TOKEN_DECIMALS: 18,
-  /** Minimum balance threshold */
-  MINIMUM_BALANCE: 1,
+  /** Minimum balance threshold (in token units after decimals) */
+  MINIMUM_BALANCE: 0.01,
 } as const;
 
 export const RETRY_CONFIG = {

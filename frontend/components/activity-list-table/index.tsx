@@ -12,7 +12,10 @@ import {
 } from '@/lib/utils/token-formatting';
 import { formatTokenBalanceSync } from '@/lib/utils/balance-formatter';
 import { formatActivityDate } from '@/lib/utils/date-formatting';
-import { getTransactionExplorerUrl } from '@/lib/utils/network-utils';
+import {
+  getTransactionExplorerUrl,
+  getSolanaExplorerUrl,
+} from '@/lib/utils/network-utils';
 import {
   Table,
   TableHeader,
@@ -21,6 +24,7 @@ import {
   TableRow,
   TableCell,
 } from '@/components/ui/table';
+import { useSolanaTransactions } from '@/hooks/use-solana-transactions';
 
 import { DetailsCell } from './details-cell';
 import { StatusBadge } from './status-badge';
@@ -43,7 +47,7 @@ export interface ActivityTransaction {
   address?: string;
   timestamp: string;
   timestampRaw?: number;
-  status: 'pending' | 'completed';
+  status: 'pending' | 'processing' | 'completed' | 'failed';
   transactionHash?: string;
   explorerUrl?: string;
 }
@@ -53,7 +57,7 @@ interface ActivityListTableProps {
 }
 
 export function ActivityListTable({ className }: ActivityListTableProps) {
-  const { connected } = useWallet();
+  const { connected, publicKey } = useWallet();
   const { data: depositAddress } = useDepositAddress();
   const {
     data: incomingTransfers,
@@ -67,8 +71,15 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
     error: outgoingError,
   } = useOutgoingTransfers();
 
-  const isLoadingTransfers = isLoadingIncoming || isLoadingOutgoing;
-  const error = incomingError || outgoingError;
+  const {
+    data: solanaTxs,
+    isLoading: isLoadingSolanaTxs,
+    error: solanaTxsError,
+  } = useSolanaTransactions(25);
+
+  const isLoadingTransfers =
+    isLoadingIncoming || isLoadingOutgoing || isLoadingSolanaTxs;
+  const error = incomingError || outgoingError || solanaTxsError;
 
   // Preload token information when transfers are loaded
   useEffect(() => {
@@ -183,7 +194,7 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
             ? formatActivityDate(transfer.timestamp)
             : 'Unknown',
           timestampRaw: transfer.timestamp,
-          status: 'completed' as const, // Always show completed for now
+          status: transfer.status,
           transactionHash: transfer.transactionHash,
           explorerUrl: transfer.transactionHash
             ? getTransactionExplorerUrl(transfer.transactionHash, 'sepolia')
@@ -193,13 +204,74 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
       allTransactions.push(...outgoingTxs);
     }
 
+    // Include Solana wallet transactions (always completed)
+    if (solanaTxs && solanaTxs.length > 0) {
+      const solanaAddress = publicKey?.toBase58() ?? '';
+      const walletTxs: ActivityTransaction[] = solanaTxs.map(tx => {
+        const formattedAmount = formatTokenBalanceSync(
+          tx.amount,
+          tx.decimals,
+          tx.symbol,
+          { showSymbol: true },
+        );
+
+        const isIncoming = tx.direction === 'in';
+
+        return {
+          id: `${tx.signature}-${tx.mint ?? 'SOL'}`,
+          type: (isIncoming
+            ? 'Deposit'
+            : 'Withdraw') as ActivityTransaction['type'],
+          fromToken: isIncoming
+            ? {
+                symbol: 'WALLET',
+                chain: 'solana',
+                amount: solanaAddress,
+                usdValue: '',
+              }
+            : {
+                symbol: tx.symbol,
+                chain: 'solana',
+                amount: formattedAmount,
+                usdValue: '$0.00',
+              },
+          toToken: isIncoming
+            ? {
+                symbol: tx.symbol,
+                chain: 'solana',
+                amount: formattedAmount,
+                usdValue: '$0.00',
+              }
+            : {
+                symbol: 'WALLET',
+                chain: 'solana',
+                amount: solanaAddress,
+                usdValue: '',
+              },
+          address: solanaAddress,
+          timestamp: formatActivityDate(tx.timestamp),
+          timestampRaw: tx.timestamp,
+          status: 'completed',
+          transactionHash: tx.signature,
+          explorerUrl: getSolanaExplorerUrl(tx.signature),
+        };
+      });
+      allTransactions.push(...walletTxs);
+    }
+
     // Sort all transactions by timestamp (newest first)
     return allTransactions.sort((a, b) => {
       const aTime = a.timestampRaw || 0;
       const bTime = b.timestampRaw || 0;
       return bTime - aTime;
     });
-  }, [depositAddress, incomingTransfers, outgoingTransfers]);
+  }, [
+    depositAddress,
+    incomingTransfers,
+    outgoingTransfers,
+    solanaTxs,
+    publicKey,
+  ]);
 
   // TODO: Add pagination for better UX when there are many transactions
   // Currently showing only the last 5 transactions to keep the UI clean

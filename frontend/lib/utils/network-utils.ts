@@ -39,3 +39,9 @@ export function getTransactionExplorerUrl(
 
   return `${network.explorerUrl}/tx/${transactionHash}`;
 }
+
+// Minimal helper for Solana signature explorer links (Solscan)
+export function getSolanaExplorerUrl(signature: string): string {
+  // Default to Solscan; cluster detection can be added if needed
+  return `https://solscan.io/tx/${signature}?cluster=devnet`;
+}

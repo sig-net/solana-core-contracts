@@ -93,7 +93,7 @@ export function AmountInput({
           Receiver Address
         </Label>
         <Input
-          placeholder='0x1234567890abcdef1234567890abcdef12345678'
+          placeholder='Recipient address'
           {...register('receiverAddress')}
           className='h-12 font-mono text-sm'
         />

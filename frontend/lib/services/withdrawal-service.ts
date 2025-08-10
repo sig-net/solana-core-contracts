@@ -1,4 +1,11 @@
-import { PublicKey } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction } from '@solana/web3.js';
+import {
+  createAssociatedTokenAccountInstruction,
+  createTransferInstruction,
+  getAssociatedTokenAddress,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from '@solana/spl-token';
 import { BN } from '@coral-xyz/anchor';
 import { ethers } from 'ethers';
 import { encodeFunctionData, erc20Abi, Hex } from 'viem';
@@ -37,7 +44,8 @@ export class WithdrawalService {
   }
 
   /**
-   * Initiate an ERC20 withdrawal from Solana to Ethereum
+   * Initiate a withdrawal. For Ethereum tokens, use bridge/relayer withdrawal.
+   * For Solana tokens, perform a direct SPL token transfer from the user's wallet.
    */
   async withdraw(
     publicKey: PublicKey,
@@ -47,6 +55,87 @@ export class WithdrawalService {
     onStatusChange?: StatusCallback,
   ): Promise<string> {
     try {
+      // If the token is a Solana SPL token, perform a direct SPL transfer
+      // Heuristic: Solana addresses are base58 and not 0x-prefixed
+      const isSolanaMint = !erc20Address.startsWith('0x');
+      if (isSolanaMint) {
+        const connection: Connection = this.bridgeContract.getConnection();
+        const wallet = this.bridgeContract.getWallet();
+        if (!wallet.publicKey || !wallet.signTransaction) {
+          throw new Error('Wallet not available for SPL transfer');
+        }
+
+        // Resolve associated token accounts
+        const mint = new PublicKey(erc20Address);
+        const senderAta = await getAssociatedTokenAddress(
+          mint,
+          publicKey,
+          false,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID,
+        );
+
+        const recipientPubkey = new PublicKey(recipientAddress);
+        const recipientAta = await getAssociatedTokenAddress(
+          mint,
+          recipientPubkey,
+          false,
+          TOKEN_PROGRAM_ID,
+          ASSOCIATED_TOKEN_PROGRAM_ID,
+        );
+
+        // Determine decimals from our metadata service (Solana side uses configured decimals)
+        // For Solana mints, use 6 as default decimals unless configured elsewhere
+        const decimals = 6;
+        const amountInUnits = BigInt(
+          ethers.parseUnits(amount, decimals).toString(),
+        );
+
+        const instructions = [] as Array<Parameters<Transaction['add']>[0]>;
+
+        // Create recipient ATA if it does not exist
+        const recipientAtaInfo = await connection.getAccountInfo(recipientAta);
+        if (!recipientAtaInfo) {
+          instructions.push(
+            createAssociatedTokenAccountInstruction(
+              publicKey,
+              recipientAta,
+              recipientPubkey,
+              mint,
+              TOKEN_PROGRAM_ID,
+              ASSOCIATED_TOKEN_PROGRAM_ID,
+            ),
+          );
+        }
+
+        // Transfer SPL tokens
+        instructions.push(
+          createTransferInstruction(
+            senderAta,
+            recipientAta,
+            publicKey,
+            amountInUnits,
+            [],
+            TOKEN_PROGRAM_ID,
+          ),
+        );
+
+        const tx = new Transaction().add(...instructions);
+        tx.feePayer = publicKey;
+        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+        const signed = await wallet.signTransaction(tx);
+        const sig = await connection.sendRawTransaction(signed.serialize());
+
+        onStatusChange?.({
+          status: 'completed',
+          txHash: sig,
+          note: 'SPL transfer submitted',
+        });
+
+        return sig;
+      }
+
       // Get the global vault authority (requester for withdrawals)
       const globalVaultAuthority = GLOBAL_VAULT_AUTHORITY_PDA;
 

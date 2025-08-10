@@ -31,6 +31,36 @@ import { ChainSignaturesSignature } from '../types/chain-signatures.types';
  */
 export class BridgeContract {
   private program: Program<SolanaCoreContracts> | null = null;
+  private readonly RESULT_TTL_MS = 30_000; // 30s cache for activity results
+  private depositsResultCache = new Map<
+    string,
+    {
+      at: number;
+      data: {
+        requestId: string;
+        amount: string;
+        erc20Address: string;
+        timestamp: number;
+        status: 'pending' | 'completed';
+      }[];
+    }
+  >();
+  private withdrawalsResultCache = new Map<
+    string,
+    {
+      at: number;
+      data: {
+        requestId: string;
+        amount: string;
+        erc20Address: string;
+        recipient: string;
+        status: 'pending' | 'completed';
+        timestamp: number;
+        signature?: string;
+        ethereumTxHash?: string;
+      }[];
+    }
+  >();
 
   constructor(
     private connection: Connection,
@@ -42,6 +72,13 @@ export class BridgeContract {
    */
   getConnection(): Connection {
     return this.connection;
+  }
+
+  /**
+   * Expose the wallet used by the BridgeContract for signing transactions
+   */
+  getWallet(): Wallet {
+    return this.wallet;
   }
 
   /**
@@ -416,7 +453,10 @@ export class BridgeContract {
               if (programId.equals(BRIDGE_PROGRAM_ID)) {
                 try {
                   // Get instruction data as Buffer
-                  const instructionDataBuf = Buffer.from(ix.data, 'base64');
+                  const instructionDataBuf = Buffer.from(
+                    ix.data as string,
+                    'base64',
+                  );
 
                   // Use Anchor's coder to decode the instruction
                   let decodedInstruction: {
@@ -427,7 +467,7 @@ export class BridgeContract {
                   try {
                     decodedInstruction =
                       coder.instruction.decode(instructionDataBuf);
-                  } catch (decodeError) {
+                  } catch {
                     // Skip instructions we can't decode
                     continue;
                   }
@@ -531,8 +571,13 @@ export class BridgeContract {
         console.error('Error fetching transaction history:', error);
       }
 
-      // Sort by timestamp (newest first)
-      return withdrawals.sort((a, b) => b.timestamp - a.timestamp);
+      // Sort by timestamp (newest first), then cache a short time to avoid burst scans
+      const resultW = withdrawals.sort((a, b) => b.timestamp - a.timestamp);
+      this.withdrawalsResultCache.set(userPublicKey.toBase58(), {
+        at: Date.now(),
+        data: resultW,
+      });
+      return resultW;
     } catch (error) {
       console.error('Error fetching all user withdrawals:', error);
       return [];
@@ -639,7 +684,10 @@ export class BridgeContract {
             let decodedInstruction: { name: string; data: unknown } | null =
               null;
             try {
-              const instructionDataBuf = Buffer.from(ix.data);
+              const instructionDataBuf = Buffer.from(
+                ix.data as string,
+                'base64',
+              );
               decodedInstruction = (coder.instruction as any).decode(
                 instructionDataBuf,
               );
@@ -783,7 +831,14 @@ export class BridgeContract {
       }
 
       // 2) Scan user balance PDAs per token for claimErc20 and flip status
-      for (const token of getAllErc20Tokens()) {
+      // Limit scan set to tokens we actually saw in deposits
+      const tokensToCheck = new Set<string>();
+      for (const d of deposits.values())
+        tokensToCheck.add(d.erc20Address.toLowerCase());
+      const erc20ScanList = getAllErc20Tokens().filter(t =>
+        tokensToCheck.has(t.address.toLowerCase()),
+      );
+      for (const token of erc20ScanList) {
         try {
           const erc20Bytes = Buffer.from(
             token.address.replace('0x', ''),
@@ -820,7 +875,10 @@ export class BridgeContract {
                 let decodedInstruction: { name: string; data: unknown } | null =
                   null;
                 try {
-                  const instructionDataBuf = Buffer.from(ix.data);
+                  const instructionDataBuf = Buffer.from(
+                    ix.data as string,
+                    'base64',
+                  );
                   decodedInstruction = (coder.instruction as any).decode(
                     instructionDataBuf,
                   );

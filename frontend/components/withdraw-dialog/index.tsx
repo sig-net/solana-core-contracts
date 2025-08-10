@@ -44,7 +44,7 @@ export function WithdrawDialog({
     setIsProcessing(true);
 
     try {
-      // Execute withdrawal - this will submit to Solana and notify relayer
+      // Execute withdrawal - for Solana tokens, this will send SPL transfer; for Ethereum, it will go through relayer flow
       await withdrawMutation.mutateAsync({
         erc20Address: data.token.address,
         amount: data.amount,

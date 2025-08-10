@@ -6,7 +6,7 @@ import type {
   NetworkData,
   TokenMetadata,
 } from '@/lib/constants/token-metadata';
-import { getErc20Networks } from '@/lib/constants/token-metadata';
+import { getAllNetworks } from '@/lib/constants/token-metadata';
 
 import { NetworkAccordionItem } from './network-accordion-item';
 
@@ -19,7 +19,7 @@ export function TokenSelection({ onTokenSelect }: TokenSelectionProps) {
     null,
   );
 
-  const networks = getErc20Networks();
+  const networks = getAllNetworks();
 
   const handleNetworkClick = (networkId: string) => {
     setExpandedNetworkId(expandedNetworkId === networkId ? null : networkId);

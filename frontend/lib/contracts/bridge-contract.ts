@@ -9,7 +9,7 @@ import {
 } from '@solana/web3.js';
 import { Program, AnchorProvider, BN, Wallet } from '@coral-xyz/anchor';
 
-import { IDL, type SolanaCoreContracts } from '@/lib/program/IDL_SOLANA_DEX';
+import { IDL, type SolanaCoreContracts } from '@/lib/program/idl-sol-dex';
 import type { EvmTransactionProgramParams } from '@/lib/types/shared.types';
 import {
   BRIDGE_PROGRAM_ID,

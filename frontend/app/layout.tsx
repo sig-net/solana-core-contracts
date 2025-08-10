@@ -37,7 +37,7 @@ export default function RootLayout({
       >
         <Providers>
           <ErrorBoundary>{children}</ErrorBoundary>
-          <Toaster richColors position='top-right' />
+          <Toaster richColors position='bottom-right' />
         </Providers>
       </body>
     </html>

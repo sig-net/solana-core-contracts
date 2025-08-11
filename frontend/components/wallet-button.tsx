@@ -26,11 +26,37 @@ export function WalletButton() {
 
   const openWalletModal = () => {
     if (installedWallets.length === 0) {
+      const isMobile =
+        typeof navigator !== 'undefined' &&
+        /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      const currentUrl =
+        typeof window !== 'undefined' ? window.location.href : '';
+
+      const phantomDeepLink = currentUrl
+        ? `https://phantom.app/ul/browse/${encodeURIComponent(
+            currentUrl,
+          )}?ref=${encodeURIComponent(currentUrl)}`
+        : 'https://phantom.app/download';
+
+      const solflareDeepLink = currentUrl
+        ? `https://solflare.com/ul/browse/${encodeURIComponent(
+            currentUrl,
+          )}?ref=${encodeURIComponent(currentUrl)}`
+        : 'https://solflare.com/download';
+
+      const phantomHref = isMobile
+        ? phantomDeepLink
+        : 'https://phantom.app/download';
+      const solflareHref = isMobile
+        ? solflareDeepLink
+        : 'https://solflare.com/download';
+
       toast.info(
         <div>
-          No Solana wallet detected. Install{' '}
+          No Solana wallet detected. Open in{' '}
           <a
-            href='https://phantom.app/download'
+            href={phantomHref}
             target='_blank'
             rel='noreferrer'
             className='underline'
@@ -39,14 +65,15 @@ export function WalletButton() {
           </a>{' '}
           or{' '}
           <a
-            href='https://solflare.com/download'
+            href={solflareHref}
             target='_blank'
             rel='noreferrer'
             className='underline'
           >
             Solflare
-          </a>{' '}
-          to continue.
+          </a>
+          . On mobile, these links will open the app if installed or route you
+          to install it.
         </div>,
       );
       return;

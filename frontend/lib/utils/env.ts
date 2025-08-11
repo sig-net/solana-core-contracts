@@ -5,6 +5,9 @@ const clientEnvSchema = z.object({
   NEXT_PUBLIC_ALCHEMY_API_KEY: z.string().min(1, 'Alchemy API key is required'),
   NEXT_PUBLIC_SEPOLIA_RPC_URL: z.string().optional(),
   NEXT_PUBLIC_SOLANA_RPC_URL: z.string().optional(),
+  // Function URLs to call relayers directly from the client
+  NEXT_PUBLIC_NOTIFY_DEPOSIT_URL: z.string().url().optional(),
+  NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL: z.string().url().optional(),
 });
 
 const serverEnvSchema = z.object({
@@ -36,6 +39,9 @@ export function getClientEnv(): ClientEnv {
     NEXT_PUBLIC_ALCHEMY_API_KEY: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY,
     NEXT_PUBLIC_SEPOLIA_RPC_URL: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL,
     NEXT_PUBLIC_SOLANA_RPC_URL: process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
+    NEXT_PUBLIC_NOTIFY_DEPOSIT_URL: process.env.NEXT_PUBLIC_NOTIFY_DEPOSIT_URL,
+    NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL:
+      process.env.NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL,
   };
 
   try {
@@ -100,6 +106,9 @@ export function getFullEnv(): FullEnv {
     NEXT_PUBLIC_ALCHEMY_API_KEY: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY,
     NEXT_PUBLIC_SEPOLIA_RPC_URL: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL,
     NEXT_PUBLIC_SOLANA_RPC_URL: process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
+    NEXT_PUBLIC_NOTIFY_DEPOSIT_URL: process.env.NEXT_PUBLIC_NOTIFY_DEPOSIT_URL,
+    NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL:
+      process.env.NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL,
     RELAYER_PRIVATE_KEY: process.env.RELAYER_PRIVATE_KEY,
   };
 

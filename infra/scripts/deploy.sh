@@ -83,4 +83,18 @@ if [[ "$WITHDRAW_URL" != "None" && -n "$WITHDRAW_URL" ]]; then
   echo "NotifyWithdrawalUrl: $WITHDRAW_URL"
 fi
 
+# Write JSON file with frontend-ready env keys
+OUT_JSON="relayer-urls.json"
+if [[ "$DEPOSIT_URL" != "None" && -n "$DEPOSIT_URL" ]] || [[ "$WITHDRAW_URL" != "None" && -n "$WITHDRAW_URL" ]]; then
+  cat > "$OUT_JSON" <<JSON
+{
+  "NEXT_PUBLIC_NOTIFY_DEPOSIT_URL": "${DEPOSIT_URL:-}",
+  "NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL": "${WITHDRAW_URL:-}",
+  "stage": "${SST_STAGE}",
+  "region": "${AWS_REGION}"
+}
+JSON
+  echo "Wrote URLs to $(pwd)/$OUT_JSON"
+fi
+
 

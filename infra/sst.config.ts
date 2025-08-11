@@ -1,20 +1,16 @@
 // @ts-nocheck
+import { StackContext, Function } from "sst/constructs";
 
 export default {
   config(_input: unknown) {
     return {
       name: "relayer-infra",
       region: process.env.AWS_REGION || "us-east-1",
-      bootstrap: {
-        qualifier: "relyr1",
-      },
+      // Use default CDK bootstrap qualifier (hnb659fds)
     };
   },
   stacks(app: any) {
-    app.stack(async function RelayerStack({ stack }: { stack: any }) {
-      const constructs = await import("sst/constructs");
-      const Fn = constructs.Function;
-
+    app.stack(function RelayerStack({ stack }: StackContext) {
       const commonEnv = {
         RELAYER_PRIVATE_KEY: process.env.RELAYER_PRIVATE_KEY ?? "",
         NEXT_PUBLIC_ALCHEMY_API_KEY:
@@ -27,12 +23,12 @@ export default {
 
       const nodejs = {
         esbuild: {
-          tsconfig: "infra/tsconfig.json",
+          tsconfig: "tsconfig.json",
         },
       } as const;
 
-      const notifyDeposit = new Fn(stack, "NotifyDeposit", {
-        handler: "infra/functions/notifyDeposit.handler",
+      const notifyDeposit = new Function(stack, "NotifyDeposit", {
+        handler: "functions/notifyDeposit.handler",
         runtime: "nodejs20.x",
         timeout: 900,
         memorySize: 1024,
@@ -41,8 +37,8 @@ export default {
         nodejs,
       });
 
-      const notifyWithdrawal = new Fn(stack, "NotifyWithdrawal", {
-        handler: "infra/functions/notifyWithdrawal.handler",
+      const notifyWithdrawal = new Function(stack, "NotifyWithdrawal", {
+        handler: "functions/notifyWithdrawal.handler",
         runtime: "nodejs20.x",
         timeout: 900,
         memorySize: 1024,

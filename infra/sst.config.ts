@@ -33,9 +33,26 @@ export default {
           process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? "",
       } as const;
 
+      // Background worker Lambdas
+      const depositWorker = new Function(stack, "DepositWorker", {
+        handler: "functions/depositWorker.handler",
+        timeout: 180,
+        memorySize: 1024,
+        logRetention: "one_week",
+        environment: commonEnv,
+      });
+
+      const withdrawWorker = new Function(stack, "WithdrawWorker", {
+        handler: "functions/withdrawWorker.handler",
+        timeout: 180,
+        memorySize: 1024,
+        logRetention: "one_week",
+        environment: commonEnv,
+      });
+
       const notifyDeposit = new Function(stack, "NotifyDeposit", {
         handler: "functions/notifyDeposit.handler",
-        timeout: 180,
+        timeout: 10,
         memorySize: 1024,
         logRetention: "one_week",
         url: {
@@ -44,12 +61,15 @@ export default {
             allowedMethods: ["POST"],
           },
         },
-        environment: commonEnv,
+        environment: {
+          ...commonEnv,
+          DEPOSIT_WORKER_NAME: depositWorker.functionName,
+        },
       });
 
       const notifyWithdrawal = new Function(stack, "NotifyWithdrawal", {
         handler: "functions/notifyWithdrawal.handler",
-        timeout: 180,
+        timeout: 10,
         memorySize: 1024,
         logRetention: "one_week",
         url: {
@@ -58,8 +78,16 @@ export default {
             allowedMethods: ["POST"],
           },
         },
-        environment: commonEnv,
+        environment: {
+          ...commonEnv,
+          WITHDRAW_WORKER_NAME: withdrawWorker.functionName,
+        },
       });
+
+      // Allow API lambdas to invoke workers
+      // Note: using broad action for simplicity; can be narrowed with a custom policy if needed.
+      notifyDeposit.attachPermissions(["lambda:InvokeFunction"]);
+      notifyWithdrawal.attachPermissions(["lambda:InvokeFunction"]);
 
       stack.addOutputs({
         NotifyDepositName: notifyDeposit.functionName,

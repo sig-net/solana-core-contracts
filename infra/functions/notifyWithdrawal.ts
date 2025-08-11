@@ -1,4 +1,6 @@
-import { handleWithdrawal } from "@/lib/relayer/handlers";
+import { LambdaClient, InvokeCommand } from "@aws-sdk/client-lambda";
+
+const client = new LambdaClient({});
 
 export async function handler(event: any) {
   const body =
@@ -11,15 +13,16 @@ export async function handler(event: any) {
     };
   }
   try {
-    const result = await handleWithdrawal({
-      requestId,
-      erc20Address,
-      transactionParams,
-    });
-    if (!result.ok) {
-      return { statusCode: 500, body: JSON.stringify({ error: result.error }) };
-    }
-    return { statusCode: 200, body: JSON.stringify(result) };
+    await client.send(
+      new InvokeCommand({
+        FunctionName: process.env.WITHDRAW_WORKER_NAME!,
+        InvocationType: "Event",
+        Payload: Buffer.from(
+          JSON.stringify({ requestId, erc20Address, transactionParams })
+        ),
+      })
+    );
+    return { statusCode: 202, body: JSON.stringify({ accepted: true }) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return { statusCode: 500, body: JSON.stringify({ error: msg }) };

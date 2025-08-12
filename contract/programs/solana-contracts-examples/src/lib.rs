@@ -139,6 +139,14 @@ pub struct DepositErc20<'info> {
     )]
     pub chain_signatures_state: AccountInfo<'info>,
 
+    /// CHECK: Event authority for CPI events, PDA with seed "__event_authority"
+    #[account(
+        seeds = [b"__event_authority"],
+        bump,
+        seeds::program = chain_signatures_program.key()
+    )]
+    pub event_authority: AccountInfo<'info>, // ADD THIS
+
     pub chain_signatures_program:
         Program<'info, ::chain_signatures::program::ChainSignaturesProject>,
     pub system_program: Program<'info, System>,
@@ -228,6 +236,14 @@ pub struct WithdrawErc20<'info> {
         seeds::program = chain_signatures_program.key()
     )]
     pub chain_signatures_state: AccountInfo<'info>,
+
+    /// CHECK: Event authority for CPI events, PDA with seed "__event_authority"
+    #[account(
+        seeds = [b"__event_authority"],
+        bump,
+        seeds::program = chain_signatures_program.key()
+    )]
+    pub event_authority: AccountInfo<'info>,
 
     pub chain_signatures_program:
         Program<'info, ::chain_signatures::program::ChainSignaturesProject>,

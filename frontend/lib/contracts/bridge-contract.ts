@@ -443,6 +443,34 @@ export class BridgeContract {
         }
       }
 
+      // Final verification: check pending PDA existence to ensure accurate status
+      try {
+        const program = this.getBridgeProgram();
+        await this.mapWithConcurrency(
+          withdrawals,
+          this.TRANSACTION_FETCH_CONCURRENCY,
+          async (w, _i) => {
+            try {
+              const requestIdBytes = this.hexToBytes(w.requestId);
+              const [pendingWithdrawalPda] =
+                derivePendingWithdrawalPda(requestIdBytes);
+              const account =
+                await program.account.pendingErc20Withdrawal.fetchNullable(
+                  pendingWithdrawalPda,
+                );
+              if (!account) {
+                // If the pending account no longer exists, the withdrawal is completed
+                w.status = 'completed';
+              }
+            } catch {
+              // On any RPC decode error, leave prior inferred status
+            }
+          },
+        );
+      } catch {
+        // If verification fails, fall back to previously inferred statuses
+      }
+
       // Sort by timestamp (newest first)
       return withdrawals.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
@@ -779,10 +807,37 @@ export class BridgeContract {
         }
       }
 
-      const list = Array.from(deposits.values()).sort(
-        (a, b) => b.timestamp - a.timestamp,
-      );
-      return list;
+      const list = Array.from(deposits.values());
+
+      // Final verification: for each request, check if the pending deposit PDA still exists
+      try {
+        const program = this.getBridgeProgram();
+        await this.mapWithConcurrency(
+          list,
+          this.TRANSACTION_FETCH_CONCURRENCY,
+          async (d, _i) => {
+            try {
+              const requestIdBytes = this.hexToBytes(d.requestId);
+              const [pendingDepositPda] =
+                derivePendingDepositPda(requestIdBytes);
+              const account =
+                await program.account.pendingErc20Deposit.fetchNullable(
+                  pendingDepositPda,
+                );
+              if (!account) {
+                // If the pending account no longer exists, the deposit has been claimed
+                d.status = 'completed';
+              }
+            } catch {
+              // Ignore per-item errors; keep inferred status
+            }
+          },
+        );
+      } catch {
+        // If verification fails, continue with inferred statuses
+      }
+
+      return list.sort((a, b) => b.timestamp - a.timestamp);
     } catch (error) {
       console.error('Error fetching all user deposits:', error);
       return [];

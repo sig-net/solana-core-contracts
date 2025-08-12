@@ -54,6 +54,8 @@ export function TokenAmountDisplay({
         <div className='flex min-w-0 flex-1 items-center gap-2'>
           <input
             type='text'
+            inputMode='decimal'
+            enterKeyHint='done'
             value={value}
             onChange={e => !disabled && onChange(e.target.value)}
             placeholder={placeholder}

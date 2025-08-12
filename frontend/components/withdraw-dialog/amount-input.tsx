@@ -133,7 +133,12 @@ export function AmountInput({
         <Input
           placeholder='Recipient address'
           {...register('receiverAddress')}
-          className='h-12 font-mono text-sm'
+          autoComplete='off'
+          autoCorrect='off'
+          autoCapitalize='none'
+          spellCheck={false}
+          enterKeyHint='done'
+          className='h-12 font-mono text-base'
         />
       </div>
 

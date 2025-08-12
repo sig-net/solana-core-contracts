@@ -60,12 +60,12 @@ export function WithdrawDialog({
         });
       }
 
-      // Close dialog immediately after successful submission
+      // Close dialog after wallet confirmation and successful submission
       handleClose();
     } catch (err) {
       console.error('Withdrawal failed:', err);
-      // Still close dialog - user can check activity table later
-      handleClose();
+      // Keep dialog open to allow user to retry or fix input
+      setIsProcessing(false);
     }
   };
 
@@ -76,7 +76,13 @@ export function WithdrawDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog
+      open={open}
+      onOpenChange={nextOpen => {
+        if (isProcessing) return;
+        onOpenChange(nextOpen);
+      }}
+    >
       <DialogContent className='flex max-h-[90vh] max-w-md flex-col overflow-hidden p-6 sm:p-8'>
         <DialogTitle>Send</DialogTitle>
         <div className='min-h-0 flex-1 overflow-y-auto'>
@@ -87,8 +93,9 @@ export function WithdrawDialog({
               preSelectedToken={preSelectedToken}
             />
           )}
-
-          {isProcessing && <LoadingState message='Processing withdrawal...' />}
+          {isProcessing && (
+            <LoadingState message='Awaiting wallet confirmation…' />
+          )}
         </div>
       </DialogContent>
     </Dialog>

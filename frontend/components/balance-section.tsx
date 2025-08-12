@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Package } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { BalanceDisplay } from '@/components/balance-display';
-import { EmptyState, ErrorState } from '@/components/states';
+import { EmptyState } from '@/components/states';
 import { DepositDialog } from '@/components/deposit-dialog';
 import { useUserBalances } from '@/hooks';
 import { convertTokenBalancesToDisplayTokens } from '@/lib/utils';
@@ -19,6 +19,12 @@ export function BalanceSection() {
   };
 
   const displayTokens = convertTokenBalancesToDisplayTokens(userBalances);
+
+  useEffect(() => {
+    if (error) {
+      console.error('Failed to load balances:', error);
+    }
+  }, [error]);
 
   if (isLoading) {
     return (
@@ -55,10 +61,6 @@ export function BalanceSection() {
         </div>
       </div>
     );
-  }
-
-  if (error) {
-    return <ErrorState error={error} title='Error loading balances' compact />;
   }
 
   if (displayTokens.length === 0) {

@@ -39,18 +39,9 @@ export function WalletButton() {
           )}?ref=${encodeURIComponent(currentUrl)}`
         : 'https://phantom.app/download';
 
-      const solflareDeepLink = currentUrl
-        ? `https://solflare.com/ul/browse/${encodeURIComponent(
-            currentUrl,
-          )}?ref=${encodeURIComponent(currentUrl)}`
-        : 'https://solflare.com/download';
-
       const phantomHref = isMobile
         ? phantomDeepLink
         : 'https://phantom.app/download';
-      const solflareHref = isMobile
-        ? solflareDeepLink
-        : 'https://solflare.com/download';
 
       toast.info(
         <div>
@@ -62,18 +53,9 @@ export function WalletButton() {
             className='underline'
           >
             Phantom
-          </a>{' '}
-          or{' '}
-          <a
-            href={solflareHref}
-            target='_blank'
-            rel='noreferrer'
-            className='underline'
-          >
-            Solflare
           </a>
-          . On mobile, these links will open the app if installed or route you
-          to install it.
+          . On mobile, this link will open the app if installed or route you to
+          install it.
         </div>,
       );
       return;

@@ -1,5 +1,6 @@
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
 import { ExternalLink } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
@@ -80,6 +81,18 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
   const isLoadingTransfers =
     isLoadingIncoming || isLoadingOutgoing || isLoadingSolanaTxs;
   const error = incomingError || outgoingError || solanaTxsError;
+
+  useEffect(() => {
+    if (error) {
+      console.error('Failed to load transfers:', error);
+      if (
+        error instanceof Error &&
+        /429|rate\s*limit|too\s*many\s*requests/i.test(error.message)
+      ) {
+        toast.warning('Rate limit reached. Please try again in a moment.');
+      }
+    }
+  }, [error]);
 
   // Preload token information when transfers are loaded
   useEffect(() => {
@@ -284,14 +297,6 @@ export function ActivityListTable({ className }: ActivityListTableProps) {
           Activity
         </h2>
       </div>
-
-      {error && (
-        <div className='mb-4 rounded border border-red-200 bg-red-50 p-3 text-sm'>
-          <p className='text-red-800'>
-            Error loading transfers: {error.message}
-          </p>
-        </div>
-      )}
 
       <Table>
         <TableHeader>

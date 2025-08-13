@@ -13,15 +13,12 @@ import { IDL, type SolanaCoreContracts } from '@/lib/program/idl-sol-dex';
 import type { EvmTransactionProgramParams } from '@/lib/types/shared.types';
 import {
   BRIDGE_PROGRAM_ID,
-  CHAIN_SIGNATURES_PROGRAM_ID,
   deriveEthereumAddress,
   CHAIN_SIGNATURES_CONFIG,
-  GLOBAL_VAULT_AUTHORITY_PDA,
   deriveVaultAuthorityPda,
   derivePendingDepositPda,
   derivePendingWithdrawalPda,
   deriveUserBalancePda,
-  deriveChainSignaturesStatePda,
 } from '@/lib/constants/addresses';
 import { getAllErc20Tokens } from '@/lib/constants/token-metadata';
 import {
@@ -149,9 +146,6 @@ export class BridgeContract {
     evmParams: EvmTransactionProgramParams;
   }): Promise<string> {
     const payerKey = payer || this.wallet.publicKey;
-    const [requesterPda] = deriveVaultAuthorityPda(requester);
-    const [pendingDepositPda] = derivePendingDepositPda(requestIdBytes);
-    const [chainSignaturesStatePda] = deriveChainSignaturesStatePda();
 
     return await this.getBridgeProgram()
       .methods.depositErc20(
@@ -163,11 +157,7 @@ export class BridgeContract {
       )
       .accounts({
         payer: payerKey,
-        requesterPda: requesterPda,
-        pendingDeposit: pendingDepositPda,
         feePayer: payerKey,
-        chainSignaturesState: chainSignaturesStatePda,
-        chainSignaturesProgram: CHAIN_SIGNATURES_PROGRAM_ID,
         instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       } as never)
       .rpc();
@@ -191,8 +181,6 @@ export class BridgeContract {
     erc20AddressBytes: number[];
     requester: PublicKey;
   }): Promise<string> {
-    const payerKey = payer || this.wallet.publicKey;
-    const [pendingDepositPda] = derivePendingDepositPda(requestIdBytes);
     const erc20Bytes = Buffer.from(erc20AddressBytes);
     const [userBalancePda] = deriveUserBalancePda(requester, erc20Bytes);
 
@@ -203,8 +191,6 @@ export class BridgeContract {
         signature,
       )
       .accounts({
-        payer: payerKey,
-        pendingDeposit: pendingDepositPda,
         userBalance: userBalancePda,
       } as never)
       .rpc();
@@ -228,11 +214,6 @@ export class BridgeContract {
     recipientAddressBytes: number[];
     evmParams: EvmTransactionProgramParams;
   }): Promise<string> {
-    const globalVaultAuthority = GLOBAL_VAULT_AUTHORITY_PDA;
-    const [pendingWithdrawalPda] = derivePendingWithdrawalPda(requestIdBytes);
-    const erc20Bytes = Buffer.from(erc20AddressBytes);
-    const [userBalancePda] = deriveUserBalancePda(authority, erc20Bytes);
-
     return await this.getBridgeProgram()
       .methods.withdrawErc20(
         Array.from(requestIdBytes),
@@ -243,12 +224,7 @@ export class BridgeContract {
       )
       .accounts({
         authority,
-        requester: globalVaultAuthority,
-        pendingWithdrawal: pendingWithdrawalPda,
-        userBalance: userBalancePda,
         feePayer: this.wallet.publicKey,
-        chainSignaturesState: deriveChainSignaturesStatePda()[0],
-        chainSignaturesProgram: CHAIN_SIGNATURES_PROGRAM_ID,
         instructions: SYSVAR_INSTRUCTIONS_PUBKEY,
       } as never)
       .rpc();
@@ -272,8 +248,6 @@ export class BridgeContract {
     erc20AddressBytes: number[];
     requester: PublicKey;
   }): Promise<string> {
-    const payerKey = payer || this.wallet.publicKey;
-    const [pendingWithdrawalPda] = derivePendingWithdrawalPda(requestIdBytes);
     const erc20Bytes = Buffer.from(erc20AddressBytes);
     const [userBalancePda] = deriveUserBalancePda(requester, erc20Bytes);
 
@@ -284,8 +258,6 @@ export class BridgeContract {
         signature,
       )
       .accounts({
-        payer: payerKey,
-        pendingWithdrawal: pendingWithdrawalPda,
         userBalance: userBalancePda,
       } as never)
       .rpc();

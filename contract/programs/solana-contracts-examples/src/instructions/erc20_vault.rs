@@ -142,7 +142,7 @@ pub fn deposit_erc20(
                 .as_ref()
                 .map(|i| i.to_account_info()),
             event_authority: ctx.accounts.event_authority.to_account_info(),
-            program: ctx.accounts.chain_signatures_program.to_account_info(), // ADD THIS LINE
+            program: ctx.accounts.chain_signatures_program.to_account_info(),
         },
         signer_seeds,
     );
@@ -319,7 +319,7 @@ pub fn withdraw_erc20(
                 .as_ref()
                 .map(|i| i.to_account_info()),
             event_authority: ctx.accounts.event_authority.to_account_info(),
-            program: ctx.accounts.chain_signatures_program.to_account_info(), // ADD THIS LINE
+            program: ctx.accounts.chain_signatures_program.to_account_info(),
         },
         signer_seeds,
     );

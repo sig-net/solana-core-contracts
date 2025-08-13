@@ -145,7 +145,7 @@ pub struct DepositErc20<'info> {
         bump,
         seeds::program = chain_signatures_program.key()
     )]
-    pub event_authority: AccountInfo<'info>, // ADD THIS
+    pub event_authority: AccountInfo<'info>,
 
     pub chain_signatures_program:
         Program<'info, ::chain_signatures::program::ChainSignaturesProject>,

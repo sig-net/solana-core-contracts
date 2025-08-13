@@ -282,6 +282,39 @@ export type SolanaCoreContracts = {
           };
         },
         {
+          name: 'eventAuthority';
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121,
+                ];
+              },
+            ];
+            program: {
+              kind: 'account';
+              path: 'chainSignaturesProgram';
+            };
+          };
+        },
+        {
           name: 'chainSignaturesProgram';
           address: '4uvZW8K4g4jBg7dzPNbb9XDxJLFBK7V6iC76uofmYvEU';
         },
@@ -742,6 +775,39 @@ export type SolanaCoreContracts = {
                   97,
                   116,
                   101,
+                ];
+              },
+            ];
+            program: {
+              kind: 'account';
+              path: 'chainSignaturesProgram';
+            };
+          };
+        },
+        {
+          name: 'eventAuthority';
+          pda: {
+            seeds: [
+              {
+                kind: 'const';
+                value: [
+                  95,
+                  95,
+                  101,
+                  118,
+                  101,
+                  110,
+                  116,
+                  95,
+                  97,
+                  117,
+                  116,
+                  104,
+                  111,
+                  114,
+                  105,
+                  116,
+                  121,
                 ];
               },
             ];
@@ -1329,6 +1395,24 @@ export const IDL: SolanaCoreContracts = {
           },
         },
         {
+          name: 'eventAuthority',
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [
+                  95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111,
+                  114, 105, 116, 121,
+                ],
+              },
+            ],
+            program: {
+              kind: 'account',
+              path: 'chainSignaturesProgram',
+            },
+          },
+        },
+        {
           name: 'chainSignaturesProgram',
           address: '4uvZW8K4g4jBg7dzPNbb9XDxJLFBK7V6iC76uofmYvEU',
         },
@@ -1669,6 +1753,24 @@ export const IDL: SolanaCoreContracts = {
                 kind: 'const',
                 value: [
                   112, 114, 111, 103, 114, 97, 109, 45, 115, 116, 97, 116, 101,
+                ],
+              },
+            ],
+            program: {
+              kind: 'account',
+              path: 'chainSignaturesProgram',
+            },
+          },
+        },
+        {
+          name: 'eventAuthority',
+          pda: {
+            seeds: [
+              {
+                kind: 'const',
+                value: [
+                  95, 95, 101, 118, 101, 110, 116, 95, 97, 117, 116, 104, 111,
+                  114, 105, 116, 121,
                 ],
               },
             ],

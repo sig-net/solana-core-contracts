@@ -177,41 +177,53 @@ export class ChainSignaturesContract {
         { limit: maxSignatures },
       );
 
-      for (const sig of signatures) {
-        try {
-          const tx = await this.connection.getTransaction(sig.signature, {
-            maxSupportedTransactionVersion: 0,
-          });
-          const logs = tx?.meta?.logMessages ?? [];
-          for (const log of logs) {
-            try {
-              const decoded = program.coder.events.decode(log) as {
-                name: string;
-                data: SignatureRespondedEvent | ReadRespondedEvent;
-              } | null;
-              if (!decoded) continue;
-              const name = decoded.name as string;
-              if (
-                name === 'signatureRespondedEvent' ||
-                name === 'readRespondedEvent'
-              ) {
-                const eventReq =
-                  '0x' + Buffer.from(decoded.data.requestId).toString('hex');
-                if (eventReq !== requestId) continue;
-                if (name === 'signatureRespondedEvent') {
-                  onSignature(decoded.data as SignatureRespondedEvent);
-                } else if (name === 'readRespondedEvent') {
-                  onReadRespond(decoded.data as ReadRespondedEvent);
+      const CONCURRENCY = 4;
+      let next = 0;
+      await Promise.all(
+        Array.from({ length: Math.min(CONCURRENCY, signatures.length) }).map(
+          async () => {
+            while (true) {
+              const i = next++;
+              if (i >= signatures.length) break;
+              const sig = signatures[i];
+              try {
+                const tx = await this.connection.getTransaction(sig.signature, {
+                  maxSupportedTransactionVersion: 0,
+                });
+                const logs = tx?.meta?.logMessages ?? [];
+                for (const log of logs) {
+                  try {
+                    const decoded = program.coder.events.decode(log) as {
+                      name: string;
+                      data: SignatureRespondedEvent | ReadRespondedEvent;
+                    } | null;
+                    if (!decoded) continue;
+                    const name = decoded.name as string;
+                    if (
+                      name === 'signatureRespondedEvent' ||
+                      name === 'readRespondedEvent'
+                    ) {
+                      const eventReq =
+                        '0x' +
+                        Buffer.from(decoded.data.requestId).toString('hex');
+                      if (eventReq !== requestId) continue;
+                      if (name === 'signatureRespondedEvent') {
+                        onSignature(decoded.data as SignatureRespondedEvent);
+                      } else if (name === 'readRespondedEvent') {
+                        onReadRespond(decoded.data as ReadRespondedEvent);
+                      }
+                    }
+                  } catch {
+                    // ignore decode errors per-log
+                  }
                 }
+              } catch {
+                // ignore tx fetch errors
               }
-            } catch {
-              // ignore decode errors per-log
             }
-          }
-        } catch {
-          // ignore tx fetch errors
-        }
-      }
+          },
+        ),
+      );
     } catch {
       // ignore overall backfill errors
     }

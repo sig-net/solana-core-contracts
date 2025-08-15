@@ -1,44 +1,31 @@
 'use client';
 
+/**
+ * Hook to fetch Solana wallet transactions for the Activity table
+ * NOTE: This only tracks SPL token transfers, not native SOL transfers
+ * Native SOL transfers are intentionally excluded from the Activity table
+ */
+
 import { useQuery } from '@tanstack/react-query';
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-import { PublicKey, type VersionedTransactionResponse } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 
 import { queryKeys } from '@/lib/query-client';
-import {
-  cachedGetSignaturesForAddress,
-  cachedGetTransaction,
-} from '@/lib/utils/rpc-cache';
+import { getRPCManager } from '@/lib/utils/rpc-manager';
 import { getAllNetworks } from '@/lib/constants/token-metadata';
 
 type Direction = 'in' | 'out';
 
 export interface SolanaWalletTransactionItem {
-  id: string; // signature + mint
+  id: string;
   signature: string;
-  timestamp: number; // seconds
+  timestamp: number;
   direction: Direction;
-  symbol: string; // e.g., USDC
-  decimals: number; // token decimals for SPL
-  amount: bigint; // absolute amount in base units
-  mint?: string; // SPL mint
-}
-
-function extractUserSolDelta(
-  tx: VersionedTransactionResponse,
-  userAddress: string,
-): bigint {
-  try {
-    const accountKeys = tx.transaction.message.staticAccountKeys;
-    const userIndex = accountKeys.findIndex(k => k.toBase58() === userAddress);
-    if (userIndex === -1) return BigInt(0);
-    const pre = BigInt(tx.meta?.preBalances?.[userIndex] ?? 0);
-    const post = BigInt(tx.meta?.postBalances?.[userIndex] ?? 0);
-    return post - pre; // positive = received, negative = sent
-  } catch {
-    return BigInt(0);
-  }
+  symbol: string;
+  decimals: number;
+  amount: bigint;
+  mint?: string;
 }
 
 export function useSolanaTransactions(limit = 25) {
@@ -55,78 +42,111 @@ export function useSolanaTransactions(limit = 25) {
         ]
       : [],
     enabled: !!publicKey,
-    staleTime: 60_000,
-    gcTime: 5 * 60_000,
-    refetchInterval: 60_000,
+
+    staleTime: 10 * 1000,
+    gcTime: 30 * 60_000,
+    refetchInterval: 15 * 1000,
     refetchIntervalInBackground: true,
     queryFn: async (): Promise<SolanaWalletTransactionItem[]> => {
       if (!publicKey) throw new Error('No public key available');
 
+      const rpcManager = getRPCManager(connection);
       const userAddress = publicKey.toBase58();
 
-      // Build list of addresses to scan: wallet + ATAs for known SPL mints
       const solanaNetwork = getAllNetworks().find(n => n.chain === 'solana');
       const mints: PublicKey[] = (solanaNetwork?.tokens ?? []).map(
         t => new PublicKey(t.address),
       );
-      const ataAddresses = await Promise.all(
-        mints.map(mint => getAssociatedTokenAddress(mint, publicKey, true)),
-      );
-      const addressesToScan: PublicKey[] = [publicKey, ...ataAddresses];
 
       const scanLimit = Number.isFinite(limit)
-        ? Math.max(1, Number(limit))
+        ? Math.max(1, Math.min(Number(limit), 50))
         : 25;
-      const signaturesArrays = await Promise.all(
-        addressesToScan.map(addr =>
-          cachedGetSignaturesForAddress(connection, addr, { limit: scanLimit }),
-        ),
+
+      const walletSignatures = await rpcManager.getSignaturesForAddress(
+        publicKey,
+        { limit: scanLimit },
       );
 
-      // Deduplicate signatures across wallet and ATAs
-      const signatureToTime = new Map<string, number | undefined>();
-      for (const arr of signaturesArrays) {
-        for (const s of arr) {
-          if (!signatureToTime.has(s.signature)) {
-            signatureToTime.set(s.signature, s.blockTime ?? undefined);
+      if (walletSignatures.length === 0) return [];
+
+      const needMoreTransactions = walletSignatures.length < scanLimit / 2;
+      const ataSignatures: Array<{
+        signature: string;
+        blockTime?: number | null;
+      }> = [];
+
+      if (needMoreTransactions && mints.length > 0) {
+        const ataAddresses = await Promise.all(
+          mints.map(mint => getAssociatedTokenAddress(mint, publicKey, true)),
+        );
+
+        const ataLimit = Math.max(1, Math.floor(scanLimit / mints.length));
+
+        for (const ata of ataAddresses) {
+          try {
+            const sigs = await rpcManager.getSignaturesForAddress(ata, {
+              limit: ataLimit,
+            });
+            ataSignatures.push(...sigs);
+
+            if (walletSignatures.length + ataSignatures.length >= scanLimit) {
+              break;
+            }
+          } catch (error) {
+            console.warn(
+              `Failed to fetch signatures for ATA ${ata.toBase58()}:`,
+              error,
+            );
           }
         }
       }
 
-      const uniqueSignatures = Array.from(signatureToTime.keys());
+      const signatureToTime = new Map<string, number | undefined>();
+
+      for (const s of walletSignatures) {
+        signatureToTime.set(s.signature, s.blockTime ?? undefined);
+      }
+
+      for (const s of ataSignatures) {
+        if (!signatureToTime.has(s.signature)) {
+          signatureToTime.set(s.signature, s.blockTime ?? undefined);
+        }
+      }
+
+      const uniqueSignatures = Array.from(signatureToTime.keys()).slice(
+        0,
+        scanLimit,
+      );
       if (uniqueSignatures.length === 0) return [];
 
-      const txs = await Promise.all(
+      const transactions = await Promise.all(
         uniqueSignatures.map(sig =>
-          cachedGetTransaction(connection, sig, {
+          rpcManager.getTransaction(sig, {
             maxSupportedTransactionVersion: 0,
           }),
         ),
       );
 
-      // Prepare Solana token metadata map for quick lookup (by mint address)
-      const solanaNetwork2 = getAllNetworks().find(n => n.chain === 'solana');
       const mintToMeta = new Map<
         string,
         { symbol: string; decimals: number }
       >();
-      if (solanaNetwork2) {
-        for (const t of solanaNetwork2.tokens) {
+      if (solanaNetwork) {
+        for (const t of solanaNetwork.tokens) {
           mintToMeta.set(t.address, { symbol: t.symbol, decimals: t.decimals });
         }
       }
 
       const items: SolanaWalletTransactionItem[] = [];
 
-      for (let i = 0; i < txs.length; i++) {
-        const tx = txs[i];
+      for (let i = 0; i < transactions.length; i++) {
+        const tx = transactions[i];
         const signature = uniqueSignatures[i];
         if (!tx || !tx.meta) continue;
 
         const timestamp =
           signatureToTime.get(signature) || Math.floor(Date.now() / 1000);
 
-        // SPL token deltas for accounts owned by the user
         const preByMint = new Map<string, bigint>();
         const postByMint = new Map<string, bigint>();
         const decimalsByMint = new Map<string, number>();
@@ -150,17 +170,17 @@ export function useSolanaTransactions(limit = 25) {
           }
         }
 
-        const mints = new Set<string>([
+        const mintSet = new Set<string>([
           ...preByMint.keys(),
           ...postByMint.keys(),
         ]);
-        for (const mint of mints) {
+
+        for (const mint of mintSet) {
           const pre = preByMint.get(mint) ?? BigInt(0);
           const post = postByMint.get(mint) ?? BigInt(0);
           const delta = post - pre;
           if (delta === BigInt(0)) continue;
 
-          // Resolve symbol/decimals with fallbacks
           const meta = mintToMeta.get(mint);
           const decimals = decimalsByMint.get(mint) ?? meta?.decimals ?? 6;
           const symbol = meta?.symbol ?? 'SPL';
@@ -178,9 +198,8 @@ export function useSolanaTransactions(limit = 25) {
         }
       }
 
-      // Sort by timestamp desc
       items.sort((a, b) => b.timestamp - a.timestamp);
-      return items;
+      return items.slice(0, scanLimit);
     },
   });
 }

@@ -39,11 +39,9 @@ async function fetchUserWithdrawals(
   withdrawalService: WithdrawalService,
 ): Promise<WithdrawalRequest[]> {
   try {
-    // Use the comprehensive method that fetches both pending and historical withdrawals
     const allWithdrawals =
       await withdrawalService.fetchAllUserWithdrawals(publicKey);
 
-    // Transform to our format
     return allWithdrawals.map(withdrawal => ({
       requestId: withdrawal.requestId,
       erc20Address: withdrawal.erc20Address,
@@ -70,20 +68,18 @@ export function useOutgoingTransfers() {
     queryFn: async (): Promise<OutgoingTransfer[]> => {
       if (!publicKey) throw new Error('No public key available');
 
-      // Fetch user's withdrawal requests from Solana
       const withdrawalRequests = await fetchUserWithdrawals(
         publicKey,
         withdrawalService,
       );
 
-      // Transform withdrawal requests to OutgoingTransfer format
       return withdrawalRequests.map(
         (request): OutgoingTransfer => ({
           requestId: request.requestId,
           transactionHash: request.ethereumTxHash,
           blockNumber: undefined,
           logIndex: 0,
-          from: VAULT_ETHEREUM_ADDRESS, // Main vault address
+          from: VAULT_ETHEREUM_ADDRESS,
           to: request.recipient,
           value: BigInt(request.amount),
           tokenAddress: request.erc20Address,
@@ -94,13 +90,13 @@ export function useOutgoingTransfers() {
       );
     },
     enabled: !!publicKey,
-    // Outgoing updates are slower; cache aggressively
-    staleTime: 2 * 60 * 1000,
-    gcTime: 10 * 60 * 1000,
-    refetchInterval: 60 * 1000,
+
+    staleTime: 15 * 1000,
+    gcTime: 15 * 60 * 1000,
+    refetchInterval: 20 * 1000,
     refetchIntervalInBackground: true,
-    retry: 3,
-    retryDelay: 1000,
+    retry: 2,
+    retryDelay: 1500,
   });
 
   return query;

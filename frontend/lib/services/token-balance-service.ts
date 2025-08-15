@@ -1,5 +1,6 @@
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { ethers } from 'ethers';
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 
 import type { TokenBalance } from '@/lib/types/token.types';
 import {
@@ -9,17 +10,23 @@ import {
 } from '@/lib/constants/token-metadata';
 import type { BridgeContract } from '@/lib/contracts/bridge-contract';
 import { getTokenInfo } from '@/lib/utils/token-formatting';
+import { getRPCManager } from '@/lib/utils/rpc-manager';
 
 import { getAlchemyProvider } from '../utils/providers';
 
 /**
  * TokenBalanceService handles all token balance operations including
  * fetching and processing ERC20 token balances.
+ *
+ * OPTIMIZED VERSION: Uses efficient RPC calls with filtering
  */
 export class TokenBalanceService {
   private alchemy = getAlchemyProvider();
+  private rpcManager: ReturnType<typeof getRPCManager>;
 
-  constructor(private bridgeContract: BridgeContract) {}
+  constructor(private bridgeContract: BridgeContract) {
+    this.rpcManager = getRPCManager(bridgeContract.getConnection());
+  }
 
   // Decimals resolution delegated to shared token info (Alchemy-backed)
   private async resolveDecimals(erc20Address: string): Promise<number> {
@@ -157,12 +164,13 @@ export class TokenBalanceService {
   }
 
   /**
-   * Fetch user balances from Solana contract
+   * OPTIMIZED: Fetch user balances from Solana contract using efficient RPC calls
    */
   async fetchUserBalances(publicKey: PublicKey): Promise<TokenBalance[]> {
     try {
       const tokenAddresses = getAllErc20Tokens().map(token => token.address);
 
+      // Fetch ERC20 balances from the bridge contract
       const balancesPromises = tokenAddresses.map(async erc20Address => {
         const balance = await this.bridgeContract.fetchUserBalance(
           publicKey,
@@ -187,45 +195,82 @@ export class TokenBalanceService {
         (result): result is TokenBalance => result !== null,
       );
 
-      // Also include SPL balances for the user's own Solana wallet for tokens listed under Solana
-      const connection: Connection = this.bridgeContract.getConnection();
+      // OPTIMIZED: Fetch SPL balances using getMultipleAccountsInfo instead of getParsedTokenAccountsByOwner
       const solanaNetwork = NETWORKS_WITH_TOKENS.find(
         n => n.chain === 'solana',
       );
 
       const splResults: TokenBalance[] = [];
-      if (solanaNetwork) {
-        for (const token of solanaNetwork.tokens) {
-          try {
-            // Fetch associated token account balance; if token is native SOL (none here), we'd use getBalance
-            // For USDC/USDT on Solana, we can use getParsedTokenAccountsByOwner
-            const parsed = await connection.getParsedTokenAccountsByOwner(
-              publicKey,
-              { mint: new PublicKey(token.address) },
-            );
+      if (solanaNetwork && solanaNetwork.tokens.length > 0) {
+        try {
+          // Pre-compute all ATAs for known SPL tokens
+          const ataAddresses: PublicKey[] = [];
+          const tokenInfoMap = new Map<
+            string,
+            (typeof solanaNetwork.tokens)[0]
+          >();
+
+          for (const token of solanaNetwork.tokens) {
+            try {
+              const mintPubkey = new PublicKey(token.address);
+              const ata = getAssociatedTokenAddressSync(
+                mintPubkey,
+                publicKey,
+                true, // Allow owner off curve
+              );
+              ataAddresses.push(ata);
+              tokenInfoMap.set(ata.toBase58(), token);
+            } catch (e) {
+              console.warn(`Failed to derive ATA for ${token.address}:`, e);
+            }
+          }
+
+          // Batch fetch all ATAs in a single request using the RPC manager
+          const accounts =
+            await this.rpcManager.getMultipleAccountsInfo(ataAddresses);
+
+          for (let i = 0; i < accounts.length; i++) {
+            const account = accounts[i];
+            const ataAddress = ataAddresses[i].toBase58();
+            const tokenInfo = tokenInfoMap.get(ataAddress);
+
+            if (!tokenInfo) continue;
 
             let amount = '0';
-            if (parsed.value.length > 0) {
-              const info = parsed.value[0].account.data as unknown as {
-                parsed?: {
-                  info?: { tokenAmount?: { amount?: string } };
-                };
-              };
-              const tokenAmount = info.parsed?.info?.tokenAmount?.amount;
-              amount = typeof tokenAmount === 'string' ? tokenAmount : '0';
+
+            if (account && account.data && 'parsed' in account.data) {
+              // Account exists and is parsed
+              const parsed = account.data.parsed;
+              if (parsed?.info?.tokenAmount?.amount) {
+                amount = parsed.info.tokenAmount.amount;
+              }
+            } else if (
+              account &&
+              account.data &&
+              Buffer.isBuffer(account.data)
+            ) {
+              // Account exists but needs manual parsing
+              // Token account layout: first 64 bytes are mint and owner, next 8 bytes are amount
+              if (account.data.length >= 72) {
+                const amountBuffer = account.data.subarray(64, 72);
+                const amountBigInt = amountBuffer.readBigUInt64LE();
+                amount = amountBigInt.toString();
+              }
             }
 
-            // Always include, even if zero, so Solana assets display with user's own balance
             splResults.push({
-              erc20Address: token.address, // reuse field for identifier
+              erc20Address: tokenInfo.address,
               amount,
-              decimals: token.decimals,
-              symbol: token.symbol,
-              name: token.name,
+              decimals: tokenInfo.decimals,
+              symbol: tokenInfo.symbol,
+              name: tokenInfo.name,
               chain: 'solana',
             });
-          } catch {
-            // If RPC fails for a token, still include zero balance entry
+          }
+        } catch (error) {
+          console.error('Error fetching SPL balances:', error);
+          // If batch fetch fails, include zeros for all tokens
+          for (const token of solanaNetwork.tokens) {
             splResults.push({
               erc20Address: token.address,
               amount: '0',

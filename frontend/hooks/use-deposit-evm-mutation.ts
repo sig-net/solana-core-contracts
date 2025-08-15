@@ -47,12 +47,18 @@ export function useDepositEvmMutation() {
           queryKey: queryKeys.solana.unclaimedBalances(publicKey.toString()),
         });
         queryClient.invalidateQueries({
-          queryKey: queryKeys.solana.outgoingTransfers(publicKey.toString()),
+          queryKey: queryKeys.solana.incomingDeposits(publicKey.toString()),
         });
       }
     },
     onError: error => {
       console.error('Deposit EVM mutation failed:', error);
+
+      if (publicKey) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.solana.incomingDeposits(publicKey.toString()),
+        });
+      }
     },
   });
 }

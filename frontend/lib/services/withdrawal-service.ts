@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Transaction } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, Commitment } from '@solana/web3.js';
 import {
   createAssociatedTokenAccountInstruction,
   createTransferInstruction,
@@ -8,7 +8,7 @@ import {
 } from '@solana/spl-token';
 import { BN } from '@coral-xyz/anchor';
 import { ethers } from 'ethers';
-import { encodeFunctionData, erc20Abi, Hex, toBytes } from 'viem';
+import { toBytes } from 'viem';
 
 import { getTokenInfo } from '@/lib/utils/token-formatting';
 import { buildErc20TransferTx } from '@/lib/evm/tx-builder';
@@ -33,12 +33,43 @@ import { getAlchemyProvider, getEthereumProvider } from '../utils/providers';
 export class WithdrawalService {
   private relayerService: RelayerService;
   private alchemy = getAlchemyProvider();
+  private heliusConnection: Connection | null = null;
+  private heliusBridgeContract: BridgeContract | null = null;
 
   constructor(
     private bridgeContract: BridgeContract,
     private tokenBalanceService: TokenBalanceService,
   ) {
     this.relayerService = new RelayerService();
+  }
+
+  /**
+   * Get or create a Helius connection for withdrawals
+   */
+  private getHeliusConnection(): Connection {
+    if (!this.heliusConnection) {
+      const heliusUrl = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
+      if (!heliusUrl) {
+        throw new Error('NEXT_PUBLIC_HELIUS_RPC_URL is not configured');
+      }
+      this.heliusConnection = new Connection(heliusUrl, {
+        commitment: 'confirmed' as Commitment,
+        confirmTransactionInitialTimeout: 60000,
+      });
+    }
+    return this.heliusConnection;
+  }
+
+  /**
+   * Get or create a Helius-based BridgeContract for withdrawals
+   */
+  private getHeliusBridgeContract(): BridgeContract {
+    if (!this.heliusBridgeContract) {
+      const wallet = this.bridgeContract.getWallet();
+      const heliusConnection = this.getHeliusConnection();
+      this.heliusBridgeContract = new BridgeContract(heliusConnection, wallet);
+    }
+    return this.heliusBridgeContract;
   }
 
   /**
@@ -140,40 +171,24 @@ export class WithdrawalService {
     onStatusChange?: StatusCallback,
   ): Promise<string> {
     try {
-      // Get the global vault authority (requester for withdrawals)
       const globalVaultAuthority = GLOBAL_VAULT_AUTHORITY_PDA;
 
-      // Get token decimals and convert amount to proper format
       const decimals = (await getTokenInfo(erc20Address)).decimals;
 
       const amountBigInt = ethers.parseUnits(amount, decimals);
 
-      // Subtract a small random amount to avoid PDA collisions
-      const randomReduction = BigInt(Math.floor(Math.random() * 100) + 1); // 1-100 wei
+      const randomReduction = BigInt(Math.floor(Math.random() * 100) + 1);
       const processAmountBigInt = amountBigInt - randomReduction;
 
       const amountBN = new BN(processAmountBigInt.toString());
       const erc20AddressBytes = Array.from(toBytes(erc20Address));
 
-      // Validate and convert recipient address (must be Ethereum format)
       if (!ethers.isAddress(recipientAddress)) {
         throw new Error('Invalid Ethereum address format');
       }
 
       const checksummedAddress = ethers.getAddress(recipientAddress);
       const recipientAddressBytes = Array.from(toBytes(checksummedAddress));
-
-      // Get current nonce from the hardcoded recipient address (for withdrawals)
-      const _nonce = await this.alchemy.core.getTransactionCount(
-        VAULT_ETHEREUM_ADDRESS,
-      );
-
-      // Build EVM transaction call data first
-      const _callData = encodeFunctionData({
-        abi: erc20Abi,
-        functionName: 'transfer',
-        args: [checksummedAddress as Hex, processAmountBigInt],
-      });
 
       const txRequest: EvmTransactionRequest = await buildErc20TransferTx({
         provider: getEthereumProvider(),
@@ -188,7 +203,6 @@ export class WithdrawalService {
       const rlpEncodedTx =
         ethers.Transaction.from(txRequest).unsignedSerialized;
 
-      // Generate proper request ID using root path for withdrawals
       const requestId = generateRequestId(
         globalVaultAuthority,
         ethers.getBytes(rlpEncodedTx),
@@ -202,11 +216,9 @@ export class WithdrawalService {
 
       const requestIdBytes = Array.from(toBytes(requestId));
 
-      // Notify relayer FIRST to set up event listeners before transaction
       await this.relayerService.notifyWithdrawal({
         requestId,
         erc20Address,
-        // Pass the exact transaction parameters used for signing
         transactionParams: {
           ...txRequest,
           maxPriorityFeePerGas: txRequest.maxPriorityFeePerGas.toString(),
@@ -221,15 +233,30 @@ export class WithdrawalService {
         note: 'Setting up withdrawal monitoring...',
       });
 
-      // Call withdrawErc20 on Solana AFTER relayer is ready
-      await this.bridgeContract.withdrawErc20({
-        authority: publicKey,
-        requestIdBytes,
-        erc20AddressBytes,
-        amount: amountBN,
-        recipientAddressBytes,
-        evmParams,
-      });
+      // Use Helius RPC for withdrawErc20 to avoid WebSocket issues
+      const heliusBridgeContract = this.getHeliusBridgeContract();
+      
+      try {
+        await heliusBridgeContract.withdrawErc20({
+          authority: publicKey,
+          requestIdBytes,
+          erc20AddressBytes,
+          amount: amountBN,
+          recipientAddressBytes,
+          evmParams,
+        });
+      } catch (txError) {
+        const errorMessage =
+          txError instanceof Error ? txError.message : String(txError);
+        if (
+          errorMessage.includes('already been processed') ||
+          errorMessage.includes('AlreadyProcessed')
+        ) {
+          console.log('Transaction already processed, continuing...');
+        } else {
+          throw txError;
+        }
+      }
 
       onStatusChange?.({
         status: 'relayer_processing',

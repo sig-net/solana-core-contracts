@@ -133,10 +133,15 @@ export function getSepoliaRpcUrl(): string {
 }
 
 /**
- * Get Solana RPC URL - defaults to Alchemy
+ * Get Solana RPC URL
+ * - For relayers (server-side): Uses NEXT_PUBLIC_SOLANA_RPC_URL if available (Helius)
+ * - For frontend: Uses Alchemy
  */
 export function getSolanaRpcUrl(): string {
   const env = getClientEnv();
 
-  return `https://solana-devnet.g.alchemy.com/v2/${env.NEXT_PUBLIC_ALCHEMY_API_KEY}`;
+  return (
+    process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
+    `https://solana-devnet.g.alchemy.com/v2/${env.NEXT_PUBLIC_ALCHEMY_API_KEY}`
+  );
 }

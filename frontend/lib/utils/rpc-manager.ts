@@ -39,12 +39,12 @@ class RPCManager {
   private readonly TTL_CONFIG = {
     transaction: 60 * 60 * 1000, // 1 hour - transactions never change
     transactionConfirmed: 24 * 60 * 60 * 1000, // 24 hours for confirmed
-    signatures: 2 * 60 * 1000, // 2 minutes
-    account: 10 * 1000, // 10 seconds
-    balance: 5 * 1000, // 5 seconds
-    programAccounts: 30 * 1000, // 30 seconds
-    tokenAccounts: 15 * 1000, // 15 seconds
-    multipleAccounts: 10 * 1000, // 10 seconds
+    signatures: 3 * 1000, // 3 seconds for faster activity updates
+    account: 3 * 1000, // 3 seconds for faster balance updates
+    balance: 2 * 1000, // 2 seconds for faster balance updates
+    programAccounts: 5 * 1000, // 5 seconds for faster updates
+    tokenAccounts: 3 * 1000, // 3 seconds for faster updates
+    multipleAccounts: 3 * 1000, // 3 seconds for faster updates
     slot: 1000, // 1 second
     blockhash: 30 * 1000, // 30 seconds
   };

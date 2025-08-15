@@ -46,7 +46,8 @@ export function useIncomingTransfers() {
       }));
     },
     enabled: !!publicKey,
-
+    staleTime: 3 * 1000, // 3 seconds
+    refetchInterval: 5 * 1000, // Refetch every 5 seconds
     refetchIntervalInBackground: true,
   });
 

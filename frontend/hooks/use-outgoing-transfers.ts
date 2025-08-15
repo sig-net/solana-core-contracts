@@ -91,9 +91,9 @@ export function useOutgoingTransfers() {
     },
     enabled: !!publicKey,
 
-    staleTime: 15 * 1000,
+    staleTime: 3 * 1000, // 3 seconds
     gcTime: 15 * 60 * 1000,
-    refetchInterval: 20 * 1000,
+    refetchInterval: 5 * 1000, // Refetch every 5 seconds
     refetchIntervalInBackground: true,
     retry: 2,
     retryDelay: 1500,

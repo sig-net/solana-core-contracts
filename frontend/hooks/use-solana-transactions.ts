@@ -43,9 +43,9 @@ export function useSolanaTransactions(limit = 25) {
       : [],
     enabled: !!publicKey,
 
-    staleTime: 10 * 1000,
+    staleTime: 3 * 1000, // 3 seconds
     gcTime: 30 * 60_000,
-    refetchInterval: 15 * 1000,
+    refetchInterval: 5 * 1000, // Refetch every 5 seconds
     refetchIntervalInBackground: true,
     queryFn: async (): Promise<SolanaWalletTransactionItem[]> => {
       if (!publicKey) throw new Error('No public key available');

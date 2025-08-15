@@ -61,6 +61,7 @@ export class BridgeContract {
     if (!this.program) {
       const provider = new AnchorProvider(this.connection, this.wallet, {
         commitment: 'confirmed',
+        skipPreflight: true, // Skip preflight to avoid duplicate transaction errors
       });
       this.program = new Program(IDL, provider);
     }
@@ -167,7 +168,7 @@ export class BridgeContract {
    * Call claimErc20 method with all accounts prepared
    */
   async claimErc20({
-    payer,
+    payer: _payer,
     requestIdBytes,
     serializedOutput,
     signature,
@@ -234,7 +235,7 @@ export class BridgeContract {
    * Complete ERC20 withdrawal
    */
   async completeWithdrawErc20({
-    payer,
+    payer: _payer,
     requestIdBytes,
     serializedOutput,
     signature,
@@ -551,8 +552,8 @@ export class BridgeContract {
   /**
    * Reasonable defaults to avoid RPC saturation while keeping UI responsive.
    */
-  private readonly TRANSACTION_FETCH_CONCURRENCY = 6;
-  private readonly SIGNATURE_SCAN_LIMIT = 20; // reduce from 50 → 20 for faster initial loads
+  private readonly TRANSACTION_FETCH_CONCURRENCY = 4; // tighter to avoid RPC bursts
+  private readonly SIGNATURE_SCAN_LIMIT = 10; // scan fewer per address
 
   /**
    * Convert hex string to bytes array

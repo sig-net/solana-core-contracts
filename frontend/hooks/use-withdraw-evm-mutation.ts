@@ -59,6 +59,12 @@ export function useWithdrawEvmMutation() {
           error: error instanceof Error ? error.message : 'Withdrawal failed',
         });
       }
+
+      if (publicKey) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.solana.outgoingTransfers(publicKey.toString()),
+        });
+      }
     },
   });
 }

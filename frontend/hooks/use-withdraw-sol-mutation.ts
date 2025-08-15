@@ -49,6 +49,13 @@ export function useWithdrawSolMutation() {
         queryClient.invalidateQueries({
           queryKey: queryKeys.solana.unclaimedBalances(publicKey.toString()),
         });
+        queryClient.invalidateQueries({
+          queryKey: [
+            ...queryKeys.solana.all,
+            'walletTransactions',
+            publicKey.toString(),
+          ],
+        });
       }
     },
     onError: (error, variables) => {
@@ -57,6 +64,16 @@ export function useWithdrawSolMutation() {
         variables.onStatusChange({
           status: 'failed',
           error: error instanceof Error ? error.message : 'Withdrawal failed',
+        });
+      }
+
+      if (publicKey) {
+        queryClient.invalidateQueries({
+          queryKey: [
+            ...queryKeys.solana.all,
+            'walletTransactions',
+            publicKey.toString(),
+          ],
         });
       }
     },

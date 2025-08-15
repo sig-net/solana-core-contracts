@@ -1,11 +1,9 @@
 import { z } from 'zod';
 
-// Environment variable schemas
 const clientEnvSchema = z.object({
   NEXT_PUBLIC_ALCHEMY_API_KEY: z.string().min(1, 'Alchemy API key is required'),
   NEXT_PUBLIC_SEPOLIA_RPC_URL: z.string().optional(),
-  NEXT_PUBLIC_SOLANA_RPC_URL: z.string().optional(),
-  // Function URLs to call relayers directly from the client
+
   NEXT_PUBLIC_NOTIFY_DEPOSIT_URL: z.string().url().optional(),
   NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL: z.string().url().optional(),
 });
@@ -14,14 +12,12 @@ const serverEnvSchema = z.object({
   RELAYER_PRIVATE_KEY: z.string().min(1, 'Relayer private key is required'),
 });
 
-// Combined schema for server-side usage
 const fullEnvSchema = clientEnvSchema.merge(serverEnvSchema);
 
 export type ClientEnv = z.infer<typeof clientEnvSchema>;
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 export type FullEnv = z.infer<typeof fullEnvSchema>;
 
-// Cache for validated environment variables
 let clientEnvCache: ClientEnv | null = null;
 let serverEnvCache: ServerEnv | null = null;
 let fullEnvCache: FullEnv | null = null;
@@ -38,7 +34,6 @@ export function getClientEnv(): ClientEnv {
   const rawEnv = {
     NEXT_PUBLIC_ALCHEMY_API_KEY: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY,
     NEXT_PUBLIC_SEPOLIA_RPC_URL: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL,
-    NEXT_PUBLIC_SOLANA_RPC_URL: process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
     NEXT_PUBLIC_NOTIFY_DEPOSIT_URL: process.env.NEXT_PUBLIC_NOTIFY_DEPOSIT_URL,
     NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL:
       process.env.NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL,
@@ -105,8 +100,6 @@ export function getFullEnv(): FullEnv {
   const rawEnv = {
     NEXT_PUBLIC_ALCHEMY_API_KEY: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY,
     NEXT_PUBLIC_SEPOLIA_RPC_URL: process.env.NEXT_PUBLIC_SEPOLIA_RPC_URL,
-    NEXT_PUBLIC_SOLANA_RPC_URL: process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
-    NEXT_PUBLIC_NOTIFY_DEPOSIT_URL: process.env.NEXT_PUBLIC_NOTIFY_DEPOSIT_URL,
     NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL:
       process.env.NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL,
     RELAYER_PRIVATE_KEY: process.env.RELAYER_PRIVATE_KEY,
@@ -140,14 +133,10 @@ export function getSepoliaRpcUrl(): string {
 }
 
 /**
- * Get Solana RPC URL with validation
+ * Get Solana RPC URL - defaults to Alchemy
  */
 export function getSolanaRpcUrl(): string {
   const env = getClientEnv();
 
-  if (!env.NEXT_PUBLIC_SOLANA_RPC_URL) {
-    throw new Error('NEXT_PUBLIC_SOLANA_RPC_URL is required');
-  }
-
-  return env.NEXT_PUBLIC_SOLANA_RPC_URL;
+  return `https://solana-devnet.g.alchemy.com/v2/${env.NEXT_PUBLIC_ALCHEMY_API_KEY}`;
 }

@@ -114,7 +114,7 @@ function deriveEpsilon(requester: string, path: string): bigint {
  * Convert public key string to elliptic curve point
  */
 function publicKeyToPoint(publicKey: string): { x: bigint; y: bigint } {
-  const cleanPubKey = publicKey.slice(4); // Remove 0x04 prefix
+  const cleanPubKey = publicKey.slice(4);
   const x = cleanPubKey.slice(0, 64);
   const y = cleanPubKey.slice(64, 128);
   return {
@@ -144,17 +144,14 @@ function derivePublicKey(
     const epsilon = deriveEpsilon(requesterAddress, path);
     const basePoint = publicKeyToPoint(basePublicKey);
 
-    // Calculate epsilon * G
     const epsilonPoint = secp256k1.ProjectivePoint.BASE.multiply(epsilon);
 
-    // Convert base point to projective
     const baseProjectivePoint = new secp256k1.ProjectivePoint(
       basePoint.x,
       basePoint.y,
       BigInt(1),
     );
 
-    // Add points: result = base + epsilon * G
     const resultPoint = epsilonPoint.add(baseProjectivePoint);
     const resultAffine = resultPoint.toAffine();
 
@@ -201,7 +198,7 @@ export const GLOBAL_VAULT_AUTHORITY_PDA = PublicKey.findProgramAddressSync(
 export const VAULT_ETHEREUM_ADDRESS = (() => {
   try {
     const derivedPublicKey = derivePublicKey(
-      'root', // path for global vault
+      'root',
       GLOBAL_VAULT_AUTHORITY_PDA.toString(),
       CHAIN_SIGNATURES_CONFIG.BASE_PUBLIC_KEY,
     );
@@ -212,11 +209,3 @@ export const VAULT_ETHEREUM_ADDRESS = (() => {
     );
   }
 })();
-
-// Verify addresses at module load time
-console.log('[ADDRESSES] Loaded address configuration:', {
-  programId: BRIDGE_PROGRAM_ID.toString(),
-  globalVaultAuthorityPDA: GLOBAL_VAULT_AUTHORITY_PDA.toString(),
-  vaultEthereumAddress: VAULT_ETHEREUM_ADDRESS,
-  mpcRootSignerAddress: MPC_ROOT_SIGNER_ADDRESS,
-});

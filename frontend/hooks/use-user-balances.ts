@@ -20,8 +20,8 @@ export function useUserBalances() {
       return tokenBalanceService.fetchUserBalances(publicKey);
     },
     enabled: !!publicKey,
-    staleTime: 10000,
-    refetchInterval: 10000,
-    refetchIntervalInBackground: false,
+    staleTime: 10 * 1000,
+    refetchInterval: 15 * 1000,
+    refetchIntervalInBackground: true,
   });
 }

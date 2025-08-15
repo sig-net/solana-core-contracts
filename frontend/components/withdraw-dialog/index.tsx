@@ -33,7 +33,6 @@ export function WithdrawDialog({
 }: WithdrawDialogProps) {
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Withdrawal mutations
   const withdrawEvmMutation = useWithdrawEvmMutation();
   const withdrawSolMutation = useWithdrawSolMutation();
 
@@ -60,17 +59,15 @@ export function WithdrawDialog({
         });
       }
 
-      // Close dialog after wallet confirmation and successful submission
       handleClose();
     } catch (err) {
       console.error('Withdrawal failed:', err);
-      // Keep dialog open to allow user to retry or fix input
+
       setIsProcessing(false);
     }
   };
 
   const handleClose = () => {
-    // Reset all state
     setIsProcessing(false);
     onOpenChange(false);
   };

@@ -1,5 +1,4 @@
 import type { EvmTransactionRequestNotifyWithdrawal } from '@/lib/types/shared.types';
-import { getClientEnv } from '@/lib/utils/env';
 
 export class RelayerService {
   async notifyDeposit({
@@ -11,12 +10,7 @@ export class RelayerService {
     erc20Address: string;
     ethereumAddress: string;
   }): Promise<void> {
-    const env = getClientEnv();
-    const url = env.NEXT_PUBLIC_NOTIFY_DEPOSIT_URL;
-    if (!url) {
-      throw new Error('NEXT_PUBLIC_NOTIFY_DEPOSIT_URL is not set');
-    }
-    const res = await fetch(url, {
+    const res = await fetch('/api/notify-deposit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userAddress, erc20Address, ethereumAddress }),
@@ -38,12 +32,7 @@ export class RelayerService {
     erc20Address: string;
     transactionParams?: EvmTransactionRequestNotifyWithdrawal;
   }): Promise<void> {
-    const env = getClientEnv();
-    const url = env.NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL;
-    if (!url) {
-      throw new Error('NEXT_PUBLIC_NOTIFY_WITHDRAWAL_URL is not set');
-    }
-    const response = await fetch(url, {
+    const response = await fetch('/api/notify-withdrawal', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

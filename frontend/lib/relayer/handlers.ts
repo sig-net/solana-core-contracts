@@ -22,6 +22,8 @@ export async function handleDeposit(args: {
 }) {
   const { userAddress, erc20Address, ethereumAddress } = args;
 
+  console.log('[DEPOSIT] Starting background process');
+
   const { orchestrator, provider, relayerWallet } =
     await initializeRelayerSetup({
       operationName: 'DEPOSIT',
@@ -129,6 +131,9 @@ export async function handleWithdrawal(args: {
   transactionParams: EvmTransactionRequest;
 }) {
   const { requestId, erc20Address, transactionParams } = args;
+
+  console.log('[WITHDRAWAL] Starting background process');
+
   const { orchestrator } = await initializeRelayerSetup({
     operationName: 'WITHDRAW',
     eventTimeoutMs: 60000,
